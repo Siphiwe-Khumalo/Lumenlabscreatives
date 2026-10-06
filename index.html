@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Building 53 BMS</title>
+<meta name="description" content="Spartcon Technologies – demo Building Management System dashboard for CSIR Campus Building 53 (simulated data).">
+<meta name="color-scheme" content="light dark">
+<style>
+/* =====================================================================
+   1. DESIGN TOKENS  (edit colours / spacing here)
+   ===================================================================== */
+:root {
+  /* Brand */
+  --navy: #0F1B3D;
+  --navy-2: #172650;
+  --teal: #2F6F6A;
+  --brand-orange: #FB4A00;
+  --brand-teal: #179F9A;
+
+  /* Surfaces & text (light) */
+  --bg: #EEF2F6;
+  --surface: #FFFFFF;
+  --surface-2: #F5F7FA;
+  --border: #DCE3EB;
+  --text: #0F1B3D;
+  --text-2: #44526E;
+  --muted: #66738A;
+
+  /* Accent */
+  --accent: #2F6F6A;
+  --accent-hover: #255A56;
+  --accent-ink: #FFFFFF;
+  --accent-tint: #E1EFED;
+
+  /* Status (fill / ink for text / tint for backgrounds) */
+  --ok: #1E9E5A;     --ok-ink: #11683A;   --ok-tint: #E2F5EA;
+  --warn: #E09B00;   --warn-ink: #7A5100; --warn-tint: #FFF3D4;
+  --crit: #D93636;   --crit-ink: #A11B1B; --crit-tint: #FDE5E5;
+  --info: #2F6F6A;   --info-ink: #24574F; --info-tint: #E1EFED;
+
+  /* Charts */
+  --series-temp: #2F6F6A;
+  --series-rh: #3466C9;
+  --series-u1: #2F6F6A;
+  --series-u2: #5B7BC4;
+  --grid: #E6EBF1;
+  --limit: #C53030;
+
+  /* Shape */
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(15,27,61,.06), 0 6px 18px rgba(15,27,61,.06);
+  --shadow-lg: 0 10px 40px rgba(15,27,61,.22);
+  --gutter: 16px;
+  --gap: 16px;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --ease: cubic-bezier(.2,.7,.2,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A1020; --surface: #121A2E; --surface-2: #18223A; --border: #26324D;
+    --text: #E7ECF5; --text-2: #B0BBD0; --muted: #8B97AE;
+    --accent: #3E9A92; --accent-hover: #4FB0A7; --accent-ink: #FFFFFF; --accent-tint: rgba(79,176,167,.16);
+    --ok: #2FC27A; --ok-ink: #63E3A2; --ok-tint: rgba(47,194,122,.14);
+    --warn: #F2B630; --warn-ink: #FFD173; --warn-tint: rgba(242,182,48,.15);
+    --crit: #F25555; --crit-ink: #FF9090; --crit-tint: rgba(242,85,85,.17);
+    --info: #4FB0A7; --info-ink: #7FD3CB; --info-tint: rgba(79,176,167,.15);
+    --series-temp: #5CC6BC; --series-rh: #84A8FF; --series-u1: #4FB0A7; --series-u2: #8DA6EC;
+    --grid: #222D46; --limit: #FF7A7A;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A1020; --surface: #121A2E; --surface-2: #18223A; --border: #26324D;
+  --text: #E7ECF5; --text-2: #B0BBD0; --muted: #8B97AE;
+  --accent: #3E9A92; --accent-hover: #4FB0A7; --accent-ink: #FFFFFF; --accent-tint: rgba(79,176,167,.16);
+  --ok: #2FC27A; --ok-ink: #63E3A2; --ok-tint: rgba(47,194,122,.14);
+  --warn: #F2B630; --warn-ink: #FFD173; --warn-tint: rgba(242,182,48,.15);
+  --crit: #F25555; --crit-ink: #FF9090; --crit-tint: rgba(242,85,85,.17);
+  --info: #4FB0A7; --info-ink: #7FD3CB; --info-tint: rgba(79,176,167,.15);
+  --series-temp: #5CC6BC; --series-rh: #84A8FF; --series-u1: #4FB0A7; --series-u2: #8DA6EC;
+  --grid: #222D46; --limit: #FF7A7A;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+}
+
+/* =====================================================================
+   2. BASE
+   ===================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 var(--font); font-variant-numeric: tabular-nums;
+  overflow-x: hidden; transition: background-color .3s var(--ease), color .3s var(--ease);
+}
+h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 3px solid var(--brand-teal); outline-offset: 2px; border-radius: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.skip { position: absolute; left: 16px; top: -60px; background: var(--surface); color: var(--text); padding: 8px 12px; border-radius: 8px; z-index: 100; }
+.skip:focus { top: 12px; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 0 var(--gutter); }
+@media (min-width: 900px) { :root { --gutter: 24px; --gap: 20px; } }
+.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.125em; }
+
+/* =====================================================================
+   3. HEADER
+   ===================================================================== */
+.app-header { background: var(--navy); color: #fff; }
+:root[data-theme="dark"] .app-header { background: #0B1430; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .app-header { background: #0B1430; } }
+.header-row { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-top: 14px; padding-bottom: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; padding-right: 20px; border-right: 1px solid rgba(255,255,255,.16); }
+.brand-mark { width: 54px; height: auto; display: block; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.brand-name { font-weight: 800; letter-spacing: .08em; font-size: 14px; }
+.brand-tag { font-size: 9.5px; letter-spacing: .12em; color: #3FC4BE; text-transform: uppercase; font-weight: 600; margin-top: 2px; }
+.site { flex: 1 1 260px; min-width: 0; }
+.site h1 { font-size: 19px; font-weight: 700; letter-spacing: .01em; }
+.site p { font-size: 12.5px; color: #AFC0DD; }
+.header-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.demo-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #1B1300; background: #FFC53D; padding: 4px 9px; border-radius: 999px; }
+.fresh { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #CFE0F5; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); padding: 4px 10px; border-radius: 999px; transition: color .3s; }
+.fresh .dot { width: 8px; height: 8px; border-radius: 50%; background: #34D17F; box-shadow: 0 0 0 0 rgba(52,209,127,.6); animation: ping 2s infinite; }
+.fresh[data-stale="true"] .dot { background: #FFC53D; animation: none; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(52,209,127,.55); } 70% { box-shadow: 0 0 0 7px rgba(52,209,127,0); } 100% { box-shadow: 0 0 0 0 rgba(52,209,127,0); } }
+.user-box { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: 3px 4px 3px 10px; }
+.user-name { font-size: 12.5px; color: #E2EAF7; white-space: nowrap; }
+.role-badge { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: #3FC4BE; color: #062522; }
+.role-badge[data-role="viewer"] { background: #C9D3E6; color: #1A2440; }
+.role-badge[data-role="admin"] { background: #FB7A3C; color: #2A0E00; }
+.role-select { appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; padding: 4px 26px 4px 11px; font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; background: #3FC4BE url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23062522' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 10px center; color: #062522; }
+.role-select[data-role="viewer"] { background-color: #C9D3E6; color: #1A2440; }
+.role-select[data-role="admin"] { background-color: #FB7A3C; color: #2A0E00; }
+.role-select option { background: #fff; color: #0F1B3D; text-transform: none; }
+.icon-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font-size: 15px; }
+.icon-btn:hover { background: rgba(255,255,255,.14); }
+
+.health-strip { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; padding-top: 8px; padding-bottom: 10px; border-top: 1px solid rgba(255,255,255,.08); font-size: 12.5px; color: #C2D0E8; }
+.health-item { display: inline-flex; align-items: center; gap: 6px; }
+.health-item b { color: #fff; font-weight: 600; }
+.health-ok { color: #34D17F; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+.health-strip .spacer { flex: 1; }
+.health-strip .platform { color: #8FA3C6; }
+
+/* =====================================================================
+   4. NAV TABS
+   ===================================================================== */
+.tabs { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(15,27,61,.03); transition: background-color .3s; }
+.tabs-inner { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tabs-inner::-webkit-scrollbar { display: none; }
+.tab { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 13px 14px; border: 0; background: none; color: var(--text-2); font-weight: 600; font-size: 14px; white-space: nowrap; border-radius: 0; }
+.tab .icon { font-size: 16px; opacity: .85; }
+.tab::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--accent); transform: scaleX(0); transition: transform .25s var(--ease); }
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { color: var(--text); }
+.tab[aria-selected="true"]::after { transform: scaleX(1); }
+.tab-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; font-size: 11.5px; font-weight: 800; display: inline-grid; place-items: center; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); transition: all .3s; }
+.tab-count[data-hot="true"] { background: var(--crit); color: #fff; border-color: var(--crit); }
+
+/* =====================================================================
+   5. LAYOUT, CARDS, COMMON
+   ===================================================================== */
+main { padding-top: 20px; padding-bottom: 110px; }
+.view[hidden] { display: none; }
+.view { animation: fade .35s var(--ease); }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.section-head { display: flex; align-items: end; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin: 26px 0 12px; }
+.section-head:first-child { margin-top: 0; }
+.section-head h2 { font-size: 18px; }
+.section-head p { color: var(--muted); font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; min-width: 0; transition: background-color .3s, border-color .3s; }
+.card h3 { font-size: 15.5px; display: flex; align-items: center; gap: 8px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.card-sub { color: var(--muted); font-size: 12.5px; }
+.grid-2 { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.stack > * + * { margin-top: var(--gap); }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: 13.5px; transition: background-color .2s, border-color .2s, transform .1s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-sm { padding: 5px 10px; font-size: 12.5px; border-radius: 8px; }
+.btn:disabled { opacity: .55; }
+
+/* Status chip — colour + icon + text (never colour alone) */
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; border: 1px solid transparent; transition: background-color .4s, color .4s, border-color .4s; }
+.chip[data-s="ok"] { background: var(--ok-tint); color: var(--ok-ink); }
+.chip[data-s="warn"] { background: var(--warn-tint); color: var(--warn-ink); }
+.chip[data-s="crit"] { background: var(--crit-tint); color: var(--crit-ink); }
+.chip[data-s="info"] { background: var(--info-tint); color: var(--info-ink); }
+.chip[data-s="neutral"] { background: var(--surface-2); color: var(--text-2); border-color: var(--border); }
+
+/* KPI strip */
+.kpis { display: grid; gap: var(--gap); grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { position: relative; overflow: hidden; display: flex; gap: 14px; align-items: center; padding: 16px; }
+.kpi-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 21px; background: var(--accent-tint); color: var(--accent); flex: none; transition: all .4s; }
+.kpi[data-s="crit"] .kpi-icon { background: var(--crit-tint); color: var(--crit); }
+.kpi[data-s="warn"] .kpi-icon { background: var(--warn-tint); color: var(--warn-ink); }
+.kpi[data-s="ok"] .kpi-icon { background: var(--ok-tint); color: var(--ok); }
+.kpi-label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.kpi-value { font-size: 24px; font-weight: 750; line-height: 1.15; }
+.kpi-value small { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 3px; }
+.kpi-sub { font-size: 12px; color: var(--text-2); }
+@media (max-width: 480px) { .kpi { padding: 12px; gap: 10px; } .kpi-icon { width: 36px; height: 36px; font-size: 17px; } .kpi-value { font-size: 20px; } }
+
+/* Failover banner */
+.banner { margin-top: 16px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius); background: var(--warn-tint); border: 1px solid var(--warn); color: var(--text); box-shadow: var(--shadow); animation: slide .4s var(--ease); }
+.banner[hidden] { display: none; }
+.banner .icon { font-size: 22px; color: var(--warn-ink); }
+.banner strong { display: block; }
+.banner .banner-sub { font-size: 13px; color: var(--text-2); }
+.banner .btn { margin-left: auto; }
+@keyframes slide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* =====================================================================
+   6. OVERVIEW — ZONE CARDS
+   ===================================================================== */
+.zone-grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+.zone-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 16px 12px; overflow: hidden; transition: border-color .5s, box-shadow .5s, background-color .3s; }
+.zone-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--ok); transition: background-color .5s; }
+.zone-card[data-s="warn"] { border-color: var(--warn); }
+.zone-card[data-s="warn"]::before { background: var(--warn); }
+.zone-card[data-s="crit"] { border-color: var(--crit); box-shadow: 0 0 0 3px var(--crit-tint), var(--shadow); }
+.zone-card[data-s="crit"]::before { background: var(--crit); }
+.zone-card[data-s="crit"] .chip { animation: pulse 1.4s infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+.zone-top { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.zone-top h3 { font-size: 16px; }
+.zone-limits { font-size: 12px; color: var(--muted); }
+.zone-readings { display: flex; gap: 20px; margin: 12px 0 8px; }
+.reading-label { display: flex; align-items: center; gap: 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.reading-value { font-size: 32px; font-weight: 750; line-height: 1.1; letter-spacing: -.01em; transition: color .5s; }
+.reading-value small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.reading-value.secondary { font-size: 22px; color: var(--text-2); padding-top: 8px; }
+.zone-card[data-s="crit"] .reading-value.primary { color: var(--crit-ink); }
+.zone-card[data-s="warn"] .reading-value.primary { color: var(--warn-ink); }
+.range { position: relative; height: 8px; border-radius: 4px; background: var(--crit-tint); margin: 6px 0 4px; }
+.range-band { position: absolute; top: 0; bottom: 0; background: var(--ok-tint); border-left: 2px solid var(--ok); border-right: 2px solid var(--ok); }
+.range-marker { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--text); transition: left .9s var(--ease); box-shadow: 0 0 0 2px var(--surface); }
+.range-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+.spark { display: block; width: 100%; height: 46px; margin-top: 8px; }
+.spark path.line { fill: none; stroke: var(--series-temp); stroke-width: 2; vector-effect: non-scaling-stroke; transition: stroke .5s; }
+.spark path.area { fill: var(--series-temp); opacity: .1; }
+.zone-card[data-s="crit"] .spark path.line { stroke: var(--crit); }
+.zone-card[data-s="crit"] .spark path.area { fill: var(--crit); }
+.zone-card[data-s="warn"] .spark path.line { stroke: var(--warn); }
+.zone-foot { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--border); }
+
+/* Control card */
+.ctrl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.ctrl-item .k { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.ctrl-item .v { font-size: 20px; font-weight: 700; }
+.ctrl-scale { position: relative; height: 34px; margin: 6px 0 2px; }
+.ctrl-track { position: absolute; left: 0; right: 0; top: 13px; height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
+.ctrl-db { position: absolute; top: 13px; height: 8px; background: var(--accent-tint); border: 1px solid var(--accent); border-radius: 4px; transition: left .4s, width .4s; }
+.ctrl-sp { position: absolute; top: 6px; width: 2px; height: 22px; background: var(--accent); margin-left: -1px; transition: left .4s; }
+.ctrl-pv { position: absolute; top: 4px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--text); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--text); transition: left .9s var(--ease); top: 10px; }
+.ctrl-ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+.ctrl-msg { margin-top: 12px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13.5px; }
+.ctrl-msg .icon { font-size: 18px; color: var(--accent); }
+.ctrl-msg[data-trend="up"] .icon { color: var(--warn-ink); }
+.sp-adjust { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.sp-adjust .sp-val { min-width: 76px; text-align: center; font-weight: 750; font-size: 18px; }
+.lock-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+
+.mini-list { list-style: none; margin: 0; padding: 0; }
+.mini-list li { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.mini-list li:last-child { border-bottom: 0; }
+.mini-list .when { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.empty { color: var(--muted); font-size: 13.5px; padding: 14px 0; display: flex; gap: 8px; align-items: center; }
+
+/* =====================================================================
+   7. HVAC UNITS
+   ===================================================================== */
+.unit-grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.unit-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; overflow: hidden; transition: border-color .5s, box-shadow .5s; }
+.unit-card[data-s="crit"] { border-color: var(--crit); box-shadow: 0 0 0 3px var(--crit-tint), var(--shadow); }
+.unit-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.unit-title { display: flex; align-items: center; gap: 10px; }
+.unit-title h3 { font-size: 18px; }
+.unit-fan { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--accent-tint); color: var(--accent); font-size: 22px; }
+.unit-fan .icon { transition: transform .3s; }
+.unit-card[data-run="true"] .unit-fan .icon { animation: spin 2.2s linear infinite; }
+.unit-card[data-s="crit"] .unit-fan { background: var(--crit-tint); color: var(--crit); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.role-pill { font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 4px 10px; border-radius: 999px; background: var(--navy); color: #fff; transition: background-color .4s; }
+:root[data-theme="dark"] .role-pill { background: #2A3A66; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .role-pill { background: #2A3A66; } }
+.role-pill[data-r="standby"] { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+.role-pill[data-r="failover"] { background: var(--warn); color: #241700; }
+.role-pill[data-r="offline"] { background: var(--crit); color: #fff; }
+.unit-status { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.load-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.load-head b { font-size: 26px; color: var(--text); letter-spacing: 0; text-transform: none; }
+.meter { height: 12px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; margin-top: 6px; }
+.meter > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--brand-teal)); border-radius: 6px; transition: width 1.2s var(--ease), background .4s; }
+.unit-card[data-s="crit"] .meter > span { background: var(--crit); }
+.unit-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px 16px; margin: 16px 0 0; }
+.unit-stats dt { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.unit-stats dd { margin: 0; font-weight: 650; font-size: 14.5px; }
+.no-response { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(1.5px); opacity: 0; pointer-events: none; transition: opacity .4s; }
+.unit-card[data-s="crit"] .no-response { opacity: 1; }
+.no-response div { text-align: center; padding: 16px 22px; border-radius: 12px; background: var(--crit); color: #fff; box-shadow: var(--shadow-lg); }
+.no-response strong { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 20px; letter-spacing: .08em; }
+.no-response span { font-size: 12.5px; opacity: .92; }
+
+/* =====================================================================
+   8. TRENDS / CHARTS
+   ===================================================================== */
+.toolbar { display: flex; gap: 10px 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--text-2); transition: background-color .2s, color .2s; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(15,27,61,.15); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+.sw.dash { height: 0; border-top: 2px dashed var(--limit); }
+.chart-wrap { position: relative; width: 100%; }
+.chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.chart-wrap text { font-family: var(--font); }
+.ax { font-size: 11px; fill: var(--muted); }
+.ax-title { font-size: 11.5px; fill: var(--text-2); font-weight: 600; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.limit-line { stroke: var(--limit); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.limit-label { font-size: 11px; fill: var(--limit); font-weight: 600; }
+.sp-line { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 4; }
+.band { fill: var(--ok); opacity: .07; }
+.series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.series.out { stroke: var(--crit) !important; stroke-width: 2.5; }
+.tooltip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; min-width: 140px; opacity: 0; transition: opacity .15s; z-index: 5; }
+.tooltip[data-on="true"] { opacity: 1; }
+.tooltip .tt-time { color: var(--muted); font-size: 11.5px; margin-bottom: 4px; }
+.tooltip .tt-row { display: flex; justify-content: space-between; gap: 12px; }
+.chart-note { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+/* =====================================================================
+   9. TABLES  (cards on small screens)
+   ===================================================================== */
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.table tr:last-child td { border-bottom: 0; }
+.table td.num, .table th.num { text-align: right; }
+.table tr.row-new { animation: flash 2s var(--ease); }
+@keyframes flash { from { background: var(--warn-tint); } to { background: transparent; } }
+.table .esc { display: block; font-size: 11.5px; color: var(--warn-ink); margin-top: 2px; }
+.table .stamp { font-size: 12.5px; }
+.table .stamp small { display: block; color: var(--muted); }
+.table-scroll { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+@media (max-width: 720px) {
+  .table.responsive thead { display: none; }
+  .table.responsive, .table.responsive tbody, .table.responsive tr, .table.responsive td { display: block; width: 100%; }
+  .table.responsive tr { border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; margin-bottom: 10px; background: var(--surface); }
+  .table.responsive td { border: 0; padding: 5px 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; text-align: left !important; }
+  .table.responsive td > * { justify-self: start; }
+  .table.responsive td[colspan] { display: block; }
+  .table.responsive td[colspan]::before { display: none; }
+  .table.responsive td::before { content: attr(data-label); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; padding-top: 2px; }
+  .table-scroll { margin: 0; padding: 0; overflow: visible; }
+}
+
+/* =====================================================================
+   10. ENERGY, MAINTENANCE, REPORTS
+   ===================================================================== */
+.tariff { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tariff label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.input-affix { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.input-affix span { padding: 0 10px; color: var(--muted); font-size: 13px; background: var(--surface-2); align-self: stretch; display: grid; place-items: center; }
+.input-affix input { width: 92px; border: 0; padding: 7px 10px; background: transparent; outline: none; font-weight: 700; }
+.input-affix:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.input-affix input:disabled { opacity: .7; }
+.bar { transition: height .6s var(--ease), y .6s var(--ease); }
+.maint-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.report-head img { width: 46px; }
+.report-brand { display: flex; align-items: center; gap: 10px; }
+.report-meta { font-size: 12.5px; color: var(--muted); }
+.report-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 16px; }
+.report-kpis div { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.report-kpis b { display: block; font-size: 20px; }
+.report-kpis span { font-size: 12px; color: var(--muted); }
+
+/* =====================================================================
+   11. DEMO PANEL & TOASTS
+   ===================================================================== */
+.demo-panel { position: fixed; right: var(--gutter); bottom: 16px; z-index: 50; width: 330px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); }
+.demo-panel summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; font-weight: 700; font-size: 14px; }
+.demo-panel summary::-webkit-details-marker { display: none; }
+.demo-panel summary .chev { margin-left: auto; transition: transform .25s; }
+.demo-panel[open] summary .chev { transform: rotate(180deg); }
+.demo-panel summary .dp-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--brand-orange); color: #fff; display: grid; place-items: center; font-size: 15px; }
+.demo-body { padding: 0 14px 14px; display: grid; gap: 8px; }
+.demo-body .btn { justify-content: flex-start; text-align: left; width: 100%; }
+.demo-body .btn .icon { font-size: 16px; }
+.demo-body .btn.danger .icon { color: var(--crit); }
+.demo-body .btn.warn .icon { color: var(--warn-ink); }
+.demo-body .btn.good .icon { color: var(--ok); }
+.demo-note { font-size: 12px; color: var(--muted); }
+.demo-status { font-size: 12px; color: var(--text-2); background: var(--surface-2); border-radius: 8px; padding: 8px 10px; border: 1px solid var(--border); }
+
+.toasts { position: fixed; top: 14px; right: var(--gutter); z-index: 60; display: grid; gap: 10px; width: 360px; max-width: calc(100vw - 2 * var(--gutter)); }
+.toast { display: flex; gap: 12px; align-items: start; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 12px 12px 12px 14px; animation: toastIn .35s var(--ease); }
+.toast.out { animation: toastOut .3s var(--ease) forwards; }
+.toast[data-t="sms"] { border-left-color: var(--accent); }
+.toast[data-t="escalation"] { border-left-color: var(--crit); }
+.toast[data-t="warn"] { border-left-color: var(--warn); }
+.toast[data-t="ok"] { border-left-color: var(--ok); }
+.toast .t-icon { font-size: 20px; margin-top: 1px; color: var(--accent); }
+.toast[data-t="escalation"] .t-icon { color: var(--crit); }
+.toast[data-t="warn"] .t-icon { color: var(--warn-ink); }
+.toast[data-t="ok"] .t-icon { color: var(--ok); }
+.toast strong { display: block; font-size: 14px; }
+.toast p { font-size: 12.5px; color: var(--text-2); }
+.toast time { font-size: 11px; color: var(--muted); }
+.toast button { margin-left: auto; border: 0; background: none; color: var(--muted); padding: 2px; font-size: 15px; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(24px); } }
+
+/* =====================================================================
+   12. FOOTER
+   ===================================================================== */
+.app-footer { border-top: 1px solid var(--border); background: var(--surface); padding: 18px 0 120px; font-size: 12.5px; color: var(--muted); }
+.footer-row { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; justify-content: space-between; }
+.secure { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-weight: 600; }
+.secure .icon { color: var(--ok); font-size: 16px; }
+
+/* Phone tweaks */
+@media (max-width: 640px) {
+  .brand { border-right: 0; padding-right: 0; }
+  .brand-tag { display: none; }
+  .site { flex-basis: 100%; order: 3; }
+  .header-meta { order: 2; margin-left: auto; }
+  .site h1 { font-size: 17px; }
+  .health-strip .spacer, .health-strip .platform { display: none; }
+  .reading-value { font-size: 28px; }
+  .user-name { display: none; }
+  .demo-panel { bottom: 10px; }
+  .toasts { top: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- =================================================================
+     HEADER
+     ================================================================= -->
+<header class="app-header">
+  <div class="wrap header-row">
+    <div class="brand" aria-label="Spartcon Technologies">
+      <img class="brand-mark" src="data:image/png;base64,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" alt="Spartcon Technologies logo" width="54" height="13">
+      <div class="brand-text">
+        <span class="brand-name">SPARTCON</span>
+        <span class="brand-tag">Technology · Automation · Smart Solutions</span>
+      </div>
+    </div>
+    <div class="site">
+      <h1>CSIR Campus Building 53</h1>
+      <p>Building Management System · HVAC &amp; medicine storage monitoring</p>
+    </div>
+    <div class="header-meta">
+      <span class="demo-badge" title="All values on this page are simulated for demonstration">DEMO · simulated data</span>
+      <span class="fresh" id="fresh" role="status" aria-live="off"><span class="dot" aria-hidden="true"></span><span id="freshText">Last updated just now</span></span>
+      <div class="user-box">
+        <span class="user-name" id="userName">Operator - S. Khumalo</span>
+        <label class="sr-only" for="roleSelect">Role (switch to demonstrate access levels)</label>
+        <select class="role-select" id="roleSelect" title="Switch role">
+          <option value="viewer">Viewer</option>
+          <option value="operator" selected>Operator</option>
+          <option value="admin">Administrator</option>
+        </select>
+      </div>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle colour theme" title="Theme: auto"></button>
+    </div>
+  </div>
+  <div class="wrap health-strip" id="healthStrip" aria-label="System health"></div>
+</header>
+
+<!-- =================================================================
+     NAVIGATION
+     ================================================================= -->
+<nav class="tabs" aria-label="Dashboard sections">
+  <div class="wrap tabs-inner" role="tablist" id="tablist"></div>
+</nav>
+
+<main id="main" class="wrap">
+  <div class="banner" id="banner" role="alert" hidden></div>
+
+  <!-- 1. OVERVIEW ---------------------------------------------------- -->
+  <section class="view" id="view-overview" role="tabpanel" aria-labelledby="tab-overview">
+    <h2 class="sr-only">Overview</h2>
+    <div class="kpis" id="kpis" style="margin-top:16px"></div>
+    <div class="section-head">
+      <div><h2>Zones</h2><p>Live temperature and humidity · 2&nbsp;s scan</p></div>
+      <div class="legend"><span><span class="chip" data-s="ok">✓ Normal</span></span><span><span class="chip" data-s="warn">▲ Warning</span></span><span><span class="chip" data-s="crit">✕ Alarm</span></span></div>
+    </div>
+    <div class="zone-grid" id="zoneGrid"></div>
+    <div class="grid-2" style="margin-top:var(--gap)">
+      <article class="card" id="ctrlCardOverview"></article>
+      <article class="card">
+        <div class="card-head"><h3>Active alarms</h3><button class="btn btn-sm" type="button" data-goto="alarms">Open alarms</button></div>
+        <ul class="mini-list" id="miniAlarms"></ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- 2. HVAC -------------------------------------------------------- -->
+  <section class="view" id="view-hvac" role="tabpanel" aria-labelledby="tab-hvac" hidden>
+    <div class="section-head" style="margin-top:16px">
+      <div><h2>HVAC units</h2><p>Duty / standby pair serving Cold Rooms A &amp; B · automatic failover</p></div>
+    </div>
+    <div class="unit-grid" id="unitGrid"></div>
+    <div class="grid-2" style="margin-top:var(--gap)">
+      <article class="card" id="ctrlCardHvac"></article>
+      <article class="card">
+        <div class="card-head"><h3>Control strategy</h3></div>
+        <ul class="mini-list small">
+          <li>Controlled value is the <b>warmest cold room</b> probe (worst-case protection).</li>
+          <li>Above setpoint the duty unit ramps load up; below setpoint it ramps down. Standby shares load in normal operation.</li>
+          <li>If the controlled value leaves the deadband, both units go to 100%.</li>
+          <li>Loss of comms or a trip on the duty unit starts the standby unit automatically, raises a critical alarm and notifies the on-call chain.</li>
+          <li>Duty rotation weekly to equalise runtime hours. Monthly failover test logged in Maintenance.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- 3. TRENDS ------------------------------------------------------ -->
+  <section class="view" id="view-trends" role="tabpanel" aria-labelledby="tab-trends" hidden>
+    <div class="section-head" style="margin-top:16px">
+      <div><h2>Trends</h2><p>Temperature and relative humidity against allowed limits</p></div>
+    </div>
+    <article class="card">
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="Zone" id="zoneSeg"></div>
+        <div class="seg" role="group" aria-label="Time range" id="rangeSeg"></div>
+      </div>
+      <div class="legend" style="margin-bottom:8px">
+        <span><span class="sw" style="background:var(--series-temp)"></span>Temperature</span>
+        <span><span class="sw" style="background:var(--series-rh)"></span>Humidity</span>
+        <span><span class="sw dash"></span>Allowed limits</span>
+        <span><span class="sw" style="background:var(--crit)"></span>Out of limits</span>
+      </div>
+      <div class="chart-wrap" id="trendWrap">
+        <svg id="trendSvg" role="img" aria-label="Trend chart"></svg>
+        <div class="tooltip" id="trendTip"></div>
+      </div>
+      <p class="chart-note" id="trendNote"></p>
+    </article>
+  </section>
+
+  <!-- 4. ALARMS ------------------------------------------------------ -->
+  <section class="view" id="view-alarms" role="tabpanel" aria-labelledby="tab-alarms" hidden>
+    <div class="section-head" style="margin-top:16px">
+      <div><h2>Alarms</h2><p>Unacknowledged critical alarms escalate to the next contact every 30&nbsp;s</p></div>
+      <p class="small muted" id="escChain"></p>
+    </div>
+    <div class="stack">
+      <article class="card">
+        <div class="card-head"><h3>Active alarms</h3><span class="card-sub" id="activeSub"></span></div>
+        <div class="table-scroll"><table class="table responsive" id="activeTable"></table></div>
+      </article>
+      <article class="card">
+        <div class="card-head"><h3>Notifications &amp; escalations</h3><span class="card-sub">SMS / email gateway (simulated)</span></div>
+        <ul class="mini-list" id="notifList"></ul>
+      </article>
+      <article class="card">
+        <div class="card-head"><h3>Alarm history</h3><span class="card-sub">Last 7 days</span></div>
+        <div class="table-scroll"><table class="table responsive" id="historyTable"></table></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- 5. ENERGY ------------------------------------------------------ -->
+  <section class="view" id="view-energy" role="tabpanel" aria-labelledby="tab-energy" hidden>
+    <div class="section-head" style="margin-top:16px">
+      <div><h2>Energy</h2><p>HVAC electrical consumption, metered per unit</p></div>
+      <div class="tariff">
+        <label for="tariff">Tariff</label>
+        <span class="input-affix"><span>R</span><input id="tariff" type="number" min="0" step="0.05" inputmode="decimal"><span>/kWh</span></span>
+      </div>
+    </div>
+    <div class="kpis" id="energyKpis"></div>
+    <article class="card" style="margin-top:var(--gap)">
+      <div class="card-head"><h3>kWh per unit by day</h3>
+        <div class="legend"><span><span class="sw" style="background:var(--series-u1);height:10px;width:10px"></span>HVAC 1</span><span><span class="sw" style="background:var(--series-u2);height:10px;width:10px"></span>HVAC 2</span></div>
+      </div>
+      <div class="chart-wrap"><svg id="energySvg" role="img" aria-label="Energy bar chart"></svg></div>
+    </article>
+    <article class="card" style="margin-top:var(--gap)">
+      <div class="card-head"><h3>Daily cost estimate</h3><span class="card-sub" id="tariffNote"></span></div>
+      <div class="table-scroll"><table class="table responsive" id="energyTable"></table></div>
+    </article>
+  </section>
+
+  <!-- 6. MAINTENANCE ------------------------------------------------- -->
+  <section class="view" id="view-maintenance" role="tabpanel" aria-labelledby="tab-maintenance" hidden>
+    <div class="section-head" style="margin-top:16px">
+      <div><h2>Maintenance</h2><p>Planned service, calibration and failover testing</p></div>
+      <div class="maint-summary" id="maintSummary"></div>
+    </div>
+    <article class="card">
+      <div class="table-scroll"><table class="table responsive" id="maintTable"></table></div>
+      <p class="chart-note" id="maintNote"></p>
+    </article>
+  </section>
+
+  <!-- 7. REPORTS ----------------------------------------------------- -->
+  <section class="view" id="view-reports" role="tabpanel" aria-labelledby="tab-reports" hidden>
+    <div class="section-head" style="margin-top:16px">
+      <div><h2>Reports</h2><p>Compliance reporting for temperature-critical storage</p></div>
+    </div>
+    <article class="card">
+      <div class="report-head">
+        <div class="report-brand">
+          <img src="data:image/png;base64,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" alt="" width="46" height="11">
+          <div><h3>Weekly environmental report</h3><p class="report-meta" id="reportPeriod"></p></div>
+        </div>
+        <button class="btn btn-primary" id="downloadBtn" type="button"></button>
+      </div>
+      <div class="table-scroll"><table class="table responsive" id="reportTable"></table></div>
+      <div class="report-kpis" id="reportKpis"></div>
+      <p class="chart-note">Excursion = any period outside the allowed limit. Values include the live session. Simulated data for demonstration.</p>
+    </article>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <div class="wrap footer-row">
+    <span class="secure" id="secureNote"></span>
+    <span>Designed, installed &amp; supported by <b>Spartcon Technologies</b> · 52 Belvedere Road, Glen Austin, Midrand · support@spartcongroup.co.za</span>
+    <span>Tridium Niagara 4 · JACE 8000 · Demo build</span>
+  </div>
+</footer>
+
+<!-- Demo controls (collapsible) -->
+<details class="demo-panel" id="demoPanel">
+  <summary><span class="dp-icon" id="dpIcon"></span>Demo controls<span class="chev" id="dpChev"></span></summary>
+  <div class="demo-body">
+    <p class="demo-note">Presenter-only scenarios. All data is simulated.</p>
+    <button class="btn danger" type="button" data-demo="comms"></button>
+    <button class="btn good" type="button" data-demo="restore"></button>
+    <button class="btn warn" type="button" data-demo="excursion"></button>
+    <button class="btn" type="button" data-demo="reset"></button>
+    <div class="demo-status" id="demoStatus" aria-live="polite"></div>
+  </div>
+</details>
+
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   1. CONFIG  — edit demo values here
+   ===================================================================== */
+const CONFIG = {
+  tickMs: 2000,                 // simulation scan rate
+  histLen: 1800,                // live samples kept per zone (1 h at 2 s)
+  sparkLen: 90,                 // samples shown in sparklines (3 min)
+  warnMargin: 0.5,              // °C inside a limit where the zone turns amber
+  escalateAfterSec: 30,         // unacknowledged critical alarm escalation delay
+  control: { sp: 5.0, db: 1.0, spMin: 3.5, spMax: 6.5, step: 0.5 },
+  tariff: 2.65,                 // R / kWh default
+  dueSoonDays: 14,
+  contacts: [
+    { role: 'Duty Manager',              name: 'N. Dlamini' },
+    { role: 'Facilities Manager',        name: 'P. Naidoo' },
+    { role: 'Spartcon on-call engineer', name: 'Spartcon 24/7 desk' },
+  ],
+  users: {
+    viewer:   'Viewer - Guest',
+    operator: 'Operator - S. Khumalo',
+    admin:    'Administrator - Spartcon',
+  },
+  perms: {                      // role-based access
+    viewer:   [],
+    operator: ['ack', 'setpoint', 'tariff'],
+    admin:    ['ack', 'setpoint', 'tariff', 'maint'],
+  },
+  zones: [
+    { id: 'cra', name: 'Cold Room A',   kind: 'cold',    lo: 2,  hi: 8,  rhLo: 50, rhHi: 75, bias: 0.0,  amp: 0.75, period: 180, phase: 0.0, rhBase: 62 },
+    { id: 'crb', name: 'Cold Room B',   kind: 'cold',    lo: 2,  hi: 8,  rhLo: 50, rhHi: 75, bias: 0.15, amp: 0.6,  period: 240, phase: 2.1, rhBase: 64 },
+    { id: 'amb', name: 'Ambient Store', kind: 'ambient', lo: 15, hi: 25, rhLo: 50, rhHi: 75, base: 21.0, amp: 1.1, period: 420, phase: 1.0, rhBase: 56 },
+    { id: 'dsp', name: 'Dispensary',    kind: 'ambient', lo: 15, hi: 25, rhLo: 50, rhHi: 75, base: 22.2, amp: 0.9, period: 360, phase: 4.0, rhBase: 58 },
+  ],
+  units: [
+    { id: 'hvac1', name: 'HVAC 1', baseRole: 'duty',    runtime: 12438.6, kwRated: 11, asset: 'Split DX · 14 kW cooling' },
+    { id: 'hvac2', name: 'HVAC 2', baseRole: 'standby', runtime: 11906.2, kwRated: 11, asset: 'Split DX · 14 kW cooling' },
+  ],
+};
+
+/* =====================================================================
+   2. UTILITIES
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const pad = n => String(n).padStart(2, '0');
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAY = 86400000, HOUR = 3600000, MIN = 60000;
+const fmtTime = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const fmtHM = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtDate = d => `${pad(d.getDate())} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+const fmtShort = d => `${pad(d.getDate())} ${MON[d.getMonth()]}`;
+const isToday = d => startOfDay(d).getTime() === startOfDay(new Date()).getTime();
+const fmtStamp = d => isToday(d) ? fmtTime(d) : `${fmtShort(d)} ${fmtHM(d)}`;
+const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const addDays = (d, n) => new Date(startOfDay(d).getTime() + n * DAY);
+const f1 = v => v.toFixed(1);
+const money = v => 'R ' + v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/ /g, ' ');
+const kwh = (v, d = 1) => v.toLocaleString('en-ZA', { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/ /g, ' ');
+
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rand = mulberry32(53);
+const noise = a => (rand() + rand() + rand() - 1.5) * a;
+
+const ICONS = {
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  ok: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  warn: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  crit: '<polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+  info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+  fan: '<path d="M12 12c0-3 1-7 4-7s3 4 0 6"/><path d="M12 12c3 0 7 1 7 4s-4 3-6 0"/><path d="M12 12c0 3-1 7-4 7s-3-4 0-6"/><path d="M12 12c-3 0-7-1-7-4s4-3 6 0"/><circle cx="12" cy="12" r="1.2"/>',
+  trend: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  tool: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  thermo: '<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>',
+  drop: '<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>',
+  cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>',
+  server: '<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  sms: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+  up: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  down: '<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>',
+  hold: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="15 8 19 12 15 16"/>',
+  sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  sun: '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+  auto: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  power: '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>',
+  wifiOff: '<line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  chevUp: '<polyline points="18 15 12 9 6 15"/>',
+  refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+};
+const ic = (n, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+const STATUS = {
+  ok:   { label: 'Normal',  icon: 'ok' },
+  warn: { label: 'Warning', icon: 'warn' },
+  crit: { label: 'Alarm',   icon: 'crit' },
+};
+const SEV = {
+  critical: { label: 'Critical', s: 'crit', icon: 'crit' },
+  warning:  { label: 'Warning',  s: 'warn', icon: 'warn' },
+  info:     { label: 'Info',     s: 'info', icon: 'info' },
+};
+const chip = (s, label, icon) => `<span class="chip" data-s="${s}">${ic(icon)}${label}</span>`;
+
+/* =====================================================================
+   3. STATE
+   ===================================================================== */
+const state = {
+  k: 0,
+  lastUpdate: Date.now(),
+  role: 'operator',
+  theme: 'auto',
+  control: { ...CONFIG.control, pv: 5, demand: 55, trend: 0 },
+  tariff: CONFIG.tariff,
+  zones: [], units: [], alarms: [], history: [], notifications: [], energy: [], maintenance: [],
+  scenario: { failover: false, failoverAt: null, excursion: null, epoch: 0, lastFailover: null },
+  ui: { view: 'overview', trendZone: 'cra', range: '1h', hoverPx: null },
+  ver: { alarms: 0, maint: 0 },
+};
+const zoneById = id => state.zones.find(z => z.id === id);
+const unitById = id => state.units.find(u => u.id === id);
+const can = p => CONFIG.perms[state.role].includes(p);
+const currentUser = () => CONFIG.users[state.role];
+let alarmSeq = 1;
+
+function initState() {
+  const now = Date.now();
+  state.k = 0;
+  state.control = { ...CONFIG.control, pv: 5, demand: 55, trend: 0 };
+  state.scenario = { failover: false, failoverAt: null, excursion: null, epoch: state.scenario.epoch + 1, lastFailover: null };
+  state.zones = CONFIG.zones.map(z => ({ ...z, t: z.kind === 'cold' ? CONFIG.control.sp + z.bias : z.base, rh: z.rhBase, offset: 0, hist: [], h24: [], h7d: [], status: 'ok', updated: new Date(now) }));
+  state.units = CONFIG.units.map(u => ({ ...u, role: u.baseRole, comms: true, running: true, starting: false, load: 55, target: 55, kw: 0, supply: 12, fault: null }));
+  // Pre-roll the live model for 1 h so charts start full and continuous
+  for (let i = -CONFIG.histLen; i < 0; i++) {
+    const ts = now + i * CONFIG.tickMs;
+    state.zones.forEach(z => stepZone(z, i, ts));
+    stepControl(true);
+  }
+  seedHistory(now);
+  seedEnergy(now);
+  seedAlarms(now);
+  seedMaintenance(now);
+  state.alarms = [];
+  state.notifications = [];
+  state.ver.alarms++; state.ver.maint++;
+}
+
+/* Simulated long-range history (24 h at 5 min, 7 d hourly) */
+function genPoint(z, ts, r) {
+  const d = new Date(ts); const h = d.getHours() + d.getMinutes() / 60;
+  const daily = Math.sin((h - 9) / 24 * 2 * Math.PI);
+  if (z.kind === 'cold') {
+    const t = clamp(CONFIG.control.sp + z.bias + daily * 0.35 + (r() - 0.5) * 1.2, z.lo + 1, z.hi - 1);
+    return { ts, t, rh: clamp(z.rhBase + daily * 2 + (r() - 0.5) * 5, z.rhLo + 2, z.rhHi - 2) };
+  }
+  return { ts, t: clamp(z.base + daily * 1.6 + (r() - 0.5) * 1.0, z.lo + 1, z.hi - 1), rh: clamp(z.rhBase - daily * 4 + (r() - 0.5) * 4, z.rhLo + 2, z.rhHi - 2) };
+}
+function seedHistory(now) {
+  const today = startOfDay(new Date(now)).getTime();
+  state.zones.forEach((z, i) => {
+    const r = mulberry32(100 + i);
+    z.h24 = []; z.h7d = [];
+    for (let ts = now - DAY; ts < now - 5 * MIN; ts += 5 * MIN) z.h24.push(genPoint(z, ts, r));
+    for (let ts = now - 7 * DAY; ts < now - HOUR; ts += HOUR) z.h7d.push(genPoint(z, ts, r));
+  });
+  // Recorded events in the simulated week (match the seeded alarm history)
+  const crb = zoneById('crb'), dsp = zoneById('dsp');
+  const ev1 = today - 3 * DAY + 10 * HOUR;               // Cold Room B door left open
+  crb.h7d.forEach(p => { if (p.ts >= ev1 - 20 * MIN && p.ts <= ev1 + 40 * MIN) p.t = 8.4; });
+  const ev2 = today - 2 * DAY + 7 * HOUR;                // Dispensary low humidity
+  dsp.h7d.forEach(p => { if (p.ts >= ev2 - 20 * MIN && p.ts <= ev2 + 40 * MIN) p.rh = 48.2; });
+}
+function seedEnergy(now) {
+  const r = mulberry32(7);
+  const today = startOfDay(new Date(now));
+  const frac = (now - today.getTime()) / DAY;
+  state.energy = [];
+  for (let i = 6; i >= 1; i--) state.energy.push({ date: addDays(today, -i), h1: 142 + r() * 22, h2: 128 + r() * 20 });
+  state.energy.push({ date: today, h1: 146 * frac, h2: 133 * frac, live: true });
+}
+function seedAlarms(now) {
+  const today = startOfDay(new Date(now)).getTime();
+  const mk = (raised, source, sev, msg, ackMin, clearedMin, user) => ({
+    id: alarmSeq++, key: 'seed', source, sev, msg, raised: new Date(raised),
+    ack: ackMin == null ? null : { user, ts: new Date(raised + ackMin * MIN) },
+    cleared: new Date(raised + clearedMin * MIN), esc: 0, note: 'Returned to normal',
+  });
+  state.history = [
+    mk(today - 2 * DAY + 7 * HOUR - 18 * MIN, 'Dispensary', 'warning', 'Humidity low 48.2 %RH (limit 50 %RH)', 6, 64, CONFIG.users.operator),
+    mk(today - 3 * DAY + 10 * HOUR - 18 * MIN, 'Cold Room B', 'critical', 'High temperature 8.4 °C (limit 8.0 °C) — door left open during delivery', 3, 58, CONFIG.users.operator),
+    mk(today - 4 * DAY + 14 * HOUR + 3 * MIN, 'HVAC 2', 'warning', 'Filter differential pressure high', 22, 26 * 60, CONFIG.users.admin),
+    mk(today - 5 * DAY + 9 * HOUR, 'HVAC 2', 'info', 'Monthly failover test — HVAC 2 assumed duty (planned)', 1, 15, CONFIG.users.admin),
+  ];
+}
+function seedMaintenance(now) {
+  const T = startOfDay(new Date(now));
+  const item = (id, task, asset, intervalDays, lastAgo) => ({ id, task, asset, intervalDays, last: addDays(T, -lastAgo) });
+  state.maintenance = [
+    item('m1', '6-monthly preventive service (coils, filters, refrigerant, electrical)', 'HVAC 1', 182, 170),
+    item('m2', '6-monthly preventive service (coils, filters, refrigerant, electrical)', 'HVAC 2', 182, 139),
+    item('m3', 'Duty / standby failover test', 'HVAC 1 & 2', 30, 24),
+    item('m4', 'Temperature & RH probe calibration (SANAS-traceable)', 'Cold Room A', 365, 345),
+    item('m5', 'Temperature & RH probe calibration (SANAS-traceable)', 'Cold Room B', 365, 368),
+    item('m6', 'Temperature & RH probe calibration', 'Ambient Store & Dispensary', 365, 200),
+    item('m7', 'Niagara station backup & JACE health audit', 'JACE 8000', 91, 30),
+    item('m8', 'UPS battery test (JACE, network switch)', 'Controls panel', 182, 60),
+  ];
+}
+
+/* =====================================================================
+   4. SIMULATION
+   ===================================================================== */
+function stepZone(z, k, ts) {
+  const ph = 2 * Math.PI * k / z.period + z.phase;
+  const wave = Math.sin(ph) * z.amp + Math.sin(ph * 2.3 + 1.1) * z.amp * 0.3;
+  const base = z.kind === 'cold' ? state.control.sp + z.bias : z.base;
+  const failBump = state.scenario.failover && z.kind === 'cold' ? 0.25 : 0;   // brief thermal bump on failover
+  const target = base + wave + z.offset + failBump;
+  z.t += 0.35 * (target - z.t) + noise(0.05);
+  if (z.offset === 0) z.t = clamp(z.t, z.lo + 0.9, z.hi - 0.9);            // normal mode stays in range
+  const rhT = z.rhBase + Math.sin(2 * Math.PI * k / (z.period * 1.7) + z.phase) * 3 - z.offset * 1.2;
+  z.rh = clamp(z.rh + 0.25 * (rhT - z.rh) + noise(0.4), z.rhLo + 3, z.rhHi - 3);
+  z.hist.push({ ts, t: z.t, rh: z.rh });
+  if (z.hist.length > CONFIG.histLen) z.hist.shift();
+  z.updated = new Date(ts);
+}
+
+function stepControl(preroll = false) {
+  const c = state.control;
+  const cold = state.zones.filter(z => z.kind === 'cold');
+  c.pv = Math.max(...cold.map(z => z.t));
+  const err = c.pv - c.sp;
+  const [u1, u2] = state.units;
+  const outOfBand = err > c.db;
+  if (state.scenario.failover) {
+    u1.target = 0;
+    u2.target = u2.starting ? 30 : 100;
+  } else {
+    u1.target = outOfBand ? 100 : clamp(56 + 18 * err, 25, 100);
+    u2.target = outOfBand ? 100 : clamp(52 + 7 * err, 25, 100);
+  }
+  state.units.forEach(u => {
+    if (!u.comms) { u.load = 0; u.kw = 0; return; }
+    u.load += (preroll ? 1 : 0.45) * (u.target - u.load);
+    u.load = clamp(u.load, 0, 100);
+    u.kw = u.running ? 0.6 + (u.kwRated - 0.6) * u.load / 100 : 0;
+    u.supply = c.sp - 2.2 - (u.load - 50) * 0.03 + noise(0.05);
+  });
+  const duty = state.scenario.failover ? u2 : u1;
+  c.demand = duty.target;
+  c.trend = duty.target - duty.load;
+  c.dutyName = duty.name;
+  if (preroll) return;
+  state.units.forEach(u => {
+    if (u.comms && u.running) u.runtime += CONFIG.tickMs / HOUR;
+  });
+  const day = state.energy[state.energy.length - 1];
+  day.h1 += u1.kw * CONFIG.tickMs / HOUR;
+  day.h2 += u2.kw * CONFIG.tickMs / HOUR;
+}
+
+function tick() {
+  const now = Date.now();
+  // Midnight rollover for energy log
+  const last = state.energy[state.energy.length - 1];
+  if (!isToday(last.date)) { last.live = false; state.energy.push({ date: startOfDay(new Date()), h1: 0, h2: 0, live: true }); state.energy.shift(); }
+
+  const ex = state.scenario.excursion;
+  const cra = zoneById('cra');
+  if (ex === 'rising') cra.offset = Math.min(cra.offset + 0.32, 4.6);
+  if (ex === 'recovering') {
+    cra.offset = Math.max(cra.offset - 0.4, 0);
+    if (cra.offset === 0) { state.scenario.excursion = null; }
+  }
+  state.k++;
+  state.zones.forEach(z => stepZone(z, state.k, now));
+  stepControl();
+  state.zones.forEach(evalZone);
+  state.lastUpdate = now;
+  render();
+}
+
+/* =====================================================================
+   5. ALARM ENGINE  (raise / upgrade / clear / acknowledge / escalate)
+   ===================================================================== */
+const activeAlarm = key => state.alarms.find(a => a.key === key);
+
+function zoneStatus(z) {
+  if (z.t > z.hi || z.t < z.lo) return 'crit';
+  if (z.t > z.hi - CONFIG.warnMargin || z.t < z.lo + CONFIG.warnMargin || z.rh > z.rhHi || z.rh < z.rhLo) return 'warn';
+  return 'ok';
+}
+function evalZone(z) {
+  z.status = zoneStatus(z);
+  const key = z.id + '-hi';
+  const a = activeAlarm(key);
+  const warnAt = z.hi - CONFIG.warnMargin;
+  if (z.t > z.hi) {
+    const msg = `High temperature ${f1(z.t)} °C (limit ${f1(z.hi)} °C)`;
+    if (!a) raiseAlarm({ key, source: z.name, sev: 'critical', msg });
+    else if (a.sev !== 'critical') upgradeAlarm(a, 'critical', msg);
+    else if (z.t > a.peak) { a.peak = z.t; a.msg = `High temperature ${f1(z.t)} °C (limit ${f1(z.hi)} °C)`; }
+  } else if (z.t > warnAt) {
+    if (!a) raiseAlarm({ key, source: z.name, sev: 'warning', msg: `Pre-alarm: ${f1(z.t)} °C approaching high limit ${f1(z.hi)} °C` });
+  } else if (a && z.t < warnAt - 0.2) {
+    clearAlarm(key, 'Returned to normal');
+  }
+}
+
+function raiseAlarm({ key, source, sev, msg, notifyNow = true }) {
+  const now = new Date();
+  const a = { id: alarmSeq++, key, source, sev, msg, raised: now, ack: null, cleared: null, esc: 0, nextEsc: null, peak: -Infinity, fresh: true };
+  state.alarms.unshift(a);
+  if (sev === 'critical') {
+    a.nextEsc = now.getTime() + CONFIG.escalateAfterSec * 1000;
+    if (notifyNow) notify(0, a);
+  } else {
+    toast('warn', `${SEV[sev].label}: ${source}`, msg);
+  }
+  state.ver.alarms++;
+  return a;
+}
+function upgradeAlarm(a, sev, msg) {
+  a.sev = sev; a.msg = msg; a.fresh = true; a.raised = new Date();
+  if (sev === 'critical' && !a.ack) { a.nextEsc = Date.now() + CONFIG.escalateAfterSec * 1000; notify(0, a); }
+  state.ver.alarms++;
+}
+function clearAlarm(key, note) {
+  const i = state.alarms.findIndex(a => a.key === key);
+  if (i < 0) return;
+  const [a] = state.alarms.splice(i, 1);
+  a.cleared = new Date(); a.note = note; a.nextEsc = null;
+  state.history.unshift(a);
+  log('System', 'Alarm log', `${a.source}: alarm cleared — ${note}`);
+  state.ver.alarms++;
+}
+function ackAlarm(id) {
+  if (!can('ack')) { toast('warn', 'Not permitted', 'Viewer role cannot acknowledge alarms.'); return; }
+  const a = state.alarms.find(x => x.id === id);
+  if (!a || a.ack) return;
+  a.ack = { user: currentUser(), ts: new Date() };
+  a.nextEsc = null;
+  log('System', 'Alarm log', `${a.source}: acknowledged by ${a.ack.user} — escalation stopped`);
+  toast('ok', 'Alarm acknowledged', `${a.source} · ${a.ack.user} at ${fmtTime(a.ack.ts)}. Escalation stopped.`);
+  state.ver.alarms++;
+  // Story beat: after acknowledgement the duty manager attends and the room recovers
+  if (a.key === 'cra-hi' && state.scenario.excursion === 'rising') {
+    const epoch = state.scenario.epoch;
+    setTimeout(() => {
+      if (state.scenario.epoch !== epoch || state.scenario.excursion !== 'rising') return;
+      state.scenario.excursion = 'recovering';
+      log('System', 'Site', 'Cold Room A: door closed by Duty Manager — temperature recovering');
+      toast('ok', 'Corrective action on site', 'Cold Room A door closed. HVAC at full load, temperature recovering.');
+      renderDemo();
+    }, 5000);
+  }
+  render();
+}
+function log(channel, to, msg, kind = 'system') {
+  state.notifications.unshift({ ts: new Date(), channel, to, msg, kind });
+  if (state.notifications.length > 40) state.notifications.pop();
+}
+function notify(level, a, extra = '') {
+  const c = CONFIG.contacts[level];
+  const who = `${c.role} (${c.name})`;
+  if (level === 0) {
+    log('SMS + Email', who, `${a.source}: ${a.msg}`, 'notify');
+    toast('sms', `SMS sent to ${c.role}`, `${c.name} · “${a.source}: ${a.msg}” ${extra}`);
+  } else {
+    log('SMS + Email', who, `ESCALATION L${level}: ${a.source}: ${a.msg} — not acknowledged within ${CONFIG.escalateAfterSec} s`, 'escalation');
+    toast('escalation', `Escalated to ${c.role}`, `${c.name} · SMS + email sent — alarm not acknowledged within ${CONFIG.escalateAfterSec} s.`);
+  }
+}
+function checkEscalations() {
+  const now = Date.now();
+  state.alarms.forEach(a => {
+    if (a.ack || a.nextEsc == null || now < a.nextEsc) return;
+    if (a.esc < CONFIG.contacts.length - 1) {
+      a.esc++;
+      notify(a.esc, a);
+      a.nextEsc = a.esc < CONFIG.contacts.length - 1 ? now + CONFIG.escalateAfterSec * 1000 : null;
+      state.ver.alarms++;
+    } else a.nextEsc = null;
+  });
+}
+
+/* =====================================================================
+   6. DEMO SCENARIOS
+   ===================================================================== */
+const Demo = {
+  comms() {
+    if (state.scenario.failover) return;
+    const [u1, u2] = state.units;
+    const epoch = state.scenario.epoch;
+    u1.comms = false; u1.running = false; u1.fault = 'Comms loss'; u1.role = 'offline';
+    state.scenario.failover = true; state.scenario.failoverAt = new Date();
+    const a = raiseAlarm({ key: 'hvac1-comms', source: 'HVAC 1', sev: 'critical', msg: 'NO RESPONSE — communication lost with HVAC 1 controller' });
+    u2.role = 'failover'; u2.starting = true;
+    log('System', 'Control', 'Auto-failover initiated: HVAC 2 start command issued');
+    setTimeout(() => {
+      if (state.scenario.epoch !== epoch || !state.scenario.failover) return;
+      u2.starting = false;
+      log('SMS + Email', `${CONFIG.contacts[2].role} (${CONFIG.contacts[2].name})`, 'Escalation alert: critical plant failure on HVAC 1 — HVAC 2 running at 100% on failover', 'escalation');
+      toast('escalation', 'Escalation alert logged', `${CONFIG.contacts[2].role} notified: HVAC 1 offline, HVAC 2 carrying full load.`);
+      render();
+    }, 2500);
+    state.scenario.lastFailover = new Date();
+    render(); renderDemo();
+    return a;
+  },
+  restore() {
+    if (!state.scenario.failover) return;
+    const [u1, u2] = state.units;
+    u1.comms = true; u1.running = true; u1.fault = null; u1.role = 'duty'; u1.load = 20;
+    u2.role = 'standby'; u2.starting = false;
+    state.scenario.failover = false;
+    clearAlarm('hvac1-comms', 'Comms restored — normal duty/standby resumed');
+    toast('ok', 'HVAC 1 restored', 'Communication restored. Normal duty / standby load sharing resumed.');
+    state.maintenance.find(m => m.id === 'm3').note = `Unplanned failover executed successfully ${fmtShort(new Date())} ${fmtHM(new Date())} — logged as test evidence`;
+    state.ver.maint++;
+    render(); renderDemo();
+  },
+  excursion() {
+    if (state.scenario.excursion) return;
+    state.scenario.excursion = 'rising';
+    log('System', 'Simulation', 'Cold Room A: door held open (simulated) — heat gain exceeds cooling capacity');
+    toast('info', 'Scenario started', 'Cold Room A door held open — watch the zone card and Alarms tab.');
+    render(); renderDemo();
+  },
+  reset() {
+    $$('.toast').forEach(t => t.remove());
+    const theme = state.theme, role = state.role, ui = state.ui, tariff = state.tariff;
+    initState();
+    Object.assign(state, { theme, role, ui, tariff });
+    toast('ok', 'Demo reset', 'All zones and plant returned to normal operation.');
+    render(); renderDemo();
+  },
+};
+
+/* =====================================================================
+   7. RENDERING
+   ===================================================================== */
+const TABS = [
+  { id: 'overview',    label: 'Overview',    icon: 'grid' },
+  { id: 'hvac',        label: 'HVAC Units',  icon: 'fan' },
+  { id: 'trends',      label: 'Trends',      icon: 'trend' },
+  { id: 'alarms',      label: 'Alarms',      icon: 'bell' },
+  { id: 'energy',      label: 'Energy',      icon: 'zap' },
+  { id: 'maintenance', label: 'Maintenance', icon: 'tool' },
+  { id: 'reports',     label: 'Reports',     icon: 'file' },
+];
+
+function buildStatic() {
+  $('#tablist').innerHTML = TABS.map(t => `<button class="tab" role="tab" type="button" id="tab-${t.id}" aria-controls="view-${t.id}" aria-selected="false" data-tab="${t.id}">${ic(t.icon)}${t.label}${t.id === 'alarms' ? '<span class="tab-count" id="alarmCount">0</span>' : ''}</button>`).join('');
+  $('#zoneGrid').innerHTML = state.zones.map(z => `
+    <article class="zone-card" data-zone="${z.id}" data-s="ok" aria-label="${z.name}">
+      <div class="zone-top">
+        <div><h3>${z.name}</h3><div class="zone-limits">Limits ${z.lo}–${z.hi} °C · RH ${z.rhLo}–${z.rhHi}%</div></div>
+        <span data-f="chip"></span>
+      </div>
+      <div class="zone-readings">
+        <div><div class="reading-label">${ic('thermo')}Temp</div><div class="reading-value primary"><span data-f="t"></span><small>°C</small></div></div>
+        <div><div class="reading-label">${ic('drop')}Humidity</div><div class="reading-value secondary"><span data-f="rh"></span><small>%RH</small></div></div>
+      </div>
+      <div class="range" aria-hidden="true"><span class="range-band" data-f="band"></span><span class="range-marker" data-f="marker"></span></div>
+      <div class="range-labels" aria-hidden="true"><span data-f="rmin"></span><span>allowed ${z.lo}–${z.hi} °C</span><span data-f="rmax"></span></div>
+      <svg class="spark" viewBox="0 0 200 46" preserveAspectRatio="none" aria-hidden="true"><path class="area" data-f="area"/><path class="line" data-f="line"/></svg>
+      <div class="zone-foot"><span data-f="ctl">${z.kind === 'cold' ? '' : 'Building AHU · monitored'}</span><span>Updated <time data-f="upd"></time></span></div>
+    </article>`).join('');
+  $('#unitGrid').innerHTML = state.units.map(u => `
+    <article class="unit-card" data-unit="${u.id}" aria-label="${u.name}">
+      <div class="unit-head">
+        <div class="unit-title"><span class="unit-fan">${ic('fan')}</span><div><h3>${u.name}</h3><div class="small muted">${u.asset}</div></div></div>
+        <span class="role-pill" data-f="role"></span>
+      </div>
+      <div class="unit-status"><span data-f="run"></span><span data-f="fault"></span></div>
+      <div class="load-head"><span>Load</span><b data-f="load"></b></div>
+      <div class="meter" role="meter" aria-label="${u.name} load" aria-valuemin="0" aria-valuemax="100" data-f="meter"><span data-f="bar"></span></div>
+      <dl class="unit-stats">
+        <div><dt>Mode</dt><dd data-f="mode"></dd></div>
+        <div><dt>Setpoint</dt><dd data-f="sp"></dd></div>
+        <div><dt>Runtime</dt><dd data-f="rt"></dd></div>
+        <div><dt>Supply air</dt><dd data-f="sa"></dd></div>
+        <div><dt>Power</dt><dd data-f="kw"></dd></div>
+        <div><dt>Comms</dt><dd data-f="comms"></dd></div>
+      </dl>
+      <div class="no-response" aria-hidden="true"><div><strong>${ic('wifiOff')}NO RESPONSE</strong><span>Controller offline · last seen <span data-f="seen"></span></span></div></div>
+    </article>`).join('');
+  $('#zoneSeg').innerHTML = state.zones.map(z => `<button type="button" data-zone="${z.id}" aria-pressed="false">${z.name}</button>`).join('');
+  $('#rangeSeg').innerHTML = ['1h', '24h', '7d'].map(r => `<button type="button" data-range="${r}" aria-pressed="false">${r}</button>`).join('');
+  $('#downloadBtn').innerHTML = `${ic('download')}Download CSV`;
+  $('#secureNote').innerHTML = `${ic('lock')}Secure access via VPN. Controllers are not exposed to the internet.`;
+  $('#escChain').innerHTML = 'Escalation chain: ' + CONFIG.contacts.map((c, i) => `${i + 1}. ${c.role}`).join(' → ');
+  $('#dpIcon').innerHTML = ic('sliders');
+  $('#dpChev').innerHTML = ic('chevUp');
+  $('[data-demo="comms"]').innerHTML = `${ic('wifiOff')}Simulate HVAC 1 comms loss`;
+  $('[data-demo="restore"]').innerHTML = `${ic('power')}Restore HVAC 1`;
+  $('[data-demo="excursion"]').innerHTML = `${ic('thermo')}Simulate temperature excursion (Cold Room A)`;
+  $('[data-demo="reset"]').innerHTML = `${ic('refresh')}Reset demo`;
+  $('#tariff').value = state.tariff.toFixed(2);
+}
+
+function render() {
+  renderHeader();
+  renderOverview();
+  const v = state.ui.view;
+  if (v === 'hvac') renderHVAC();
+  if (v === 'trends') renderTrend();
+  if (v === 'alarms') renderAlarms();
+  if (v === 'energy') renderEnergy();
+  if (v === 'maintenance') renderMaintenance();
+  if (v === 'reports') renderReport();
+  renderDemo();
+}
+
+/* --- Header, KPIs, health, banner --------------------------------- */
+function systemHealth() {
+  const crit = state.alarms.some(a => a.sev === 'critical' && a.key !== 'hvac1-comms');
+  if (crit) return { s: 'crit', label: 'Attention', sub: 'Zone alarm active' };
+  if (state.scenario.failover) return { s: 'warn', label: 'Degraded', sub: 'Running on failover' };
+  if (state.alarms.length) return { s: 'warn', label: 'Warning', sub: 'Pre-alarm active' };
+  return { s: 'ok', label: 'Healthy', sub: 'All systems normal' };
+}
+function renderHeader() {
+  const unacked = state.alarms.filter(a => !a.ack).length;
+  const online = state.units.filter(u => u.comms).length;
+  const eToday = state.energy[state.energy.length - 1];
+  const h = systemHealth();
+  const count = $('#alarmCount');
+  count.textContent = state.alarms.length;
+  count.dataset.hot = state.alarms.some(a => a.sev === 'critical') ? 'true' : 'false';
+  $('#kpis').innerHTML = `
+    <div class="card kpi" data-s="${state.alarms.length ? (state.alarms.some(a => a.sev === 'critical') ? 'crit' : 'warn') : 'ok'}"><div class="kpi-icon">${ic('bell')}</div><div><div class="kpi-label">Active alarms</div><div class="kpi-value">${state.alarms.length}</div><div class="kpi-sub">${unacked ? unacked + ' unacknowledged' : 'None unacknowledged'}</div></div></div>
+    <div class="card kpi" data-s="${online === state.units.length ? 'ok' : 'crit'}"><div class="kpi-icon">${ic('fan')}</div><div><div class="kpi-label">Units online</div><div class="kpi-value">${online}<small>/ ${state.units.length}</small></div><div class="kpi-sub">${online === state.units.length ? 'Duty + standby available' : 'HVAC 1 not responding'}</div></div></div>
+    <div class="card kpi"><div class="kpi-icon">${ic('zap')}</div><div><div class="kpi-label">Energy today</div><div class="kpi-value">${kwh(eToday.h1 + eToday.h2)}<small>kWh</small></div><div class="kpi-sub">≈ ${money((eToday.h1 + eToday.h2) * state.tariff)}</div></div></div>
+    <div class="card kpi" data-s="${h.s}"><div class="kpi-icon">${ic(STATUS[h.s].icon)}</div><div><div class="kpi-label">System health</div><div class="kpi-value">${h.label}</div><div class="kpi-sub">${h.sub}</div></div></div>`;
+  $('#healthStrip').innerHTML = `
+    <span class="health-item">${ic('cpu')}<b>JACE 8000</b><span class="health-ok">${ic('check')}Online</span></span>
+    <span class="health-item">${ic('server')}<b>Supervisor server</b><span class="health-ok">${ic('check')}Online</span></span>
+    <span class="health-item">${ic('globe')}<b>Network</b><span class="health-ok">${ic('check')}Online</span></span>
+    <span class="health-item">${ic('fan')}<b>Field devices</b>${online === state.units.length ? `<span class="health-ok">${ic('check')}${online}/${state.units.length}</span>` : `<span style="color:#FF9C9C;font-weight:700;display:inline-flex;gap:4px;align-items:center">${ic('crit')}${online}/${state.units.length}</span>`}</span>
+    <span class="spacer"></span><span class="platform">Niagara 4 · scan 2 s</span>`;
+  const b = $('#banner');
+  if (state.scenario.failover) {
+    b.hidden = false;
+    b.innerHTML = `${ic('warn')}<div><strong>Failover: HVAC 2 has taken over</strong><span class="banner-sub">HVAC 1 not responding since ${fmtTime(state.scenario.failoverAt)}. HVAC 2 running at ${Math.round(unitById('hvac2').load)}% · cold rooms remain in range.</span></div><button class="btn btn-sm" type="button" data-goto="hvac">View HVAC</button>`;
+  } else { b.hidden = true; b.innerHTML = ''; }
+}
+function renderFreshness() {
+  const s = Math.max(0, Math.round((Date.now() - state.lastUpdate) / 1000));
+  const el = $('#fresh');
+  el.dataset.stale = s > 6 ? 'true' : 'false';
+  $('#freshText').textContent = s > 6 ? `Stale · last updated ${s}s ago` : `Last updated ${s < 1 ? 'just now' : s + 's ago'}`;
+}
+
+/* --- Overview ------------------------------------------------------ */
+function renderOverview() {
+  state.zones.forEach(z => {
+    const card = $(`.zone-card[data-zone="${z.id}"]`);
+    const f = n => card.querySelector(`[data-f="${n}"]`);
+    if (card.dataset.s !== z.status) card.dataset.s = z.status;
+    const st = STATUS[z.status];
+    const chipHtml = chip(z.status, st.label, st.icon);
+    if (f('chip').innerHTML !== chipHtml) f('chip').innerHTML = chipHtml;
+    f('t').textContent = f1(z.t);
+    f('rh').textContent = Math.round(z.rh);
+    f('upd').textContent = fmtTime(z.updated);
+    // range bar: domain = limits ± 2 °C
+    const dMin = z.lo - 2, dMax = z.hi + 2, pct = v => clamp((v - dMin) / (dMax - dMin) * 100, 0, 100);
+    f('band').style.left = pct(z.lo) + '%'; f('band').style.width = (pct(z.hi) - pct(z.lo)) + '%';
+    f('marker').style.left = pct(z.t) + '%';
+    f('rmin').textContent = dMin + '°'; f('rmax').textContent = dMax + '°';
+    if (z.kind === 'cold') f('ctl').textContent = `SP ${f1(state.control.sp)} °C · DB ${f1(state.control.sp - state.control.db)}–${f1(state.control.sp + state.control.db)} °C`;
+    sparkline(z, f('line'), f('area'));
+  });
+  renderControlCard($('#ctrlCardOverview'), false);
+  renderMiniAlarms();
+}
+function sparkline(z, line, area) {
+  const pts = z.hist.slice(-CONFIG.sparkLen);
+  const vals = pts.map(p => p.t);
+  let mn = Math.min(...vals), mx = Math.max(...vals);
+  const pad_ = Math.max(0.4, (mx - mn) * 0.15); mn -= pad_; mx += pad_;
+  const W = 200, H = 46, n = pts.length - 1;
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${(i / n * W).toFixed(1)} ${(H - 3 - (p.t - mn) / (mx - mn) * (H - 6)).toFixed(1)}`).join('');
+  line.setAttribute('d', d);
+  area.setAttribute('d', `${d}L${W} ${H}L0 ${H}Z`);
+}
+function renderControlCard(el, editable) {
+  const c = state.control;
+  const lo = 2, hi = 8, pct = v => clamp((v - lo) / (hi - lo) * 100, 0, 100);
+  const trend = c.trend > 1.5 ? 'up' : c.trend < -1.5 ? 'down' : 'hold';
+  const err = c.pv - c.sp;
+  let msg;
+  if (state.scenario.failover) msg = `Failover active — ${c.dutyName} carrying full cold-room load.`;
+  else if (err > c.db) msg = `Controlled value above deadband (${f1(c.sp + c.db)} °C) — both units forced to 100%.`;
+  else if (err > 0.4) msg = `Cold room warming toward ${f1(c.sp + c.db)} °C — ${c.dutyName} ramping load up.`;
+  else if (err < -0.4) msg = `Cold room cooling toward ${f1(c.sp - c.db)} °C — ${c.dutyName} ramping load down.`;
+  else msg = `Within deadband around setpoint — ${c.dutyName} holding load.`;
+  if (trend === 'up' && err <= 0.4 && !state.scenario.failover) msg = `${c.dutyName} ramping load up toward demand.`;
+  if (trend === 'down' && err >= -0.4 && !state.scenario.failover) msg = `${c.dutyName} reducing load toward demand.`;
+  const duty = state.scenario.failover ? unitById('hvac2') : unitById('hvac1');
+  const key = editable + '|' + state.role + '|' + c.sp;
+  if (el.dataset.key !== key) {
+    el.dataset.key = key;
+    el.innerHTML = `
+      <div class="card-head"><h3>${ic('thermo')}Automatic control · cold rooms</h3><span class="card-sub">PI loop · JACE</span></div>
+      <div class="ctrl-grid">
+        <div class="ctrl-item"><div class="k">Setpoint</div><div class="v" data-c="sp"></div></div>
+        <div class="ctrl-item"><div class="k">Deadband</div><div class="v" data-c="db"></div></div>
+        <div class="ctrl-item"><div class="k">Controlled value</div><div class="v" data-c="pv"></div></div>
+        <div class="ctrl-item"><div class="k">Duty load</div><div class="v" data-c="load"></div></div>
+      </div>
+      <div class="ctrl-scale" aria-hidden="true"><div class="ctrl-track"></div><div class="ctrl-db" data-c="dbbar"></div><div class="ctrl-sp" data-c="spbar"></div><div class="ctrl-pv" data-c="pvdot"></div></div>
+      <div class="ctrl-ticks" aria-hidden="true"><span>2 °C min</span><span>4</span><span>5</span><span>6</span><span>8 °C max</span></div>
+      <div class="ctrl-msg" data-c="msgbox"><span data-c="ticon"></span><span data-c="msg"></span></div>
+      ${editable ? `<div class="sp-adjust">
+        <span class="small muted">Adjust setpoint</span>
+        <button class="btn btn-sm" type="button" data-sp="-1" ${can('setpoint') ? '' : 'disabled'} aria-label="Lower setpoint">−</button>
+        <span class="sp-val">${f1(c.sp)} °C</span>
+        <button class="btn btn-sm" type="button" data-sp="1" ${can('setpoint') ? '' : 'disabled'} aria-label="Raise setpoint">+</button>
+        ${can('setpoint') ? `<span class="lock-note">Range ${f1(c.spMin)}–${f1(c.spMax)} °C · changes are audit-logged</span>` : `<span class="lock-note">${ic('lock')}Viewer role: read-only</span>`}
+      </div>` : ''}`;
+  }
+  const q = n => el.querySelector(`[data-c="${n}"]`);
+  q('sp').textContent = f1(c.sp) + ' °C';
+  q('db').textContent = `${f1(c.sp - c.db)}–${f1(c.sp + c.db)}`;
+  q('pv').textContent = f1(c.pv) + ' °C';
+  q('load').textContent = Math.round(duty.load) + '%';
+  q('dbbar').style.left = pct(c.sp - c.db) + '%'; q('dbbar').style.width = (pct(c.sp + c.db) - pct(c.sp - c.db)) + '%';
+  q('spbar').style.left = pct(c.sp) + '%';
+  q('pvdot').style.left = pct(c.pv) + '%';
+  q('msgbox').dataset.trend = trend;
+  q('ticon').innerHTML = ic(trend);
+  q('msg').textContent = msg;
+}
+function renderMiniAlarms() {
+  const el = $('#miniAlarms');
+  const key = state.ver.alarms + '|' + state.alarms.length;
+  if (el.dataset.key === key) return;
+  el.dataset.key = key;
+  el.innerHTML = state.alarms.length ? state.alarms.slice(0, 4).map(a => `<li>${chip(SEV[a.sev].s, SEV[a.sev].label, SEV[a.sev].icon)}<span><b>${a.source}</b> · ${a.msg}</span><span class="when">${a.ack ? 'Ack ' : ''}${fmtTime(a.raised)}</span></li>`).join('')
+    : `<li class="empty">${ic('ok')}No active alarms — all zones within limits.</li>`;
+}
+
+/* --- HVAC ---------------------------------------------------------- */
+function renderHVAC() {
+  state.units.forEach(u => {
+    const card = $(`.unit-card[data-unit="${u.id}"]`);
+    const f = n => card.querySelector(`[data-f="${n}"]`);
+    const off = !u.comms;
+    card.dataset.s = off ? 'crit' : 'ok';
+    card.dataset.run = (u.running && !off) ? 'true' : 'false';
+    const roleMap = { duty: ['DUTY', 'duty'], standby: ['STANDBY', 'standby'], failover: ['DUTY · FAILOVER', 'failover'], offline: ['OFFLINE', 'offline'] };
+    const [rl, rk] = roleMap[u.role];
+    f('role').textContent = rl; f('role').dataset.r = rk;
+    f('run').innerHTML = off ? chip('crit', 'Stopped', 'power') : u.starting ? chip('warn', 'Starting…', 'power') : chip('ok', 'Running', 'power');
+    f('fault').innerHTML = off ? chip('crit', 'Fault: comms loss', 'crit') : chip('ok', 'No fault', 'check');
+    f('load').textContent = off ? '—' : Math.round(u.load) + '%';
+    f('bar').style.width = (off ? 0 : u.load) + '%';
+    f('meter').setAttribute('aria-valuenow', Math.round(u.load));
+    f('mode').textContent = off ? 'Unknown' : u.role === 'failover' ? 'Auto · Cooling (failover)' : 'Auto · Cooling';
+    f('sp').textContent = off ? '—' : f1(state.control.sp) + ' °C';
+    f('rt').textContent = kwh(u.runtime) + ' h';
+    f('sa').textContent = off ? '—' : f1(u.supply) + ' °C';
+    f('kw').textContent = off ? '—' : f1(u.kw) + ' kW';
+    f('comms').innerHTML = off ? '<span style="color:var(--crit-ink)">No response</span>' : 'OK · BACnet/IP';
+    if (off) f('seen').textContent = fmtTime(state.scenario.failoverAt);
+  });
+  renderControlCard($('#ctrlCardHvac'), true);
+}
+
+/* --- Trends (hand-drawn SVG) -------------------------------------- */
+function seriesFor(z, range) {
+  const cur = { ts: Date.now(), t: z.t, rh: z.rh };
+  if (range === '1h') return z.hist;
+  if (range === '24h') return [...z.h24, cur];
+  const lastHour = Date.now() - HOUR;
+  return [...z.h7d, ...z.hist.filter((p, i) => p.ts >= lastHour && i % 150 === 0), cur];
+}
+function niceTicks(mn, mx, count) {
+  const raw = (mx - mn) / count;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw);
+  const out = []; for (let v = Math.ceil(mn / step) * step; v <= mx + 1e-9; v += step) out.push(+v.toFixed(2));
+  return out;
+}
+function timeTicks(x0, x1, range, narrow) {
+  const step = range === '1h' ? (narrow ? 15 : 10) * MIN : range === '24h' ? (narrow ? 6 : 3) * HOUR : DAY;
+  const mid = startOfDay(new Date(x0)).getTime();
+  const out = [];
+  for (let t = mid + Math.ceil((x0 - mid) / step) * step; t <= x1; t += step) out.push(t);
+  return out;
+}
+const tLabel = (t, range) => { const d = new Date(t); return range === '7d' ? `${DOW[d.getDay()]} ${d.getDate()}` : fmtHM(d); };
+
+let trendGeom = null;
+function renderTrend() {
+  const z = zoneById(state.ui.trendZone), range = state.ui.range;
+  $$('#zoneSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.zone === z.id));
+  $$('#rangeSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.range === range));
+  const svg = $('#trendSvg'), wrap = $('#trendWrap');
+  const W = Math.max(280, wrap.clientWidth), narrow = W < 560, H = narrow ? 400 : 460;
+  const pts = seriesFor(z, range);
+  const m = { l: 40, r: narrow ? 64 : 80, t: 22, b: 26 };
+  const gap = 42, plotH = H - m.t - m.b - gap, h1 = plotH * 0.58, h2 = plotH * 0.42;
+  const y1 = m.t, y2 = m.t + h1 + gap, pw = W - m.l - m.r;
+  const x0 = pts[0].ts, x1 = pts[pts.length - 1].ts;
+  const X = ts => m.l + (ts - x0) / (x1 - x0) * pw;
+  const tv = pts.map(p => p.t), rv = pts.map(p => p.rh);
+  const tMin = Math.floor(Math.min(z.lo - 1, ...tv) - 0.3), tMax = Math.ceil(Math.max(z.hi + 1, ...tv) + 0.3);
+  const rMin = Math.floor(Math.min(z.rhLo - 5, ...rv)), rMax = Math.ceil(Math.max(z.rhHi + 5, ...rv));
+  const Yt = v => y1 + (1 - (v - tMin) / (tMax - tMin)) * h1;
+  const Yr = v => y2 + (1 - (v - rMin) / (rMax - rMin)) * h2;
+  const path = (key, Y) => pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.ts).toFixed(1)} ${Y(p[key]).toFixed(1)}`).join('');
+  const outPath = (key, Y, lo, hi) => {
+    let d = '', pen = false;
+    pts.forEach((p, i) => {
+      const o = p[key] > hi || p[key] < lo;
+      const xy = `${X(p.ts).toFixed(1)} ${Y(p[key]).toFixed(1)}`;
+      if (o) { if (!pen) { const q = pts[i - 1] || p; d += `M${X(q.ts).toFixed(1)} ${Y(q[key]).toFixed(1)}`; pen = true; } d += `L${xy}`; }
+      else if (pen) { d += `L${xy}`; pen = false; }
+    });
+    return d;
+  };
+  const yGrid = (ticks, Y, unit) => ticks.map(v => `<line class="gridline" x1="${m.l}" x2="${m.l + pw}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end">${v}${unit}</text>`).join('');
+  const limit = (v, Y, label) => `<line class="limit-line" x1="${m.l}" x2="${m.l + pw}" y1="${Y(v)}" y2="${Y(v)}"/><text class="limit-label" x="${m.l + pw + 6}" y="${Y(v) + 4}">${label}</text>`;
+  const xt = timeTicks(x0, x1, range, narrow);
+  const sp = z.kind === 'cold' ? state.control.sp : null;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('aria-label', `${z.name} temperature and humidity, last ${range}`);
+  svg.innerHTML = `
+    <text class="ax-title" x="${m.l}" y="${y1 - 8}">Temperature (°C)</text>
+    <rect class="band" x="${m.l}" width="${pw}" y="${Yt(z.hi)}" height="${Yt(z.lo) - Yt(z.hi)}"/>
+    ${yGrid(niceTicks(tMin, tMax, narrow ? 4 : 6), Yt, '°')}
+    ${limit(z.hi, Yt, `Max ${z.hi} °C`)}${limit(z.lo, Yt, `Min ${z.lo} °C`)}
+    ${sp != null ? `<line class="sp-line" x1="${m.l}" x2="${m.l + pw}" y1="${Yt(sp)}" y2="${Yt(sp)}"/><text class="ax" x="${m.l + pw + 6}" y="${Yt(sp) + 4}" style="fill:var(--accent)">SP ${f1(sp)}</text>` : ''}
+    <path class="series" d="${path('t', Yt)}" style="stroke:var(--series-temp)"/>
+    <path class="series out" d="${outPath('t', Yt, z.lo, z.hi)}"/>
+    <text class="ax-title" x="${m.l}" y="${y2 - 8}">Relative humidity (%RH)</text>
+    <rect class="band" x="${m.l}" width="${pw}" y="${Yr(z.rhHi)}" height="${Yr(z.rhLo) - Yr(z.rhHi)}"/>
+    ${yGrid(niceTicks(rMin, rMax, narrow ? 3 : 4), Yr, '')}
+    ${limit(z.rhHi, Yr, `Max ${z.rhHi}%`)}${limit(z.rhLo, Yr, `Min ${z.rhLo}%`)}
+    <path class="series" d="${path('rh', Yr)}" style="stroke:var(--series-rh)"/>
+    <path class="series out" d="${outPath('rh', Yr, z.rhLo, z.rhHi)}"/>
+    ${xt.map(t => `<line class="gridline" x1="${X(t)}" x2="${X(t)}" y1="${y1}" y2="${y2 + h2}" style="opacity:.6"/><text class="ax" x="${X(t)}" y="${H - 6}" text-anchor="middle">${tLabel(t, range)}</text>`).join('')}
+    <g id="hoverG" style="display:none">
+      <line id="hvLine" y1="${y1}" y2="${y2 + h2}" stroke="var(--text-2)" stroke-width="1" stroke-dasharray="3 3"/>
+      <circle id="hvT" r="4.5" fill="var(--series-temp)" stroke="var(--surface)" stroke-width="2"/>
+      <circle id="hvR" r="4.5" fill="var(--series-rh)" stroke="var(--surface)" stroke-width="2"/>
+    </g>
+    <rect id="hoverRect" x="${m.l}" y="${y1}" width="${pw}" height="${y2 + h2 - y1}" fill="transparent"/>`;
+  trendGeom = { pts, X, Yt, Yr, m, pw, x0, x1, W };
+  $('#trendNote').textContent = range === '1h'
+    ? 'Live: 2-second samples, updating in real time. Hover or tap the chart to read values.'
+    : `Simulated history (${range === '24h' ? '5-minute' : 'hourly'} averages) ending with the current live reading.`;
+  if (state.ui.hoverPx != null) showHover(state.ui.hoverPx); else hideHover();
+}
+function showHover(px) {
+  const g = trendGeom; if (!g) return;
+  const ts = g.x0 + clamp((px - g.m.l) / g.pw, 0, 1) * (g.x1 - g.x0);
+  let lo = 0, hi = g.pts.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (g.pts[mid].ts < ts) lo = mid; else hi = mid; }
+  const p = Math.abs(g.pts[lo].ts - ts) < Math.abs(g.pts[hi].ts - ts) ? g.pts[lo] : g.pts[hi];
+  const x = g.X(p.ts);
+  $('#hoverG').style.display = '';
+  $('#hvLine').setAttribute('x1', x); $('#hvLine').setAttribute('x2', x);
+  $('#hvT').setAttribute('cx', x); $('#hvT').setAttribute('cy', g.Yt(p.t));
+  $('#hvR').setAttribute('cx', x); $('#hvR').setAttribute('cy', g.Yr(p.rh));
+  const tip = $('#trendTip'), d = new Date(p.ts);
+  tip.innerHTML = `<div class="tt-time">${state.ui.range === '1h' ? fmtTime(d) : `${DOW[d.getDay()]} ${fmtShort(d)} ${fmtHM(d)}`}</div><div class="tt-row"><span>Temperature</span><b>${f1(p.t)} °C</b></div><div class="tt-row"><span>Humidity</span><b>${f1(p.rh)} %RH</b></div>`;
+  tip.dataset.on = 'true';
+  const tw = tip.offsetWidth;
+  tip.style.left = clamp(x + 14 + tw > g.W ? x - tw - 14 : x + 14, 0, g.W - tw) + 'px';
+  tip.style.top = (g.m.t + 10) + 'px';
+}
+function hideHover() { const hg = $('#hoverG'); if (hg) hg.style.display = 'none'; $('#trendTip').dataset.on = 'false'; }
+
+/* --- Alarms -------------------------------------------------------- */
+function renderAlarms() {
+  const key = state.ver.alarms + '|' + state.role;
+  const at = $('#activeTable');
+  $('#activeSub').textContent = `${state.alarms.length} active · signed in as ${currentUser()}`;
+  if (at.dataset.key !== key) {
+    at.dataset.key = key;
+    at.innerHTML = `<thead><tr><th>Time</th><th>Zone / unit</th><th>Severity</th><th>Message</th><th>Acknowledged by</th><th class="num">Action</th></tr></thead><tbody>${
+      state.alarms.length ? state.alarms.map(a => `<tr class="${a.fresh ? 'row-new' : ''}">
+        <td data-label="Time" class="stamp">${fmtStamp(a.raised)}</td>
+        <td data-label="Zone / unit"><b>${a.source}</b></td>
+        <td data-label="Severity">${chip(SEV[a.sev].s, SEV[a.sev].label, SEV[a.sev].icon)}</td>
+        <td data-label="Message"><span>${a.msg}<span class="esc" data-esc="${a.id}"></span></span></td>
+        <td data-label="Acknowledged by" class="stamp">${a.ack ? `<span>${a.ack.user}<small>${fmtStamp(a.ack.ts)}</small></span>` : '<span class="muted">Not acknowledged</span>'}</td>
+        <td data-label="Action" class="num">${a.ack ? chip('ok', 'Acknowledged', 'check') : `<button class="btn btn-sm btn-primary" type="button" data-ack="${a.id}" ${can('ack') ? '' : 'disabled title="Viewer role cannot acknowledge alarms"'}>${can('ack') ? ic('check') : ic('lock')}Acknowledge</button>`}</td>
+      </tr>`).join('') : `<tr><td colspan="6"><div class="empty">${ic('ok')}No active alarms. All zones and plant operating normally.</div></td></tr>`
+    }</tbody>`;
+    state.alarms.forEach(a => { a.fresh = false; });
+    $('#historyTable').innerHTML = `<thead><tr><th>Raised</th><th>Cleared</th><th>Zone / unit</th><th>Severity</th><th>Message</th><th>Acknowledged by</th></tr></thead><tbody>${
+      state.history.map(a => `<tr>
+        <td data-label="Raised" class="stamp">${fmtStamp(a.raised)}</td>
+        <td data-label="Cleared" class="stamp"><span>${fmtStamp(a.cleared)}<small>${a.note || ''}</small></span></td>
+        <td data-label="Zone / unit"><b>${a.source}</b></td>
+        <td data-label="Severity">${chip(SEV[a.sev].s, SEV[a.sev].label, SEV[a.sev].icon)}</td>
+        <td data-label="Message">${a.msg}</td>
+        <td data-label="Acknowledged by" class="stamp">${a.ack ? `<span>${a.ack.user}<small>${fmtStamp(a.ack.ts)}</small></span>` : '<span class="muted">Auto-cleared</span>'}</td>
+      </tr>`).join('')}</tbody>`;
+    $('#notifList').innerHTML = state.notifications.length ? state.notifications.slice(0, 12).map(n => `<li>${n.kind === 'escalation' ? chip('crit', 'Escalation', 'up') : n.kind === 'notify' ? chip('info', 'SMS + Email', 'sms') : chip('neutral', n.channel === 'System' ? 'Log' : n.channel, 'info')}<span><b>${n.to}</b> · ${n.msg}</span><span class="when">${fmtTime(n.ts)}</span></li>`).join('')
+      : `<li class="empty">${ic('mail')}No notifications sent this session.</li>`;
+  }
+  updateEscCountdowns();
+}
+function updateEscCountdowns() {
+  const now = Date.now();
+  state.alarms.forEach(a => {
+    const el = document.querySelector(`[data-esc="${a.id}"]`);
+    if (!el) return;
+    let txt = '';
+    if (!a.ack && a.sev === 'critical') {
+      const notified = CONFIG.contacts.slice(0, a.esc + 1).map(c => c.role).join(', ');
+      txt = `Notified: ${notified}`;
+      if (a.nextEsc) txt += ` · escalates to ${CONFIG.contacts[a.esc + 1].role} in ${Math.max(0, Math.ceil((a.nextEsc - now) / 1000))} s`;
+    }
+    el.textContent = txt;
+  });
+}
+
+/* --- Energy -------------------------------------------------------- */
+function renderEnergy() {
+  const days = state.energy, t = state.tariff;
+  const tot = days.reduce((s, d) => s + d.h1 + d.h2, 0);
+  const today = days[days.length - 1];
+  const past = days.slice(0, -1), avgDay = past.reduce((s, d) => s + d.h1 + d.h2, 0) / past.length;
+  $('#energyKpis').innerHTML = `
+    <div class="card kpi"><div class="kpi-icon">${ic('zap')}</div><div><div class="kpi-label">Today (live)</div><div class="kpi-value">${kwh(today.h1 + today.h2, 2)}<small>kWh</small></div><div class="kpi-sub">${money((today.h1 + today.h2) * t)}</div></div></div>
+    <div class="card kpi"><div class="kpi-icon">${ic('calendar')}</div><div><div class="kpi-label">Last 7 days</div><div class="kpi-value">${kwh(tot, 0)}<small>kWh</small></div><div class="kpi-sub">${money(tot * t)}</div></div></div>
+    <div class="card kpi"><div class="kpi-icon">${ic('trend')}</div><div><div class="kpi-label">Average day</div><div class="kpi-value">${kwh(avgDay, 0)}<small>kWh</small></div><div class="kpi-sub">${money(avgDay * t)} / day</div></div></div>
+    <div class="card kpi"><div class="kpi-icon">${ic('file')}</div><div><div class="kpi-label">Projected month</div><div class="kpi-value" style="font-size:20px">${money(avgDay * 30 * t)}</div><div class="kpi-sub">at R ${t.toFixed(2)} / kWh</div></div></div>`;
+  $('#tariffNote').textContent = `Tariff R ${t.toFixed(2)} / kWh · excl. VAT and demand charges`;
+  const tariffInput = $('#tariff');
+  tariffInput.disabled = !can('tariff');
+  tariffInput.title = can('tariff') ? '' : 'Viewer role cannot change the tariff';
+  barChart(days);
+  $('#energyTable').innerHTML = `<thead><tr><th>Day</th><th class="num">HVAC 1 (kWh)</th><th class="num">HVAC 2 (kWh)</th><th class="num">Total (kWh)</th><th class="num">Cost</th></tr></thead><tbody>${
+    days.slice().reverse().map(d => `<tr><td data-label="Day"><span><b>${DOW[d.date.getDay()]} ${fmtShort(d.date)}</b>${d.live ? ' <span class="chip" data-s="info">live</span>' : ''}</span></td><td data-label="HVAC 1" class="num">${kwh(d.h1)}</td><td data-label="HVAC 2" class="num">${kwh(d.h2)}</td><td data-label="Total" class="num"><b>${kwh(d.h1 + d.h2)}</b></td><td data-label="Cost" class="num">${money((d.h1 + d.h2) * t)}</td></tr>`).join('')
+  }<tr><td data-label="Period"><b>7-day total</b></td><td data-label="HVAC 1" class="num">${kwh(days.reduce((s, d) => s + d.h1, 0))}</td><td data-label="HVAC 2" class="num">${kwh(days.reduce((s, d) => s + d.h2, 0))}</td><td data-label="Total" class="num"><b>${kwh(tot)}</b></td><td data-label="Cost" class="num"><b>${money(tot * t)}</b></td></tr></tbody>`;
+}
+function barChart(days) {
+  const svg = $('#energySvg'); const W = Math.max(280, svg.parentElement.clientWidth), narrow = W < 560, H = narrow ? 240 : 300;
+  const m = { l: 42, r: 10, t: 24, b: 30 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const max = Math.max(...days.map(d => Math.max(d.h1, d.h2)));
+  const ticks = niceTicks(0, max * 1.1, 4).filter(v => v % 1 === 0 || true);
+  const top = Math.max(ticks[ticks.length - 1], max * 1.05);
+  const Y = v => m.t + ph - v / top * ph;
+  const band = pw / days.length, bw = Math.min(26, band * 0.32);
+  const bars = days.map((d, i) => {
+    const cx = m.l + band * i + band / 2;
+    const b = (v, x, color, name) => `<rect class="bar" x="${x}" y="${Y(v)}" width="${bw}" height="${Math.max(0, Y(0) - Y(v))}" rx="3" fill="${color}" ${d.live ? 'opacity=".8"' : ''}><title>${name} · ${DOW[d.date.getDay()]} ${fmtShort(d.date)}: ${kwh(v)} kWh</title></rect>`;
+    return b(d.h1, cx - bw - 1, 'var(--series-u1)', 'HVAC 1') + b(d.h2, cx + 1, 'var(--series-u2)', 'HVAC 2') +
+      `<text class="ax" x="${cx}" y="${H - 10}" text-anchor="middle" ${d.live ? 'style="font-weight:700;fill:var(--text)"' : ''}>${d.live ? 'Today' : DOW[d.date.getDay()] + (narrow ? '' : ' ' + d.date.getDate())}</text>`;
+  }).join('');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = ticks.map(v => `<line class="gridline" x1="${m.l}" x2="${m.l + pw}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`).join('') +
+    `<text class="ax" x="${m.l}" y="${m.t - 4}">kWh</text>` + bars +
+    `<line x1="${m.l}" x2="${m.l + pw}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--border)"/>`;
+}
+
+/* --- Maintenance --------------------------------------------------- */
+function maintStatus(m) {
+  const due = addDays(m.last, m.intervalDays);
+  const days = Math.round((due - startOfDay(new Date())) / DAY);
+  if (days < 0) return { due, days, s: 'crit', label: 'Overdue', icon: 'crit', rel: `${-days} day${days === -1 ? '' : 's'} overdue` };
+  if (days <= CONFIG.dueSoonDays) return { due, days, s: 'warn', label: 'Due soon', icon: 'warn', rel: days === 0 ? 'due today' : `in ${days} day${days === 1 ? '' : 's'}` };
+  return { due, days, s: 'ok', label: 'Scheduled', icon: 'calendar', rel: `in ${days} days` };
+}
+function renderMaintenance() {
+  const key = state.ver.maint + '|' + state.role;
+  const tb = $('#maintTable');
+  if (tb.dataset.key === key) return;
+  tb.dataset.key = key;
+  const rows = state.maintenance.map(m => ({ m, st: maintStatus(m) })).sort((a, b) => a.st.days - b.st.days);
+  const n = s => rows.filter(r => r.st.s === s).length;
+  $('#maintSummary').innerHTML = chip('crit', `${n('crit')} overdue`, 'crit') + chip('warn', `${n('warn')} due soon`, 'warn') + chip('ok', `${n('ok')} scheduled`, 'calendar');
+  tb.innerHTML = `<thead><tr><th>Task</th><th>Asset</th><th>Interval</th><th>Last done</th><th>Due date</th><th>Status</th><th class="num">Action</th></tr></thead><tbody>${
+    rows.map(({ m, st }) => `<tr>
+      <td data-label="Task"><span><b>${m.task}</b>${m.note ? `<span class="esc" style="color:var(--ok-ink)">${m.note}</span>` : ''}</span></td>
+      <td data-label="Asset">${m.asset}</td>
+      <td data-label="Interval">${m.intervalDays >= 365 ? 'Annual' : m.intervalDays >= 180 ? '6-monthly' : m.intervalDays >= 90 ? 'Quarterly' : 'Monthly'}</td>
+      <td data-label="Last done">${fmtDate(m.last)}</td>
+      <td data-label="Due date" class="stamp"><span><b>${fmtDate(st.due)}</b><small>${st.rel}</small></span></td>
+      <td data-label="Status">${chip(st.s, st.label, st.icon)}</td>
+      <td data-label="Action" class="num"><button class="btn btn-sm" type="button" data-maint="${m.id}" ${can('maint') ? '' : 'disabled title="Administrator role required"'}>${can('maint') ? ic('check') : ic('lock')}Mark complete</button></td>
+    </tr>`).join('')}</tbody>`;
+  $('#maintNote').textContent = can('maint') ? 'Completing a task records the date and reschedules the next due date.' : 'Marking tasks complete requires the Administrator role.';
+}
+
+/* --- Reports ------------------------------------------------------- */
+function zoneReport(z) {
+  const cut = Date.now() - HOUR;
+  const pts = [...z.h7d.filter(p => p.ts < cut).map(p => ({ ...p, w: 3600 })), ...z.hist.map(p => ({ ...p, w: 2 }))];
+  let wSum = 0, tSum = 0, rSum = 0, inW = 0, tMin = Infinity, tMax = -Infinity, rMin = Infinity, rMax = -Infinity, ex = 0, rex = 0, wasOut = false, wasROut = false;
+  pts.forEach(p => {
+    wSum += p.w; tSum += p.t * p.w; rSum += p.rh * p.w;
+    tMin = Math.min(tMin, p.t); tMax = Math.max(tMax, p.t); rMin = Math.min(rMin, p.rh); rMax = Math.max(rMax, p.rh);
+    const out = p.t > z.hi || p.t < z.lo, rout = p.rh > z.rhHi || p.rh < z.rhLo;
+    if (out && !wasOut) ex++; if (rout && !wasROut) rex++;
+    wasOut = out; wasROut = rout;
+    if (!out) inW += p.w;
+  });
+  return { z, tMin, tMax, tAvg: tSum / wSum, rMin, rMax, rAvg: rSum / wSum, ex, rex, inRange: inW / wSum * 100 };
+}
+function reportData() {
+  const end = new Date(), start = addDays(end, -7);
+  const zones = state.zones.map(zoneReport);
+  const all = [...state.history, ...state.alarms].filter(a => a.raised >= start && a.key !== 'seed-x');
+  const acked = all.filter(a => a.ack);
+  const mtta = acked.length ? acked.reduce((s, a) => s + (a.ack.ts - a.raised), 0) / acked.length / MIN : 0;
+  return { start, end, zones, alarms: all.length, acked: acked.length, mtta };
+}
+function renderReport() {
+  const r = reportData();
+  $('#reportPeriod').textContent = `CSIR Campus Building 53 · ${fmtDate(r.start)} – ${fmtDate(r.end)} · generated ${fmtTime(r.end)}`;
+  $('#reportTable').innerHTML = `<thead><tr><th>Zone</th><th>Limits</th><th class="num">Min °C</th><th class="num">Avg °C</th><th class="num">Max °C</th><th class="num">Avg RH</th><th class="num">Excursions</th><th class="num">Time in range</th></tr></thead><tbody>${
+    r.zones.map(x => `<tr>
+      <td data-label="Zone"><b>${x.z.name}</b></td>
+      <td data-label="Limits">${x.z.lo}–${x.z.hi} °C</td>
+      <td data-label="Min °C" class="num">${f1(x.tMin)}</td>
+      <td data-label="Avg °C" class="num">${f1(x.tAvg)}</td>
+      <td data-label="Max °C" class="num" ${x.tMax > x.z.hi ? 'style="color:var(--crit-ink);font-weight:700"' : ''}>${f1(x.tMax)}</td>
+      <td data-label="Avg RH" class="num">${Math.round(x.rAvg)}%</td>
+      <td data-label="Excursions" class="num">${x.ex + x.rex ? chip('warn', `${x.ex} temp · ${x.rex} RH`, 'warn') : chip('ok', 'None', 'check')}</td>
+      <td data-label="Time in range" class="num"><b>${x.inRange.toFixed(2)}%</b></td>
+    </tr>`).join('')}</tbody>`;
+  const totalEx = r.zones.reduce((s, x) => s + x.ex, 0);
+  const minIn = Math.min(...r.zones.map(x => x.inRange));
+  $('#reportKpis').innerHTML = `<div><b>${minIn.toFixed(2)}%</b><span>Lowest zone time in range</span></div><div><b>${totalEx}</b><span>Temperature excursions</span></div><div><b>${r.alarms}</b><span>Alarms this week</span></div><div><b>${r.mtta ? f1(r.mtta) + ' min' : '—'}</b><span>Mean time to acknowledge</span></div>`;
+}
+function downloadCSV() {
+  const r = reportData();
+  const rows = [
+    ['CSIR Campus Building 53 - Weekly environmental report'],
+    ['SIMULATED DEMO DATA - Spartcon Technologies BMS (Tridium Niagara)'],
+    ['Period', fmtDate(r.start), fmtDate(r.end)],
+    ['Generated', `${fmtDate(r.end)} ${fmtTime(r.end)}`, 'by', currentUser()],
+    [],
+    ['Zone', 'Limit low (C)', 'Limit high (C)', 'Min temp (C)', 'Avg temp (C)', 'Max temp (C)', 'Min RH (%)', 'Avg RH (%)', 'Max RH (%)', 'Temp excursions', 'RH excursions', 'Time in range (%)'],
+    ...r.zones.map(x => [x.z.name, x.z.lo, x.z.hi, f1(x.tMin), f1(x.tAvg), f1(x.tMax), f1(x.rMin), f1(x.rAvg), f1(x.rMax), x.ex, x.rex, x.inRange.toFixed(2)]),
+    [],
+    ['Alarms this week', r.alarms], ['Acknowledged', r.acked], ['Mean time to acknowledge (min)', f1(r.mtta)],
+    [],
+    ['Raised', 'Cleared', 'Source', 'Severity', 'Message', 'Acknowledged by', 'Acknowledged at'],
+    ...[...state.alarms, ...state.history].map(a => [`${fmtDate(a.raised)} ${fmtTime(a.raised)}`, a.cleared ? `${fmtDate(a.cleared)} ${fmtTime(a.cleared)}` : 'Active', a.source, SEV[a.sev].label, a.msg, a.ack ? a.ack.user : '', a.ack ? `${fmtDate(a.ack.ts)} ${fmtTime(a.ack.ts)}` : '']),
+    [],
+    ['Day', 'HVAC 1 (kWh)', 'HVAC 2 (kWh)', 'Total (kWh)', `Cost (R @ ${state.tariff.toFixed(2)}/kWh)`],
+    ...state.energy.map(d => [isoDate(d.date), d.h1.toFixed(1), d.h2.toFixed(1), (d.h1 + d.h2).toFixed(1), ((d.h1 + d.h2) * state.tariff).toFixed(2)]),
+  ];
+  const cell = v => { const s = String(v ?? '').replace(/°/g, ' deg').replace(/—/g, '-'); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csv = rows.map(row => row.map(cell).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `B53_weekly_report_${isoDate(r.end)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  toast('ok', 'Report downloaded', a.download);
+}
+
+/* --- Demo panel status ------------------------------------------- */
+function renderDemo() {
+  const s = state.scenario;
+  $('[data-demo="comms"]').disabled = s.failover;
+  $('[data-demo="restore"]').disabled = !s.failover;
+  $('[data-demo="excursion"]').disabled = !!s.excursion;
+  const parts = [];
+  if (s.failover) parts.push('HVAC 1 offline — HVAC 2 on failover');
+  if (s.excursion === 'rising') parts.push(`Cold Room A excursion in progress (${f1(zoneById('cra').t)} °C)`);
+  if (s.excursion === 'recovering') parts.push(`Cold Room A recovering (${f1(zoneById('cra').t)} °C)`);
+  $('#demoStatus').textContent = parts.length ? 'Scenario: ' + parts.join(' · ') : 'Scenario: normal operation';
+}
+
+/* --- Toasts ------------------------------------------------------- */
+function toast(type, title, body) {
+  const icon = { sms: 'sms', escalation: 'up', warn: 'warn', ok: 'ok', info: 'info' }[type] || 'info';
+  const el = document.createElement('div');
+  el.className = 'toast'; el.dataset.t = type; el.setAttribute('role', type === 'escalation' ? 'alert' : 'status');
+  el.innerHTML = `<span class="t-icon">${ic(icon)}</span><div><strong>${title}</strong><p>${body}</p><time>${fmtTime(new Date())}</time></div><button type="button" aria-label="Dismiss">${ic('x')}</button>`;
+  const box = $('#toasts');
+  box.prepend(el);
+  while (box.children.length > 4) box.lastElementChild.remove();
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 300); };
+  el.querySelector('button').addEventListener('click', close);
+  setTimeout(close, type === 'escalation' ? 10000 : 7000);
+}
+
+/* =====================================================================
+   8. NAVIGATION, ROLES, THEME, EVENTS
+   ===================================================================== */
+function showView(id, focus = false) {
+  if (!TABS.some(t => t.id === id)) id = 'overview';
+  state.ui.view = id;
+  $$('.tab').forEach(t => { const on = t.dataset.tab === id; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; });
+  $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + id; });
+  if (focus) $('#tab-' + id).focus();
+  try { history.replaceState(null, '', '#' + id); } catch (e) { /* file:// in some browsers */ }
+  $$('[data-key]').forEach(el => { delete el.dataset.key; });
+  render();
+}
+function setRole(role) {
+  state.role = role;
+  $('#roleSelect').value = role;
+  $('#roleSelect').dataset.role = role;
+  $('#userName').textContent = currentUser();
+  $$('[data-key]').forEach(el => { delete el.dataset.key; });
+  render();
+}
+function applyTheme() {
+  const root = document.documentElement;
+  if (state.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = state.theme;
+  $('#themeBtn').innerHTML = ic(state.theme === 'dark' ? 'moon' : state.theme === 'light' ? 'sun' : 'auto');
+  $('#themeBtn').title = `Theme: ${state.theme}`;
+}
+
+function bindEvents() {
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button, [data-goto]');
+    if (!t) return;
+    if (t.dataset.tab) showView(t.dataset.tab);
+    else if (t.dataset.goto) showView(t.dataset.goto);
+    else if (t.dataset.demo) { Demo[t.dataset.demo](); $('#demoPanel').open = false; }
+    else if (t.dataset.ack) ackAlarm(+t.dataset.ack);
+    else if (t.dataset.zone && t.closest('#zoneSeg')) { state.ui.trendZone = t.dataset.zone; state.ui.hoverPx = null; renderTrend(); }
+    else if (t.dataset.range) { state.ui.range = t.dataset.range; state.ui.hoverPx = null; renderTrend(); }
+    else if (t.dataset.sp) {
+      if (!can('setpoint')) return;
+      const c = state.control;
+      const nsp = clamp(+(c.sp + (+t.dataset.sp) * c.step).toFixed(1), c.spMin, c.spMax);
+      if (nsp !== c.sp) { log('System', 'Audit', `Cold room setpoint changed ${f1(c.sp)} → ${f1(nsp)} °C by ${currentUser()}`); toast('info', 'Setpoint changed', `Cold rooms ${f1(c.sp)} → ${f1(nsp)} °C by ${currentUser()}`); c.sp = nsp; state.ver.alarms++; render(); }
+    }
+    else if (t.dataset.maint) {
+      if (!can('maint')) return;
+      const m = state.maintenance.find(x => x.id === t.dataset.maint);
+      m.last = startOfDay(new Date()); m.note = `Completed ${fmtShort(new Date())} by ${currentUser()}`;
+      state.ver.maint++; toast('ok', 'Maintenance recorded', `${m.asset}: ${m.task.split('(')[0].trim()} — next due ${fmtDate(maintStatus(m).due)}`);
+      render();
+    }
+    else if (t.id === 'downloadBtn') downloadCSV();
+    else if (t.id === 'themeBtn') { state.theme = { auto: 'light', light: 'dark', dark: 'auto' }[state.theme]; applyTheme(); render(); }
+  });
+  $('#tablist').addEventListener('keydown', e => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    const i = TABS.findIndex(t => t.id === state.ui.view);
+    const n = e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length;
+    e.preventDefault(); showView(TABS[n].id, true);
+  });
+  $('#roleSelect').addEventListener('change', e => {
+    setRole(e.target.value);
+    toast('info', `Signed in as ${currentUser()}`, { viewer: 'Read-only: cannot acknowledge alarms or change setpoints.', operator: 'Can acknowledge alarms, adjust setpoints and tariff.', admin: 'Full access including maintenance records.' }[state.role]);
+  });
+  $('#tariff').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    if (can('tariff') && isFinite(v) && v >= 0 && v < 100) { state.tariff = v; renderEnergy(); renderHeader(); }
+  });
+  const svg = $('#trendSvg');
+  const px = e => { const r = svg.getBoundingClientRect(); return (e.clientX - r.left) * (trendGeom ? trendGeom.W / r.width : 1); };
+  svg.addEventListener('pointermove', e => { state.ui.hoverPx = px(e); showHover(state.ui.hoverPx); });
+  svg.addEventListener('pointerdown', e => { state.ui.hoverPx = px(e); showHover(state.ui.hoverPx); });
+  svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { state.ui.hoverPx = null; hideHover(); } });
+  let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (state.ui.view === 'trends') renderTrend(); if (state.ui.view === 'energy') renderEnergy(); }, 120); });
+  window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
+}
+
+/* =====================================================================
+   9. BOOT
+   ===================================================================== */
+initState();
+buildStatic();
+bindEvents();
+applyTheme();
+setRole('operator');
+if (window.matchMedia('(min-width: 900px)').matches) $('#demoPanel').open = true;
+showView(location.hash.slice(1) || 'overview');
+setInterval(tick, CONFIG.tickMs);
+setInterval(() => { renderFreshness(); checkEscalations(); if (state.ui.view === 'alarms') renderAlarms(); }, 1000);
+renderFreshness();
+})();
+</script>
+</body>
+</html>
