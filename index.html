@@ -1634,13 +1634,25 @@ function downloadCSV() {
   ];
   const cell = v => { const s = String(v ?? '').replace(/°/g, ' deg').replace(/—/g, '-'); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const csv = rows.map(row => row.map(cell).join(',')).join('\r\n');
+  const filename = `B53_weekly_report_${isoDate(r.end)}.csv`;
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  // Hosted on claude.ai: save through the viewer's downloads capability
+  if (window.claude && typeof window.claude.use === 'function') {
+    (async () => {
+      const downloads = await window.claude.use('downloads');
+      if (!downloads) { toast('warn', 'Download unavailable', 'This viewer cannot save files. Open index.html locally to export.'); return; }
+      try { await downloads.save({ filename, data: blob }); toast('ok', 'Report downloaded', filename); }
+      catch (e) { if (e && e.code !== 'declined') toast('warn', 'Download failed', (e && e.message) || 'Could not save the file.'); }
+    })();
+    return;
+  }
+  // Opened as a local file: plain browser download
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `B53_weekly_report_${isoDate(r.end)}.csv`;
+  a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-  toast('ok', 'Report downloaded', a.download);
+  toast('ok', 'Report downloaded', filename);
 }
 
 /* --- Demo panel status ------------------------------------------- */
