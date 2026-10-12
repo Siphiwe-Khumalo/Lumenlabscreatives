@@ -1,0 +1,22 @@
+{
+  "name": "lumen-outreach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Single-user personalised outreach sender using the Gmail API (gmail.send scope only).",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.10"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js",
+    "redirect-uri": "node --env-file-if-exists=.env scripts/print-redirect-uri.js",
+    "gen-secrets": "node scripts/gen-secrets.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "google-auth-library": "^10.1.0"
+  }
+}

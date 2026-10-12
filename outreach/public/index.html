@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen Outreach</title>
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="styles.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <h1>Lumen Outreach</h1>
+  <div class="topbar-right">
+    <span id="gmail-status" class="status-pill" data-state="unknown"><span class="dot"></span><span class="label">Checking Gmail…</span></span>
+    <button id="logout" class="link" hidden>Sign out</button>
+  </div>
+</header>
+
+<main>
+  <div id="flash" class="flash" role="status" hidden></div>
+
+  <!-- Login -->
+  <section id="login-view" class="card narrow" hidden>
+    <h2>Sign in</h2>
+    <p class="muted">Enter this app's access password (set in <code>APP_ACCESS_PASSWORD</code> on the server). This is <strong>not</strong> your Gmail password. Lumen Outreach never asks for it.</p>
+    <form id="login-form">
+      <label>Access password <input type="password" name="password" autocomplete="current-password" required></label>
+      <button type="submit" class="primary">Sign in</button>
+    </form>
+  </section>
+
+  <div id="app-view" hidden>
+    <!-- Gmail connection -->
+    <section class="card" id="connection-card">
+      <div class="card-head">
+        <h2>Gmail connection</h2>
+        <span id="quota" class="muted"></span>
+      </div>
+      <p id="connection-text" class="muted"></p>
+      <div class="actions">
+        <a id="connect-gmail" class="button primary" href="/auth/google/start">Connect Gmail</a>
+        <button id="verify-gmail" hidden>Check connection</button>
+        <button id="disconnect-gmail" class="danger" hidden>Disconnect</button>
+      </div>
+      <details class="setup">
+        <summary>Setup details</summary>
+        <p>Scope requested: <code id="scope"></code> (send only; this app cannot read your mail).</p>
+        <p>Authorised redirect URI for Google Cloud Console: <code id="redirect-uri"></code></p>
+      </details>
+    </section>
+
+    <!-- Composer -->
+    <section class="card">
+      <div class="card-head">
+        <h2>New batch</h2>
+        <span class="muted">Up to 5 recipients. Each one gets their own separate email.</span>
+      </div>
+      <p class="muted small">Placeholders: <code>{{name}}</code>, <code>{{firstName}}</code>, <code>{{email}}</code>. They are filled in per recipient before you confirm.</p>
+      <form id="compose-form" novalidate>
+        <div id="rows"></div>
+        <div class="actions">
+          <button type="button" id="add-row">Add recipient</button>
+          <button type="button" id="copy-first">Copy recipient 1's subject and body to all</button>
+          <span class="spacer"></span>
+          <button type="submit" class="primary">Review batch</button>
+        </div>
+        <ul id="compose-errors" class="errors" hidden></ul>
+      </form>
+    </section>
+
+    <!-- Batches -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Recent batches</h2>
+        <button id="refresh-batches" class="link">Refresh</button>
+      </div>
+      <p class="muted small">"Sent" means Gmail accepted the message. It does not prove the recipient received it.</p>
+      <div id="batches"></div>
+    </section>
+  </div>
+</main>
+
+<template id="row-template">
+  <fieldset class="row">
+    <legend>Recipient <span class="n"></span> <button type="button" class="link remove-row">Remove</button></legend>
+    <div class="grid">
+      <label>Name <input name="name" maxlength="120" autocomplete="off"></label>
+      <label>Email <input name="email" type="email" required autocomplete="off"></label>
+    </div>
+    <label>Subject <input name="subject" maxlength="250" required></label>
+    <label>Message <textarea name="body" rows="6" required></textarea></label>
+  </fieldset>
+</template>
+
+<dialog id="confirm-dialog">
+  <form method="dialog">
+    <h2>Confirm sending</h2>
+    <p>You are about to send <strong id="confirm-count"></strong> from your connected Gmail account. Each is sent individually; no recipient sees another.</p>
+    <ol id="confirm-list" class="confirm-list"></ol>
+    <label class="check"><input type="checkbox" id="confirm-check"> I have reviewed every message above and want to send them now.</label>
+    <div class="actions">
+      <button value="cancel" id="confirm-cancel">Back to editing</button>
+      <span class="spacer"></span>
+      <button value="send" id="confirm-send" class="primary" disabled>Send now</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>
