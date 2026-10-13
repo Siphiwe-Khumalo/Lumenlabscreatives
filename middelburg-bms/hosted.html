@@ -1,0 +1,33 @@
+<title>Middelburg Pharmaceutical Facility</title>
+<meta name="description" content="Facility environmental monitoring dashboard for the Middelburg Pharmaceutical Facility (Spartcon Technologies). Demonstration data only.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+<!-- Hosted build of index.html for claude.ai Artifacts (no print, no downloads, external map services blocked). -->
+<script>window.MBMS_HOSTED = true;</script>
+<script src="vendor/leaflet/leaflet.js" defer></script>
+<script src="vendor/chartjs/chart.umd.js" defer></script>
+<script type="module" src="js/main.js"></script>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Primary">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-text"><strong>Middelburg</strong><span>Pharmaceutical Facility</span></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot"><span>Spartcon Technologies</span><span class="muted">Facility Environmental Monitoring</span></div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="main-col">
+    <header class="topbar" id="topbar"></header>
+    <div id="mode-banner"></div>
+    <main id="main" class="content" tabindex="-1"></main>
+    <footer class="app-foot">
+      <span>Times shown in Africa/Johannesburg (SAST, UTC+02:00).</span>
+      <span>No regulatory compliance or endorsement is claimed by this interface.</span>
+    </footer>
+  </div>
+</div>
+<div id="drawer-root"></div>
+<div id="toast-root" aria-live="polite"></div>

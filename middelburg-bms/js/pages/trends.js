@@ -4,7 +4,7 @@ import { THRESHOLDS_LABEL } from '../config/thresholds.js';
 import { getThresholds } from '../config/settings-store.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, dateTime, day, time } from '../util/format.js';
-import { stateBox, toast, DEMO_TAG } from '../ui/components.js';
+import { stateBox, toast, openDrawer, DEMO_TAG } from '../ui/components.js';
 import { RANGES } from '../ui/charts.js';
 import { mountTrendCard } from '../ui/trend-card.js';
 import { getProvider, state as storeState } from '../data/store.js';
@@ -128,7 +128,9 @@ export default {
           lines.push([isoSast(ts), `"${s.label}"`, data.metric, v == null ? '' : v.toFixed(2), data.unit, v == null ? 'missing' : storeState.mode === 'demo' ? 'illustrative' : 'good'].join(','));
         }
       }
-      const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+      const csv = lines.join('\r\n') + '\r\n';
+      if (window.MBMS_HOSTED) { showCsv(csv); return; } // hosted frame blocks file downloads
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `middelburg-environment-${storeState.mode}-${ui.range}-${dateTime(Date.now()).slice(0, 10)}.csv`;
@@ -144,6 +146,21 @@ export default {
       root.querySelectorAll('[data-range]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
       load();
     });
+    // Hosted page: shows the CSV text to copy instead of downloading a file.
+    function showCsv(csv) {
+      const d = openDrawer({
+        title: 'CSV export',
+        subtitle: storeState.mode === 'demo' ? 'Demonstration data · copy and paste into a .csv file' : 'Copy and paste into a .csv file',
+        body: `<p class="small muted">File downloads are not available on this hosted page. Copy the text below and save it as a .csv file.</p>
+          <textarea class="input mono" id="csv-text" readonly style="min-height:50vh;white-space:pre">${esc(csv)}</textarea>`,
+        foot: '<div class="toolbar"><button class="btn primary" type="button" data-copy>Copy CSV</button></div>',
+      });
+      const ta = d.el.querySelector('#csv-text');
+      d.el.querySelector('[data-copy]').addEventListener('click', () => {
+        navigator.clipboard.writeText(csv).then(() => toast('CSV copied'), () => { ta.focus(); ta.select(); toast('Press Ctrl+C to copy the selected text'); });
+      });
+    }
+    if (window.MBMS_HOSTED) $('[data-print]').hidden = true; // printing is unavailable in the hosted frame
     $('[data-print]').addEventListener('click', () => { printHead(); window.print(); });
     $('[data-csv]').addEventListener('click', exportCsv);
 
