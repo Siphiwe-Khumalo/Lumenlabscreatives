@@ -12,11 +12,19 @@ and the Nominatim geocoder.
 
 ## Run
 
+No `npm install` is needed to run the app; the libraries are already in `vendor/`.
+
 ```bash
+git clone https://github.com/Siphiwe-Khumalo/Lumenlabscreatives.git
+cd Lumenlabscreatives
+git checkout claude/gifted-sagan-4ugtao
 cd middelburg-bms
-python3 -m http.server 8080      # or: npm start
+npm start                        # Node static server (any OS)
+# or: python -m http.server 8080   (Windows: py -m http.server 8080; macOS/Linux: python3 ...)
 # open http://localhost:8080/
 ```
+
+Opening `index.html` directly from disk (file://) will not work: ES modules need a server.
 
 To refresh the vendored libraries (only needed when you change versions):
 
