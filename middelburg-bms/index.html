@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Middelburg Pharmaceutical Facility — Environmental Monitoring</title>
+  <meta name="description" content="Facility environmental monitoring dashboard for the Middelburg Pharmaceutical Facility (Spartcon Technologies).">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/print.css" media="print">
+  <!-- Vendored libraries (npm run vendor). Exposes window.L and window.Chart. -->
+  <script src="vendor/leaflet/leaflet.js" defer></script>
+  <script src="vendor/chartjs/chart.umd.js" defer></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Primary">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-text">
+          <strong>Middelburg</strong>
+          <span>Pharmaceutical Facility</span>
+        </div>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-foot">
+        <span>Spartcon Technologies</span>
+        <span class="muted">Facility Environmental Monitoring</span>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+
+    <div class="main-col">
+      <header class="topbar" id="topbar"></header>
+      <div id="mode-banner"></div>
+      <main id="main" class="content" tabindex="-1"></main>
+      <footer class="app-foot">
+        <span>Times shown in Africa/Johannesburg (SAST, UTC+02:00).</span>
+        <span>No regulatory compliance or endorsement is claimed by this interface.</span>
+      </footer>
+    </div>
+  </div>
+  <div id="drawer-root"></div>
+  <div id="toast-root" aria-live="polite"></div>
+  <noscript><p style="padding:24px">This dashboard requires JavaScript.</p></noscript>
+</body>
+</html>

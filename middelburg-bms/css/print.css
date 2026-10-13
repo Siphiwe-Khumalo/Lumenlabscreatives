@@ -1,0 +1,18 @@
+/* Printable report layout (Trends & Reports → Print report). */
+@page { size: A4 portrait; margin: 14mm; }
+body { background: #fff; font-size: 11px; }
+.sidebar, .scrim, .topbar, .app-foot, .no-print, .toolbar, .btn, .seg, #drawer-root, #toast-root, .skip-link { display: none !important; }
+.app { display: block; }
+.content { padding: 0; max-width: none; gap: 10px; }
+.mode-banner { border: 1px solid #999 !important; background: #fff !important; color: #000 !important; padding: 6px 8px; margin-bottom: 8px; }
+.print-only { display: block !important; }
+.card { border: 1px solid #bbb; break-inside: avoid; page-break-inside: avoid; }
+.card-head { padding: 8px 10px; }
+.chart-box { height: auto !important; }
+.chart-box canvas { max-width: 100% !important; height: auto !important; }
+.grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.split { display: block; }
+.grid > * + * { margin-top: 10px; }
+table.data th, table.data td { padding: 4px 6px; }
+table.data thead th { position: static; }
+.tl-seg.unknown { background: #ccc !important; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
