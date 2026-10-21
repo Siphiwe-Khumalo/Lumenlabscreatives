@@ -24,6 +24,7 @@ export function ackChip(status) {
 
 /** Value + unit, or 'Unknown' with the quality reason. Never presents a non-good reading as a value. */
 export function readingHTML(r, { digits = 1, unit } = {}) {
+  if (r?.error === 'Role not mapped') return '<span class="muted" title="No point supplied for this reading yet">Not mapped</span>';
   if (!isGood(r)) {
     const q = r?.quality ? QUALITY_LABEL[r.quality] : 'Missing';
     return `<span class="v-unknown" title="${esc(r?.error || '')}">Unknown</span> <span class="q-flag">${esc(q)}</span>`;
@@ -136,3 +137,40 @@ export function toast(message, kind = '') {
 
 /** Banner text for demo-only items. */
 export const DEMO_TAG = '<span class="tag demo">Demonstration data</span>';
+
+/* ---- toggle switch --------------------------------------------------------- */
+/** On/off switch. When `disabled`, shows a lock and the reason (as visible text and tooltip). */
+export function toggleHTML({ id, on, disabled, reason, pending, label }) {
+  const state = on == null ? 'unknown' : on ? 'on' : 'off';
+  return `<div class="toggle-wrap">
+    <button type="button" class="toggle ${state}" role="switch" aria-checked="${on === true}" data-toggle="${esc(id)}"
+      ${disabled ? 'disabled' : ''} aria-label="${esc(label)}" title="${esc(disabled ? reason : label)}"><span class="knob"></span></button>
+    <span class="toggle-text">${pending ? '<span class="q-flag">Pending confirmation…</span>' : on == null ? 'Unknown' : on ? 'On' : 'Off'}${disabled ? ` ${icon('lock', 'lock-ico')}` : ''}</span>
+  </div>`;
+}
+
+/* ---- confirmation dialog ---------------------------------------------------- */
+/** In-page confirmation (browser confirm() is not used). Resolves { ok, note }. */
+export function confirmDialog({ title, message, confirmLabel = 'Confirm', danger = false, withNote = false }) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    root.className = 'modal-root';
+    root.innerHTML = `<div class="drawer-scrim" data-x></div>
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-msg">
+        <h2 id="modal-title">${esc(title)}</h2>
+        <p id="modal-msg">${esc(message)}</p>
+        ${withNote ? '<label class="field"><span>Reason (recorded in the Audit Trail)</span><textarea class="input" id="modal-note" maxlength="200"></textarea></label>' : ''}
+        <div class="toolbar" style="justify-content:flex-end">
+          <button class="btn" type="button" data-x>Cancel</button>
+          <button class="btn ${danger ? 'danger' : 'primary'}" type="button" data-ok>${esc(confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(root);
+    const done = (ok) => { const note = root.querySelector('#modal-note')?.value.trim() || ''; root.remove(); document.removeEventListener('keydown', onKey); resolve({ ok, note }); };
+    const onKey = (e) => { if (e.key === 'Escape') done(false); };
+    document.addEventListener('keydown', onKey);
+    root.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', () => done(false)));
+    root.querySelector('[data-ok]').addEventListener('click', () => done(true));
+    root.querySelector('[data-x].btn').focus();
+  });
+}

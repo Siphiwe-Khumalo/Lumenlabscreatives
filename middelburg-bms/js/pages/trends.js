@@ -1,5 +1,6 @@
 /* Trends & Reports — history charts, HVAC state history, summary, print, CSV. */
-import { SITE, ZONES, EQUIPMENT } from '../config/site.js';
+import { SITE, ZONES, EQUIPMENT, EQUIPMENT_TYPES } from '../config/site.js';
+import { meanKineticTemperature, excursions, formatDuration } from '../data/analytics.js';
 import { THRESHOLDS_LABEL } from '../config/thresholds.js';
 import { getThresholds } from '../config/settings-store.js';
 import { icon } from '../ui/icons.js';
@@ -38,6 +39,8 @@ export default {
       </section>
       <section class="card"><div class="card-head"><h2>Period summary</h2><span class="sub">Statistics over the selected range</span><span data-sum-tag></span></div><div data-summary></div>
         <div class="table-meta"><span>Limits: ${esc(THRESHOLDS_LABEL)}</span><span>Outside range = share of samples beyond the alert limits.</span></div></section>
+      <section class="card"><div class="card-head"><h2>Excursion report</h2><span class="sub">Periods outside the acceptable range (alert limits)</span><span data-exc-tag></span></div><div data-exc></div>
+        <div class="table-meta"><span>Calculated from the history shown above. Gaps in data end an excursion.</span><span>Times in SAST.</span></div></section>
       <section class="card"><div class="card-head"><h2>HVAC operating-state history</h2><span data-hvac-tag></span></div><div data-hvac></div></section>`;
 
     const $ = (s) => root.querySelector(s);
@@ -55,6 +58,7 @@ export default {
     }
 
     function summary(t, h) {
+      excursionReport(t, h);
       if (!t && !h) { $('[data-summary]').innerHTML = stateBox('empty', 'No history available', storeState.mode === 'demo' ? '' : 'Historian not configured.'); return; }
       const rows = [];
       for (const [data, metric, unit] of [[t, 'temperature', '°C'], [h, 'humidity', '%RH']]) {
@@ -66,11 +70,37 @@ export default {
           rows.push(`<tr><td>${esc(s.label)}</td><td>${metric === 'temperature' ? 'Temperature' : 'Humidity'}</td>
             <td class="num">${vals.length ? num(Math.min(...vals)) : '—'}</td><td class="num">${vals.length ? num(Math.max(...vals)) : '—'}</td>
             <td class="num">${vals.length ? num(vals.reduce((a, b) => a + b, 0) / vals.length) : '—'}</td><td>${unit}</td>
+            <td class="num">${metric === 'temperature' && vals.length > 1 ? num(meanKineticTemperature(vals), 2) + ' °C' : '—'}</td>
             <td class="num">${vals.length ? num((out / vals.length) * 100) + ' %' : '—'}</td>
             <td class="num">${vals.length} / ${s.points.length}</td></tr>`);
         }
       }
-      $('[data-summary]').innerHTML = `<div class="table-wrap"><table class="data"><thead><tr><th>Zone</th><th>Measure</th><th class="num">Min</th><th class="num">Max</th><th class="num">Mean</th><th>Unit</th><th class="num">Outside range</th><th class="num">Samples with data</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+      $('[data-summary]').innerHTML = `<div class="table-wrap"><table class="data"><thead><tr><th>Zone</th><th>Measure</th><th class="num">Min</th><th class="num">Max</th><th class="num">Mean</th><th>Unit</th><th class="num" title="Mean kinetic temperature, ΔH/R = 10 000 K">MKT</th><th class="num">Outside range</th><th class="num">Samples with data</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+    }
+
+    function excursionReport(t, h) {
+      const el = $('[data-exc]');
+      $('[data-exc-tag]').innerHTML = storeState.mode === 'demo' ? DEMO_TAG : '';
+      const rows = [];
+      for (const [data, metric, unit] of [[t, 'temperature', '°C'], [h, 'humidity', '%RH']]) {
+        if (!data) continue;
+        for (const s of data.series) {
+          const l = getThresholds(s.zoneId)[metric];
+          for (const x of excursions(s.points, l.alertLow, l.alertHigh, RANGES[ui.range].step)) rows.push({ ...x, zone: s.label, metric, unit, l });
+        }
+      }
+      if (!t && !h) { el.innerHTML = stateBox('empty', 'No history available'); return; }
+      if (!rows.length) { el.innerHTML = stateBox('empty', 'No excursions in this period', 'All recorded values stayed within the acceptable range.'); return; }
+      rows.sort((a, b) => b.from - a.from);
+      el.innerHTML = `<div class="table-wrap"><table class="data"><thead><tr><th>Zone</th><th>Measure</th><th>Start</th><th>End</th><th class="num">Duration</th><th>Direction</th><th class="num">Peak</th><th class="num">Limit</th><th>Severity</th></tr></thead><tbody>
+        ${rows.map((x) => {
+          const crit = x.side === 'high' ? x.l.actionHigh != null && x.peak > x.l.actionHigh : x.l.actionLow != null && x.peak < x.l.actionLow;
+          return `<tr><td>${esc(x.zone)}</td><td>${x.metric === 'temperature' ? 'Temperature' : 'Humidity'}</td>
+            <td class="nowrap">${esc(dateTime(x.from).slice(0, 16))}</td><td class="nowrap">${esc(dateTime(x.to).slice(0, 16))}</td>
+            <td class="num">${formatDuration(x.durationMs)}</td><td>${x.side === 'high' ? 'Above' : 'Below'}</td>
+            <td class="num">${num(x.peak)} ${x.unit}</td><td class="num">${x.limit} ${x.unit}</td>
+            <td><span class="status-chip st-${crit ? 'critical' : 'warning'}">${crit ? 'Beyond action limit' : 'Alert band'}</span></td></tr>`;
+        }).join('')}</tbody></table></div>`;
     }
 
     async function hvacHistory() {
@@ -83,11 +113,14 @@ export default {
       try {
         const data = await p.hvacHistory({ from, to: now });
         const span = now - from;
-        const eqs = ui.zone === 'all' ? EQUIPMENT : EQUIPMENT.filter((e) => e.zoneId === ui.zone);
+        const eqs = (ui.zone === 'all' ? EQUIPMENT : EQUIPMENT.filter((e) => e.zoneId === ui.zone)).slice().sort((a, b) => a.type.localeCompare(b.type) || a.id.localeCompare(b.id));
+        let lastType = null;
         const rows = eqs.map((eq) => {
+          const head = eq.type !== lastType ? `<div class="tl-group">${esc(EQUIPMENT_TYPES[eq.type].label)}</div>` : '';
+          lastType = eq.type;
           const d = data.find((x) => x.equipmentId === eq.id);
           const segs = (d?.segments || []).map((s) => `<div class="tl-seg ${s.state}" style="left:${((s.from - from) / span) * 100}%;width:${((s.to - s.from) / span) * 100}%" title="${s.state} · ${esc(dateTime(s.from))} – ${esc(dateTime(s.to))}"></div>`).join('');
-          return `<div class="tl-row"><span><strong class="mono">${esc(eq.id)}</strong> <span class="muted">${esc(ZONES.find((z) => z.id === eq.zoneId).name)}</span></span><div class="tl-bar" role="img" aria-label="Operating state history for ${esc(eq.id)}">${segs}</div></div>`;
+          return `${head}<div class="tl-row"><span><strong class="mono">${esc(eq.id)}</strong> <span class="muted">${esc(ZONES.find((z) => z.id === eq.zoneId).name)}</span></span><div class="tl-bar" role="img" aria-label="Operating state history for ${esc(eq.id)}">${segs}</div></div>`;
         }).join('');
         const long = span > 36 * 3600e3;
         const axis = [0, 0.25, 0.5, 0.75, 1].map((f) => `<span>${esc(long ? day(from + f * span) : time(from + f * span))}</span>`).join('');
@@ -166,7 +199,14 @@ export default {
 
     let lastMode = null;
     return {
-      update(s) { if (s.mode !== lastMode && s.mode !== 'starting' && !s.loading) { lastMode = s.mode; load(); } },
+      update(s) {
+        if (s.mode !== lastMode && s.mode !== 'starting' && !s.loading) { lastMode = s.mode; load(); return; }
+        if (ui.range === 'live' && !s.loading) {
+          tT.tick(); tH.tick();
+          lastLoad = { t: tT.data, h: tH.data };
+          summary(lastLoad.t, lastLoad.h);
+        }
+      },
       destroy() { tT.destroy(); tH.destroy(); },
     };
   },

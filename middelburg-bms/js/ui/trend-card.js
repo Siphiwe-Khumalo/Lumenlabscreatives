@@ -4,7 +4,8 @@ import { ZONES } from '../config/site.js';
 import { getThresholds } from '../config/settings-store.js';
 import { lineChart, RANGES, ZONE_COLORS, SINGLE_COLOR, legendHTML } from './charts.js';
 import { stateBox } from './components.js';
-import { getProvider, state } from '../data/store.js';
+import { getProvider, state, getLive, liveSince } from '../data/store.js';
+import { timeSec } from '../util/format.js';
 
 const META = {
   temperature: { unit: '°C', yTitle: 'Space temperature (°C)', digits: 1 },
@@ -26,13 +27,17 @@ export function mountTrendCard(el, metric) {
     if (html) box.insertAdjacentHTML('beforeend', html);
   }
 
-  async function load({ zoneId = 'all', range = '24h' }) {
+  let current = null;
+
+  async function load({ zoneId = 'all', range = '24h' }, { quiet = false } = {}) {
     const my = ++seq;
+    current = { zoneId, range };
     const r = RANGES[range];
     const now = Date.now();
     const zoneIds = zoneId === 'all' ? ZONES.map((z) => z.id) : [zoneId];
     const provider = getProvider();
-    overlay(stateBox('loading', 'Loading history…'));
+    if (!quiet) overlay(stateBox('loading', r.live ? 'Collecting live readings…' : 'Loading history…'));
+    if (r.live) return renderLive(zoneIds, zoneId, r, now);
     if (!provider || !provider.capabilities.history) {
       chart?.destroy(); chart = null; lastData = null;
       legendEl.innerHTML = '';
@@ -81,8 +86,44 @@ export function mountTrendCard(el, metric) {
     }
   }
 
+  function renderLive(zoneIds, zoneId, r, now) {
+    const from = now - r.ms;
+    const series = zoneIds.map((id) => ({
+      zoneId: id,
+      label: ZONES.find((z) => z.id === id)?.name || id,
+      color: zoneId === 'all' ? ZONE_COLORS[id] : SINGLE_COLOR,
+      points: getLive('zone', id, metric, from),
+    }));
+    const count = series.reduce((n, s) => n + s.points.length, 0);
+    if (count < 2) {
+      chart?.destroy(); chart = null; lastData = null;
+      legendEl.innerHTML = '';
+      noteEl.textContent = '';
+      overlay(stateBox('empty', state.mode === 'offline' ? 'No live readings' : 'Collecting live readings…',
+        state.mode === 'offline' ? 'The gateway is not connected, so no readings are arriving.' : 'Points are added on every poll; the graph appears after the second reading.'));
+      return null;
+    }
+    const limits = zoneId === 'all' ? null : getThresholds(zoneId)?.[metric];
+    const band = limits && (limits.alertLow != null || limits.alertHigh != null) ? { low: limits.alertLow, high: limits.alertHigh } : null;
+    const action = limits ? [limits.actionLow, limits.actionHigh].filter((v) => v != null) : [];
+    const m = META[metric];
+    chart?.destroy();
+    chart = lineChart(canvas, series, { ...m, rangeMs: r.ms, from, to: now, band, action });
+    canvas.setAttribute('aria-label', `${m.yTitle}, live readings over the last hour`);
+    overlay('');
+    legendEl.innerHTML = legendHTML(zoneId === 'all' ? series : [], band);
+    const since = liveSince();
+    noteEl.innerHTML = state.mode === 'demo'
+      ? '<span class="tag demo">Illustrative — demo readings, updates every poll</span>'
+      : `<span class="tag live">Live</span> Readings collected in this browser${since ? ` since ${timeSec(since)}` : ''}; updates on every poll.`;
+    lastData = { series, metric, unit: m.unit, range: 'live', zoneId };
+    return lastData;
+  }
+
   return {
     load,
+    /** Re-draw if the live range is showing (call on every store update). */
+    tick() { if (current && RANGES[current.range].live) load(current, { quiet: true }); },
     get data() { return lastData; },
     destroy() { seq++; chart?.destroy(); },
   };

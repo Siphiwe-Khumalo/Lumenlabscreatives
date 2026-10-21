@@ -5,7 +5,10 @@
  * Gateway contract — PROPOSED, NOT IMPLEMENTED (see README):
  *   GET  {gateway}/health                         -> 200 { "status": "ok", ... }
  *   GET  {gateway}/query/readPoint/<slot path>    -> 200 { "value": <number|bool|string>, "timestamp"?: <ISO|ms>, "status"?: "ok"|"fault"|"stale"|"down" }
- *   PUT  {gateway}/query/writePoint/<slot path>?value=&priority=   (NOT used — writes disabled)
+ *   PUT  {gateway}/query/writePoint/<slot path>?value=&priority=   (unit enable only, and only when
+ *                                                                   APP_CONFIG.controls.enabled is true)
+ *   GET  {gateway}/query/history/<slot path>?from=&to=             -> 200 { "points": [[ts, value], ...] }
+ *                                                                   (only when APP_CONFIG.services.history is true)
  *
  * Rules carried over from ARC:
  *   - one FIFO queue, one request in flight, per-request timeout
@@ -44,6 +47,7 @@ function coerce(role, raw) {
     if (['false', 'off', 'inactive', '0', 'stopped', 'disabled', 'unoccupied'].includes(s)) return false;
     return null;
   }
+  if (def.kind === 'text') return String(raw);
   if (def.kind === 'enum') {
     if (def.enumMap && raw in def.enumMap) return def.enumMap[raw];
     const s = String(raw).toLowerCase();
@@ -81,9 +85,23 @@ export function createConnectedProvider(gatewayUrl) {
     return { value, unit: ROLE_POINTS[role].unit, ts, quality, error: quality === 'good' ? undefined : `Point status: ${status}` };
   }
 
+  const unitPath = (unitId, role) => slotPath(EQUIPMENT_UNITS[unitId], role);
+
+  async function readHistory(path, from, to) {
+    if (!APP_CONFIG.services.history) throw new NotConfiguredError('Historian');
+    if (!path) return [];
+    const res = await queue.fetch(`${base}${paths.history}${encodePath(path)}?from=${from}&to=${to}`, { method: 'GET', headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`History request returned HTTP ${res.status}`);
+    const body = await res.json();
+    return (body.points || []).map(([t, v]) => [parseTimestamp(t), typeof v === 'number' ? v : parseFloat(v)]).filter(([t]) => t != null);
+  }
+
   return {
     id: 'connected',
-    capabilities: { acknowledge: false, history: false, hvacHistory: false, audit: false, notifications: false },
+    capabilities: {
+      acknowledge: false, history: !!APP_CONFIG.services.history, hvacHistory: false, unitHistory: !!APP_CONFIG.services.history,
+      audit: false, notifications: false, control: true,
+    },
 
     async health() {
       const checkedAt = Date.now();
@@ -113,14 +131,33 @@ export function createConnectedProvider(gatewayUrl) {
       }
       for (const e of EQUIPMENT) {
         equipment[e.id] = {};
-        for (const role of rolesFor('equipment')) equipment[e.id][role] = await read(role, slotPath(EQUIPMENT_UNITS[e.id], role));
+        for (const role of rolesFor('equipment', e.type)) equipment[e.id][role] = await read(role, slotPath(EQUIPMENT_UNITS[e.id], role));
       }
       return { ts: Date.now(), zones, equipment, alarms: [], audit: [] };
     },
 
-    async history() { throw new NotConfiguredError('Historian'); },
+    async history({ metric, zoneIds, from, to }) {
+      const out = [];
+      for (const zoneId of zoneIds) out.push({ zoneId, points: await readHistory(slotPath(ZONE_UNITS[zoneId], metric), from, to) });
+      return out;
+    },
+    async unitHistory({ unitId, role, from, to }) { return readHistory(unitPath(unitId, role), from, to); },
     async hvacHistory() { throw new NotConfiguredError('Historian'); },
     async acknowledge() { throw new NotConfiguredError('Acknowledgement service'); },
+
+    /** Unit command (enable on/off). Refused unless controls are enabled AND the role is marked writable. */
+    async command(unitId, role, value) {
+      const c = APP_CONFIG.controls;
+      if (!c.enabled || !ROLE_POINTS[role]?.writable) throw new NotConfiguredError('Unit control');
+      const path = unitPath(unitId, role);
+      if (!path) throw new Error('Control point not mapped');
+      const priority = ROLE_POINTS[role].writePriority ?? c.writePriority;
+      if (priority == null) throw new Error('Write priority not configured');
+      const res = await queue.fetch(`${base}${paths.writePoint}${encodePath(path)}?value=${encodeURIComponent(value)}&priority=${priority}`, { method: 'PUT' });
+      if (!res.ok) throw new Error(`Gateway refused the command (HTTP ${res.status})`);
+      return { accepted: true };
+    },
+    async release() { throw new NotConfiguredError('Return to auto'); },
     dispose() { queue.clear('Provider disposed'); },
   };
 }

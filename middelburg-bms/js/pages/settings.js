@@ -1,6 +1,7 @@
 /* Settings — data source, point mapping (placeholder), thresholds (browser
  * override), monitoring parameters, services and the proposed gateway contract. */
-import { ZONES } from '../config/site.js';
+import { ZONES, EQUIPMENT } from '../config/site.js';
+import { CHANNELS, ESCALATION, NOTIFICATIONS_LABEL } from '../config/notifications.js';
 import { APP_CONFIG } from '../config/app-config.js';
 import { THRESHOLDS_LABEL, DEFAULT_THRESHOLDS } from '../config/thresholds.js';
 import { POINT_MAP_STATUS, mappingRows, ARC_SLOT_PATHS_REFERENCE, BASE_PATH } from '../config/points.js';
@@ -76,6 +77,27 @@ export default {
         <div data-map-table style="margin-top:12px"></div>
       </section>
 
+      <section class="grid cols-2">
+        <section class="card" aria-labelledby="ctl-h">
+          <div class="card-head"><h2 id="ctl-h">Unit controls</h2><span class="status-chip ${APP_CONFIG.controls.enabled ? 'st-warning' : 'st-neutral'}">${icon('lock')}${APP_CONFIG.controls.enabled ? 'Enabled' : 'Locked'}</span></div>
+          <div class="card-body"><dl class="kv">
+            <dt>On/off toggles</dt><dd>${APP_CONFIG.controls.enabled ? 'Enabled' : esc(APP_CONFIG.controls.lockedReason)}</dd>
+            <dt>Write priority</dt><dd>${APP_CONFIG.controls.writePriority ?? 'Not set — to be confirmed'}</dd>
+            <dt>Return to auto</dt><dd>${APP_CONFIG.controls.releaseSupported ? 'Supported' : 'Not configured'}</dd>
+            <dt>Confirmation</dt><dd>Read-back within ${APP_CONFIG.controls.confirmTimeoutMs / 1000} s, otherwise reported as not confirmed</dd>
+            <dt>Who may operate</dt><dd>To be agreed — no user logins exist yet</dd>
+          </dl>
+          <p class="small muted" style="margin-top:10px">Enabled in js/config/app-config.js (controls.enabled) once the points, priority and approval are confirmed. Every switch asks for confirmation and is recorded in the Audit Trail.</p></div>
+        </section>
+        <section class="card" aria-labelledby="nt-h">
+          <div class="card-head"><h2 id="nt-h">WhatsApp and email alerts</h2><span class="tag demo">${esc(NOTIFICATIONS_LABEL)}</span></div>
+          <div class="card-body flush"><div class="table-wrap"><table class="data"><thead><tr><th>Level</th><th>When</th><th>Severity</th><th>Recipient</th><th>Channels</th></tr></thead><tbody>
+            ${ESCALATION.map((e) => `<tr><td>${e.level}</td><td>${e.afterMin ? `If unacknowledged after ${e.afterMin} min` : 'Immediately'}</td><td>${e.severities.map((x) => x[0].toUpperCase() + x.slice(1)).join(', ')}</td><td>${esc(e.recipient)}</td><td>${e.channels.map((c) => CHANNELS.find((x) => x.id === c).label).join(', ')}</td></tr>`).join('')}
+          </tbody></table></div></div>
+          <div class="table-meta"><span>Delivery: ${CHANNELS.map((c) => `${c.label} ${c.configured ? 'configured' : 'not configured'}`).join(' · ')}. Needs a backend notification service; no messages are sent from this dashboard.</span></div>
+        </section>
+      </section>
+
       <section class="card" aria-labelledby="th-h">
         <div class="card-head"><h2 id="th-h">Zone thresholds</h2><span class="tag demo">${esc(THRESHOLDS_LABEL)}</span><span class="tag">Overrides: this browser only</span></div>
         <div class="card-body flush"><div class="table-wrap"><table class="data thr-table"><thead><tr><th>Zone</th>${FIELDS.map(([, , l]) => `<th>${l}</th>`).join('')}<th>Source</th><th></th></tr></thead><tbody data-thr></tbody></table></div></div>
@@ -125,13 +147,13 @@ export default {
         { key: 'id', label: 'Zone / equipment', render: (r) => esc(ZONES.find((z) => z.id === r.id)?.name || r.id) },
         { key: 'role', label: 'Role', render: (r) => `<span class="mono">${esc(r.role)}</span><span class="sub">${esc(r.label)}</span>` },
         { key: 'unit', label: 'Unit' },
-        { key: 'path', label: 'Slot path', render: (r) => `<span class="mono">${esc(r.path)}</span>` },
+        { key: 'path', label: 'Slot path', sort: (r) => r.path || '~', render: (r) => (r.path ? `<span class="mono">${esc(r.path)}</span>` : '<span class="muted">—</span>') },
         { key: 'writable', label: 'Access', sort: (r) => (r.writable ? 1 : 0), render: (r) => (r.writable ? 'Read/write' : 'Read only') },
-        { key: 'status', label: 'Status', sortable: false, render: () => `<span class="tag placeholder">${esc(POINT_MAP_STATUS.label)}</span>` },
+        { key: 'status', label: 'Status', sort: (r) => (r.mapped ? 0 : 1), render: (r) => `<span class="tag placeholder">${esc(r.mapped ? POINT_MAP_STATUS.label : POINT_MAP_STATUS.unmappedLabel)}</span>` },
       ],
     });
     $('[data-map-table]').appendChild(mapTable.el);
-    mapTable.setRows(mappingRows());
+    mapTable.setRows(mappingRows(EQUIPMENT));
 
     function renderThresholds() {
       $('[data-thr]').innerHTML = ZONES.map((z) => {

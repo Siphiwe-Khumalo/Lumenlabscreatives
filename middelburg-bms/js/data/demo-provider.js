@@ -3,7 +3,7 @@
  * browser. Nothing here is site telemetry.
  *
  * Signals are a deterministic function of time, so current values, 1-hour
- * deltas, history and alarm records stay consistent with each other. */
+ * deltas, history, live graphs and alarm records stay consistent. */
 import { ZONES, EQUIPMENT, zoneById, equipmentById } from '../config/site.js';
 import { getThresholds } from '../config/settings-store.js';
 import { APP_CONFIG } from '../config/app-config.js';
@@ -27,9 +27,20 @@ const EVENTS = [
   { zone: 'receiving',  metric: 'temperature', at: T0 - 9 * DAY,  width: 60 * MIN, amp: -9.2 },
 ];
 
-// Receiving / HVAC-04 stop reporting 47 minutes before load (communication interruption).
+// The Receiving reference sensor and HYB-04 (same controller) stop reporting 47 minutes before load.
 const COMMS_LOST_AT = T0 - 47 * MIN;
-const COMMS_LOST_UNITS = new Set(['receiving', 'HVAC-04']);
+const COMMS_LOST = new Set(['receiving', 'HYB-04']);
+const RTU03_STOP = [T0 - 3 * DAY - 5 * HOUR, T0 - 3 * DAY - 3 * HOUR];
+
+// Per-unit illustrative characteristics.
+const UNIT = {
+  'HYB-01': { flow: 4200, hours: 18240, duty: 0.92 }, 'HYB-02': { flow: 3800, hours: 17110, duty: 0.95 },
+  'HYB-03': { flow: 2600, hours: 9620,  duty: 0.45 }, 'HYB-04': { flow: 3100, hours: 16380, duty: 0.9 },
+  'HYB-05': { flow: 4100, hours: 18900, duty: 0.94 }, 'HYB-06': { flow: 2500, hours: 8110,  duty: 0.4 },
+  'RTU-01': { flow: 6200, hours: 21450, duty: 0.97 }, 'RTU-02': { flow: 6100, hours: 22980, duty: 0.97 },
+  'RTU-03': { flow: 5400, hours: 14020, duty: 0.85 }, 'RTU-04': { flow: 5200, hours: 15560, duty: 0.88 },
+  'RTU-05': { flow: 4800, hours: 7240,  duty: 0.5 },
+};
 
 function hash(a, b) {
   let h = 2166136261 ^ a;
@@ -43,15 +54,14 @@ function noise(seed, t) {
   const s = f * f * (3 - 2 * f);
   return (hash(seed, i) * (1 - s) + hash(seed, i + 1) * s) * 2 - 1;
 }
-function seedOf(zoneId, metric) {
+function seedOf(id, metric) {
   let h = 7;
-  for (const c of zoneId + metric) h = Math.imul(h ^ c.charCodeAt(0), 31);
+  for (const c of id + metric) h = Math.imul(h ^ c.charCodeAt(0), 31);
   return h >>> 0;
 }
 
 function signal(zoneId, metric, t) {
-  const p = PROFILE[zoneId][metric];
-  const [base, amp, phase] = p;
+  const [base, amp, phase] = PROFILE[zoneId][metric];
   const hourOfDay = ((t / HOUR) + 2) % 24; // SAST
   const diurnal = Math.sin(((hourOfDay - 9) / 24) * 2 * Math.PI + phase);
   const sign = metric === 'humidity' ? -1 : 1; // RH falls as temperature rises
@@ -71,33 +81,40 @@ function signal(zoneId, metric, t) {
 }
 
 const round = (v, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
-
-function lastSample(unitKey, now) {
-  // Values update every 30 s; after comms loss the last sample freezes.
-  const lost = COMMS_LOST_UNITS.has(unitKey) && now > COMMS_LOST_AT;
-  return lost ? COMMS_LOST_AT : Math.floor(now / 30e3) * 30e3;
-}
-
+const lastSample = (key, now) => (COMMS_LOST.has(key) && now > COMMS_LOST_AT ? COMMS_LOST_AT : Math.floor(now / 30e3) * 30e3);
 const good = (value, unit, ts) => ({ value, unit, ts, quality: 'good' });
 
+/* ---- equipment model ------------------------------------------------------ */
+const overrides = new Map(); // unitId -> enable value written in demo (only when controls are enabled)
+
 function equipmentState(eq, t) {
-  const hourOfDay = ((t / HOUR) + 2) % 24;
-  if (eq.id === 'HVAC-03') {
-    // Duty cycles in storage zone B: runs ~40 min of each 2 h, plus office hours.
-    const cyc = ((t / MIN) % 120);
-    const running = (hourOfDay >= 7 && hourOfDay < 9) || cyc < 40;
-    return running ? 'running' : 'standby';
+  if (overrides.has(eq.id) && t >= overrides.get(eq.id).at) return overrides.get(eq.id).value ? 'running' : 'standby';
+  if (eq.id === 'HYB-04' && t > COMMS_LOST_AT) return 'unknown';
+  if (eq.id === 'RTU-03' && t > RTU03_STOP[0] && t < RTU03_STOP[1]) return 'stopped';
+  const duty = UNIT[eq.id].duty;
+  if (duty < 0.9) {
+    // Duty-cycled units: on for `duty` share of each 2-hour block, offset per unit.
+    const off = (seedOf(eq.id, 'cyc') % 120);
+    const cyc = ((t / MIN) + off) % 120;
+    return cyc < duty * 120 ? 'running' : 'standby';
   }
-  if (eq.id === 'HVAC-02' && t > T0 - 3 * DAY - 5 * HOUR && t < T0 - 3 * DAY - 3 * HOUR) return 'stopped';
-  if (eq.id === 'HVAC-04' && t > COMMS_LOST_AT) return 'unknown';
   return 'running';
 }
 
 function modeFor(eq, zoneTemp) {
-  if (eq.id === 'HVAC-03') return 'standby';
   const sp = PROFILE[eq.zoneId].setpoint;
-  if (zoneTemp < sp - 1.5) return 'heating';
-  return 'cooling';
+  return zoneTemp < sp - 1.5 ? 'heating' : 'cooling';
+}
+
+function unitSignal(eq, role, t) {
+  const zt = signal(eq.zoneId, 'temperature', t);
+  const state = equipmentState(eq, t);
+  const on = state === 'running';
+  const mode = modeFor(eq, zt);
+  const n = noise(seedOf(eq.id, role), t);
+  if (role === 'supplyAirTemp') return on ? (mode === 'cooling' ? 13.5 + (zt - 20) * 0.4 + n * 0.4 : 32 + n * 0.6) : zt - 0.4 + n * 0.2;
+  if (role === 'returnAirTemp') return zt + 0.7 + n * 0.25;
+  return null;
 }
 
 /* ---- alarm / audit scenario ----------------------------------------------- */
@@ -105,13 +122,22 @@ const demoNotice = (channel, recipient, status, at) => ({ channel, recipient, st
 
 function buildAlarms() {
   const z = (id) => ({ type: 'zone', id, name: zoneById(id).name });
-  const e = (id) => ({ type: 'equipment', id, name: equipmentById(id).name });
-  const dispatchCross = (() => { // first time dispatch humidity crosses its alert limit
+  const e = (id) => ({ type: 'equipment', id, name: `${id} · ${equipmentById(id).name}` });
+  const dispatchCross = (() => {
     const lim = getThresholds('dispatch').humidity.alertHigh;
     for (let t = T0 - 3 * HOUR; t <= T0; t += MIN) if (signal('dispatch', 'humidity', t) > lim) return t;
     return T0 - HOUR;
   })();
   const list = [
+    {
+      id: 'DEMO-1049', severity: 'warning', status: 'active', category: 'equipment',
+      source: e('RTU-02'), zoneId: 'main-store', role: 'filterAlarm',
+      description: 'Filter alarm — filter requires replacement',
+      raisedAt: T0 - 5 * HOUR - 12 * MIN, valueAtRaise: { value: 'Alarm', unit: null },
+      threshold: { label: 'Expected', text: 'No filter alarm' },
+      details: 'The filter alarm on RTU-02 is active. Schedule a filter change.',
+      notifications: [demoNotice('Email', 'Maintenance (demo contact)', 'Sent', T0 - 5 * HOUR - 11 * MIN)],
+    },
     {
       id: 'DEMO-1048', severity: 'warning', status: 'active', category: 'threshold',
       source: z('dispatch'), zoneId: 'dispatch', role: 'humidity',
@@ -123,12 +149,12 @@ function buildAlarms() {
     },
     {
       id: 'DEMO-1047', severity: 'warning', status: 'acknowledged', category: 'communication',
-      source: e('HVAC-04'), zoneId: 'receiving', role: null,
-      description: 'Communication interruption — no updates from Receiving controller',
+      source: e('HYB-04'), zoneId: 'receiving', role: null,
+      description: 'Communication interruption — no updates from HYB-04 / Receiving sensor',
       raisedAt: COMMS_LOST_AT + 10 * MIN, valueAtRaise: null,
       threshold: { label: 'Stale after', text: `${APP_CONFIG.staleAfterMs / MIN} min without update` },
       ackAt: COMMS_LOST_AT + 18 * MIN, ackBy: 'Demo Operator', ackNote: 'Technician informed (demonstration record).',
-      details: 'Readings for the Receiving zone and HVAC-04 have not updated. Values are shown as Unknown until communication is restored.',
+      details: 'Readings for the Receiving zone sensor and HYB-04 have not updated. Values are shown as Unknown until communication is restored.',
       notifications: [demoNotice('WhatsApp', 'Duty technician (demo contact)', 'Delivered', COMMS_LOST_AT + 11 * MIN)],
     },
     {
@@ -137,19 +163,19 @@ function buildAlarms() {
       description: 'Space temperature above alert limit',
       raisedAt: T0 - 41 * HOUR - 25 * MIN, clearedAt: T0 - 40 * HOUR - 20 * MIN, valueAtRaise: { value: 25.2, unit: '°C' },
       threshold: { label: 'Alert high', key: 'alertHigh', role: 'temperature' },
-      ackAt: T0 - 41 * HOUR - 12 * MIN, ackBy: 'Demo Operator', ackNote: 'Loading-door left open during delivery (demonstration record).',
+      ackAt: T0 - 41 * HOUR - 12 * MIN, ackBy: 'Demo Operator', ackNote: 'Loading door left open during delivery (demonstration record).',
       details: 'Short temperature excursion during a delivery. Returned within range without intervention.',
       notifications: [demoNotice('WhatsApp', 'Facility supervisor (demo contact)', 'Delivered', T0 - 41 * HOUR - 24 * MIN), demoNotice('Email', 'Site operations (demo contact)', 'Failed — mailbox unavailable', T0 - 41 * HOUR - 24 * MIN)],
     },
     {
       id: 'DEMO-1036', severity: 'critical', status: 'cleared', category: 'equipment',
-      source: e('HVAC-02'), zoneId: 'dispatch', role: 'runStatus',
+      source: e('RTU-03'), zoneId: 'dispatch', role: 'runStatus',
       description: 'Unit not running while enabled and scheduled',
-      raisedAt: T0 - 3 * DAY - 5 * HOUR + 2 * MIN, clearedAt: T0 - 3 * DAY - 3 * HOUR, valueAtRaise: { value: 'Stopped', unit: null },
+      raisedAt: RTU03_STOP[0] + 2 * MIN, clearedAt: RTU03_STOP[1], valueAtRaise: { value: 'Stopped', unit: null },
       threshold: { label: 'Expected', text: 'Running when enabled and scheduled' },
-      ackAt: T0 - 3 * DAY - 4 * HOUR - 40 * MIN, ackBy: 'Demo Operator', ackNote: 'Reset by technician on site (demonstration record).',
-      details: 'HVAC-02 stopped for approximately two hours.',
-      notifications: [demoNotice('WhatsApp', 'Duty technician (demo contact)', 'Delivered', T0 - 3 * DAY - 5 * HOUR + 3 * MIN)],
+      ackAt: RTU03_STOP[0] + 22 * MIN, ackBy: 'Demo Operator', ackNote: 'Reset by technician on site (demonstration record).',
+      details: 'RTU-03 stopped for approximately two hours.',
+      notifications: [demoNotice('WhatsApp', 'Duty technician (demo contact)', 'Delivered', RTU03_STOP[0] + 3 * MIN), demoNotice('WhatsApp', 'Site manager (demo contact) — escalation level 3', 'Delivered', RTU03_STOP[0] + 32 * MIN)],
     },
     {
       id: 'DEMO-1029', severity: 'critical', status: 'cleared', category: 'threshold',
@@ -209,6 +235,7 @@ function buildAudit(alarms) {
   push(T0 - 14 * DAY - 1 * HOUR - 30 * MIN, 'service', 'Monitoring service', 'System', 'Monitoring service restarted after network interruption');
   push(T0 - 6 * DAY - 2 * HOUR, 'configuration', 'Thresholds · Storage Zone B', 'Demo Engineer', 'Humidity alert limit reviewed — unchanged (60 %RH)');
   push(T0 - 12 * DAY, 'configuration', 'Notification recipients', 'Demo Engineer', 'Duty technician added to WhatsApp escalation list');
+  push(T0 - 18 * DAY, 'maintenance', 'RTU-01 · Rooftop unit 1', 'Demo Technician', 'Filters replaced; run hours 21 210 h');
   push(T0 - 20 * DAY, 'service', 'Monitoring service', 'System', 'Monitoring service started');
   push(T0 - 27 * DAY, 'configuration', 'Zones', 'Demo Engineer', 'Zone names imported from placeholder list');
   return out;
@@ -229,24 +256,36 @@ export function createDemoProvider() {
   }
 
   function equipmentReadings(eq, now) {
-    const ts = lastSample(eq.id === 'HVAC-04' ? 'HVAC-04' : eq.id, now);
+    const ts = lastSample(eq.id, now);
     const state = equipmentState(eq, ts);
+    const running = state === 'running';
+    const enabled = overrides.has(eq.id) ? overrides.get(eq.id).value : true;
     const temp = round(signal(eq.zoneId, 'temperature', ts));
-    const running = state === 'running' || (eq.id === 'HVAC-04' && state === 'unknown');
-    const baseFlow = { 'HVAC-01': 4200, 'HVAC-02': 3800, 'HVAC-03': 2600, 'HVAC-04': 3100 }[eq.id];
-    return {
+    const u = UNIT[eq.id];
+    const hours = u.hours + Math.floor(((ts - (T0 - 30 * DAY)) / HOUR) * u.duty);
+    const r = {
       runStatus: good(running, null, ts),
       operatingMode: good(running ? modeFor(eq, temp) : 'standby', null, ts),
-      enable: good(true, null, ts),
-      airflow: good(running ? Math.round(baseFlow + noise(seedOf(eq.id, 'af'), ts) * 120) : 0, 'm³/h', ts),
-      fanSchedule: good(eq.id === 'HVAC-03' ? running : true, null, ts),
+      enable: good(enabled, null, ts),
+      airflow: good(running ? Math.round(u.flow + noise(seedOf(eq.id, 'af'), ts) * 120) : 0, 'm³/h', ts),
+      fanSchedule: good(enabled && (u.duty >= 0.9 || running), null, ts),
       temperature: good(temp, '°C', ts),
+      temperatureSetpoint: good(PROFILE[eq.zoneId].setpoint, '°C', ts),
+      supplyAirTemp: good(round(unitSignal(eq, 'supplyAirTemp', ts)), '°C', ts),
+      returnAirTemp: good(round(unitSignal(eq, 'returnAirTemp', ts)), '°C', ts),
+      fanStatus: good(running, null, ts),
+      compressorStage: good(running ? (temp > PROFILE[eq.zoneId].setpoint + 1 ? 2 : 1) : 0, null, ts),
+      filterAlarm: good(eq.id === 'RTU-02', null, ts),
+      runHours: good(hours, 'h', ts),
+      faultCode: good(eq.id === 'RTU-02' ? 'F12 — filter differential pressure' : 'None', null, ts),
     };
+    if (eq.type === 'hybrid') r.hybridStage = good(running ? (temp > PROFILE[eq.zoneId].setpoint + 1.2 ? 'Mechanical cooling (DX)' : 'Evaporative') : 'Off', null, ts);
+    return r;
   }
 
   return {
     id: 'demo',
-    capabilities: { acknowledge: true, history: true, hvacHistory: true, audit: true, notifications: true },
+    capabilities: { acknowledge: true, history: true, hvacHistory: true, unitHistory: true, audit: true, notifications: true, control: true },
 
     async health() { return { ok: true, message: 'Demonstration data generated in this browser', checkedAt: Date.now() }; },
 
@@ -260,16 +299,28 @@ export function createDemoProvider() {
 
     /** Returns [{ zoneId, points: [[ts, value|null], ...] }] */
     async history({ metric, zoneIds, from, to, stepMs }) {
-      await new Promise((r) => setTimeout(r, 250)); // simulate latency so loading states are visible
+      await new Promise((r) => setTimeout(r, 200)); // simulate latency so loading states are visible
       const now = Date.now();
       return zoneIds.map((zoneId) => {
         const points = [];
         for (let t = Math.ceil(from / stepMs) * stepMs; t <= Math.min(to, now); t += stepMs) {
-          const lost = COMMS_LOST_UNITS.has(zoneId) && t > COMMS_LOST_AT;
+          const lost = COMMS_LOST.has(zoneId) && t > COMMS_LOST_AT;
           points.push([t, lost ? null : round(signal(zoneId, metric, t), 2)]);
         }
         return { zoneId, points };
       });
+    },
+
+    /** Unit-level numeric history (supply / return air). */
+    async unitHistory({ unitId, role, from, to, stepMs }) {
+      const eq = equipmentById(unitId);
+      const now = Date.now();
+      const points = [];
+      for (let t = Math.ceil(from / stepMs) * stepMs; t <= Math.min(to, now); t += stepMs) {
+        const lost = COMMS_LOST.has(unitId) && t > COMMS_LOST_AT;
+        points.push([t, lost ? null : round(unitSignal(eq, role, t), 2)]);
+      }
+      return points;
     },
 
     /** Returns [{ equipmentId, segments: [{ from, to, state }] }] */
@@ -298,5 +349,13 @@ export function createDemoProvider() {
       audit.push({ id: `DA-${audit.length + 1}`, ts: a.ackAt, type: 'acknowledgement', source: `${a.id} · ${a.source.name}`, actor, description: `Alarm acknowledged (demo mode): ${a.description}${note ? '. Note: ' + note : ''}`, demo: true });
       return { ...a };
     },
+
+    /** Demo command: only reachable when APP_CONFIG.controls.enabled is true. Takes effect after a short delay. */
+    async command(unitId, role, value) {
+      if (role !== 'enable') throw new Error('Only unit enable is supported');
+      overrides.set(unitId, { value, at: Date.now() + 4000 });
+      return { accepted: true };
+    },
+    async release(unitId) { overrides.delete(unitId); return { accepted: true }; },
   };
 }

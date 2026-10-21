@@ -5,9 +5,24 @@ import { icon } from '../ui/icons.js';
 import { esc, dateTime, dayStart, ago } from '../util/format.js';
 import { severityChip, ackChip, readingHTML, createTable, openDrawer, closeDrawer, toast, DEMO_TAG } from '../ui/components.js';
 import { acknowledge } from '../data/store.js';
+import { ESCALATION, NOTIFICATIONS_LABEL } from '../config/notifications.js';
 
 const CATEGORY = { threshold: 'Threshold', equipment: 'Equipment', communication: 'Communication' };
 const SEV_RANK = { critical: 3, warning: 2, info: 1 };
+
+/** Escalation steps that apply to this alarm under the (illustrative) policy. */
+function escalationHTML(a) {
+  if (a.status === 'cleared' || a.derived) return '';
+  const steps = ESCALATION.filter((l) => l.severities.includes(a.severity));
+  if (!steps.length) return '';
+  const stopAt = a.ackAt || Infinity;
+  return `<div><h3>Escalation policy</h3><p class="small muted" style="margin:4px 0 6px">${esc(NOTIFICATIONS_LABEL)}. Delivery service not configured.</p>
+    <ul class="esc-list">${steps.map((l) => {
+      const at = a.raisedAt + l.afterMin * 60000;
+      const st = at <= Math.min(Date.now(), stopAt) ? 'Due (reached)' : at > stopAt ? 'Not needed — acknowledged' : `At ${dateTime(at).slice(11, 16)}`;
+      return `<li><b>Level ${l.level}</b> · ${esc(l.recipient)} · ${l.afterMin ? `after ${l.afterMin} min` : 'immediately'} <span class="muted">— ${esc(st)}</span></li>`;
+    }).join('')}</ul></div>`;
+}
 
 function valueText(v) {
   if (!v) return '—';
@@ -123,6 +138,7 @@ export default {
             ${a.ackNote ? `<dt>Note</dt><dd>${esc(a.ackNote)}</dd>` : ''}
           </dl>
           <div><h3>Details</h3><p style="margin-top:6px">${esc(a.details || '—')}</p></div>
+          ${escalationHTML(a)}
           ${notifs}`,
         foot,
         onClose: () => table.setSelected(null),

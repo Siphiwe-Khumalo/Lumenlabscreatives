@@ -35,6 +35,48 @@ npm install && npm run vendor
 Testing hook: `http://localhost:8080/?geocode=fail#/overview` forces the map's
 geocoding-failure fallback.
 
+## What's in it
+
+| Page | Contents |
+|---|---|
+| Overview | Zone ranges, HVAC availability (hybrid and rooftop separately), alarm summary, **live** temperature and humidity graphs (default), zone table, recent events, location map |
+| Facility Model | Graphical warehouse model: 3D view and plan view of the same layout. Zones coloured by status with live readings; hybrid units at floor level, rooftop units on the roof |
+| Environmental Conditions | Measured vs setpoint, limits, humidity (monitoring only), 30-day mean kinetic temperature, sensor calibration dates |
+| HVAC Systems | **6 hybrid units and 5 rooftop units in separate groups**, unit cards with on/off toggles (locked), live detail panel (supply, return and space temperature), run hours and duty rotation |
+| Alarm Register | Filters, search, detail panel, demo acknowledgement, escalation policy |
+| Trends & Reports | Live 1 h / 24 h / 7 d / 30 d, period summary with MKT, excursion report, HVAC state history, print, CSV |
+| Audit Trail | Acknowledgements, configuration, unit control, commissioning, maintenance, notifications, communication, service |
+| Commissioning | Every point with its live value, "verified" tick, verifier, date and note; export |
+| Settings | Data source, point mapping (placeholder / not mapped), unit controls status, WhatsApp and email escalation policy, thresholds |
+
+The monitor icon in the header starts **wall display** mode: full screen, no sidebar, rotating
+Overview, Facility Model, HVAC and Alarms every 30 s (Esc to exit).
+
+## Unit controls (locked)
+
+The on/off toggles are built but **locked** (`controls.enabled: false` in `js/config/app-config.js`).
+To enable them once Aina confirms the points and approval:
+
+1. Map `enable` (unit on/off) in `js/config/points.js` and set `writable: true`.
+2. Set `controls.writePriority` (Niagara priority level) and, if supported, `controls.releaseSupported`.
+3. Set `controls.enabled: true`.
+
+Every switch asks for confirmation with an optional reason, shows "Pending confirmation" until the
+unit reports the new run state (timeout `confirmTimeoutMs`), and is recorded in the Audit Trail.
+
+## Live data
+
+Live graphs use readings collected on every poll (`live.windowMs`, default 1 hour). In demo mode the
+last hour is pre-filled with illustrative values. Longer ranges (24 h / 7 d / 30 d) need the
+gateway history endpoint (`services.history`).
+
+**The claude.ai hosted copy is demo-only:** its frame blocks connections to other servers, so it can
+never reach the BMS. Live data needs the dashboard served on a machine that can reach the gateway.
+
+Roles for the new unit readings (supply/return air, fan status, compressor stage, filter alarm, run
+hours, fault code, hybrid stage) have **no placeholder points**; they show "Not mapped" in connected
+mode until the real points are added.
+
 ## Modes
 
 | Mode | When | What you see |
@@ -55,16 +97,20 @@ js/config/
   points.js              ONLY place with point names / slot paths (placeholder, from ARC)
   site.js                facility identity, address, zones, equipment (illustrative)
   thresholds.js          per-zone limits (illustrative)
-  app-config.js          mode, gateway URL, polling, stale-after, service flags
+  app-config.js          mode, gateway URL, polling, stale-after, controls (locked), live window, service flags
+  layout.js              warehouse model layout (illustrative)
+  calibration.js         sensor calibration register (illustrative)
+  notifications.js       WhatsApp / email escalation policy (illustrative)
   settings-store.js      browser-only overrides (localStorage)
 js/data/
   demo-provider.js       all demonstration data
   connected-provider.js  gateway client (FIFO queue, quality, no mock fallback)
   request-queue.js       one request in flight, with timeouts
   quality.js             quality + status evaluation
+  analytics.js           mean kinetic temperature, excursions
   store.js               polling, mode resolution, derived status, subscribers
 js/ui/                   icons, tables, drawer, charts, trend card, map
-js/pages/                overview, environment, hvac, alarms, trends, audit, settings
+js/pages/                overview, model, environment, hvac, alarms, trends, audit, commissioning, settings
 vendor/                  leaflet 1.9.4, chart.js 4.4.9, Inter (@fontsource/inter 5.2.5)
 ```
 

@@ -10,6 +10,9 @@ const TYPES = {
   notification: 'Notification',
   communication: 'Communication',
   service: 'Service',
+  control: 'Unit control',
+  commissioning: 'Commissioning',
+  maintenance: 'Maintenance',
 };
 
 export default {

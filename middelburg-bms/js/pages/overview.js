@@ -1,5 +1,5 @@
 /* Overview — "Environmental Assurance" */
-import { ZONES, NAMES_ILLUSTRATIVE } from '../config/site.js';
+import { ZONES, NAMES_ILLUSTRATIVE, EQUIPMENT_TYPES } from '../config/site.js';
 import { THRESHOLDS_LABEL } from '../config/thresholds.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, timeSec, dateTime, ago } from '../util/format.js';
@@ -19,7 +19,7 @@ function rangeSeg(sel) {
 
 export default {
   mount(root, { params }) {
-    const ui = { zone: params.get('zone') && ZONES.some((z) => z.id === params.get('zone')) ? params.get('zone') : 'all', range: '24h' };
+    const ui = { zone: params.get('zone') && ZONES.some((z) => z.id === params.get('zone')) ? params.get('zone') : 'all', range: 'live' };
     const deltas = {}; // `${zone}:${metric}` -> { value, at }
 
     root.innerHTML = `
@@ -176,9 +176,10 @@ export default {
       const unknown = eqs.filter((e) => e.opState === 'unknown').length;
       const hvacStatus = stopped ? 'critical' : unknown ? 'unknown' : 'normal';
       const eqTs = eqs.map((e) => e.lastUpdate).filter(Boolean);
+      const grp = (t) => { const g = eqs.filter((e) => e.type === t); return g.length ? `<span><b>${EQUIPMENT_TYPES[t].short}</b> ${g.filter((e) => e.opState === 'running').length}/${g.length}</span>` : ''; };
       const hvacCard = metricCard({ ico: 'hvac', title: 'HVAC Availability', status: hvacStatus, unit: 'running',
         valueHTML: `<span class="v">${running} / ${eqs.length}</span>`,
-        meta: [standby ? `<span>${standby} standby</span>` : '', stopped ? `<span>${stopped} stopped (expected running)</span>` : '',
+        meta: [grp('hybrid'), grp('rooftop'), standby ? `<span>${standby} standby</span>` : '', stopped ? `<span>${stopped} stopped (expected running)</span>` : '',
           unknown ? `<span class="q-flag">${unknown} Unknown</span>` : '', eqTs.length ? `<span>Updated ${esc(timeSec(Math.max(...eqTs)))}</span>` : ''] });
       const alarmStatus = crit ? 'critical' : warn ? 'warning' : 'normal';
       const alarmCard = `<article class="card metric">
@@ -211,6 +212,7 @@ export default {
     return {
       update(s) {
         update(s);
+        trendT.tick(); trendH.tick();
         if (s.mode !== lastMode && s.mode !== 'starting') { lastMode = s.mode; loadTrends(); loadDeltas(); }
       },
       destroy() { trendT.destroy(); trendH.destroy(); map.destroy(); },

@@ -20,6 +20,11 @@ let pollTimer = null, healthTimer = null;
 let polling = false;
 let generation = 0;
 const firstSeen = new Map(); // derived condition id -> first observed ts (connected mode)
+const live = new Map();      // `${kind}:${id}:${role}` -> [[ts, value], ...] collected on each poll
+const pending = new Map();   // unitId -> { value, since } awaiting read-back confirmation
+
+/** Roles recorded for the live graphs. */
+const LIVE_ROLES = { zone: ['temperature', 'humidity'], equipment: ['temperature', 'supplyAirTemp', 'returnAirTemp'] };
 
 export const state = {
   configuredMode: getMode(),
@@ -69,7 +74,7 @@ function buildZones(raw, now) {
 function buildEquipment(raw, now, zones) {
   return EQUIPMENT.map((e) => {
     const readings = {};
-    for (const role of rolesFor('equipment')) readings[role] = normalise(raw?.[e.id]?.[role], now);
+    for (const role of rolesFor('equipment', e.type)) readings[role] = normalise(raw?.[e.id]?.[role], now);
     const opState = deriveEquipmentState(readings);
     const mode = isGood(readings.operatingMode) && readings.operatingMode.value ? readings.operatingMode.value : 'unknown';
     const zone = zones.find((z) => z.id === e.zoneId);
@@ -120,6 +125,20 @@ function derivedConditions(zones, equipment, now) {
       } else firstSeen.delete(id);
     }
   }
+  // Communication watchdog: a unit whose mapped readings are all stale / bad while the gateway is up.
+  if (state.mode === 'connected') {
+    for (const e of equipment) {
+      const id = `LIVE-${e.id}-comms`;
+      const mapped = Object.values(e.readings).filter((r) => r.error !== 'Role not mapped');
+      if (mapped.length && mapped.every((r) => !isGood(r))) {
+        add(id, {
+          severity: 'warning', category: 'communication', source: { type: 'equipment', id: e.id, name: `${e.id} · ${e.name}` }, zoneId: e.zoneId, role: null,
+          description: `Communication interruption — no current readings from ${e.id}`, threshold: { label: 'Stale after', text: `${APP_CONFIG.staleAfterMs / 60000} min without update` },
+          details: 'Communication watchdog: every mapped point on this unit is stale, missing or bad.',
+        });
+      } else firstSeen.delete(id);
+    }
+  }
   for (const e of equipment) {
     const id = `LIVE-${e.id}-stopped`;
     if (e.opState === 'stopped') {
@@ -149,6 +168,9 @@ function apply(snapshot, now = Date.now()) {
     e.alarmStatus = open.length ? worst(open.map((a) => a.severity)) : (e.opState === 'unknown' ? 'unknown' : 'normal');
     e.openAlarms = open.length;
   }
+  recordLive(zones, equipment, now);
+  checkPending(equipment, now);
+  for (const e of equipment) e.pending = pending.get(e.id) || null;
   const local = localAudit().map((x) => ({ ...x, demo: false }));
   state.zones = zones;
   state.equipment = equipment;
@@ -158,10 +180,85 @@ function apply(snapshot, now = Date.now()) {
   state.loading = false;
 }
 
+/* ---- live buffer ---------------------------------------------------------- */
+function pushLive(key, r, now) {
+  if (!isGood(r) || typeof r.value !== 'number') return;
+  const arr = live.get(key) || [];
+  if (!arr.length || arr[arr.length - 1][0] < r.ts) arr.push([r.ts, r.value]);
+  while (arr.length && arr[0][0] < now - APP_CONFIG.live.keepMs) arr.shift();
+  live.set(key, arr);
+}
+function recordLive(zones, equipment, now) {
+  for (const z of zones) for (const role of LIVE_ROLES.zone) pushLive(`zone:${z.id}:${role}`, z.readings[role], now);
+  for (const e of equipment) for (const role of LIVE_ROLES.equipment) pushLive(`equipment:${e.id}:${role}`, e.readings[role], now);
+}
+/** Live series collected in this browser since the page opened (plus demo seed). */
+export function getLive(kind, id, role, from = 0) {
+  return (live.get(`${kind}:${id}:${role}`) || []).filter((p) => p[0] >= from);
+}
+export const liveSince = () => {
+  let min = null;
+  for (const arr of live.values()) if (arr.length && (min == null || arr[0][0] < min)) min = arr[0][0];
+  return min;
+};
+async function seedLiveFromDemo(gen) {
+  // Demo only: pre-fill the last hour so the live graph is not empty on load. Labelled illustrative.
+  const now = Date.now(), from = now - APP_CONFIG.live.windowMs, step = 30e3;
+  for (const metric of LIVE_ROLES.zone) {
+    const data = await provider.history({ metric, zoneIds: ZONES.map((z) => z.id), from, to: now, stepMs: step });
+    if (gen !== generation) return;
+    for (const d of data) live.set(`zone:${d.zoneId}:${metric}`, d.points.filter((p) => p[1] != null));
+  }
+  for (const e of EQUIPMENT) for (const role of ['supplyAirTemp', 'returnAirTemp']) {
+    live.set(`equipment:${e.id}:${role}`, (await provider.unitHistory({ unitId: e.id, role, from, to: now, stepMs: step })).filter((p) => p[1] != null));
+  }
+}
+
+/* ---- controls ------------------------------------------------------------- */
+export function controlsAvailable() {
+  const c = APP_CONFIG.controls;
+  if (!c.enabled) return { ok: false, reason: c.lockedReason };
+  if (state.mode === 'offline') return { ok: false, reason: 'No gateway connection' };
+  if (!provider?.capabilities.control) return { ok: false, reason: 'Control not supported by the data source' };
+  return { ok: true, reason: state.mode === 'demo' ? 'Demonstration — no equipment is affected' : '' };
+}
+
+/** Switch a unit on (true) or off (false). Confirmed only when the unit reads back the new state. */
+export async function commandUnit(unitId, value, note = '') {
+  const avail = controlsAvailable();
+  if (!avail.ok) throw new Error(avail.reason);
+  await provider.command(unitId, 'enable', value);
+  pending.set(unitId, { value, since: Date.now() });
+  appendLocalAudit({ type: 'control', source: `${unitId}`, actor: APP_CONFIG.operatorName, description: `Command sent: switch ${value ? 'ON' : 'OFF'}${state.mode === 'demo' ? ' (demo)' : ''}${note ? '. Note: ' + note : ''}` });
+  refresh();
+}
+export async function releaseUnit(unitId) {
+  const avail = controlsAvailable();
+  if (!avail.ok) throw new Error(avail.reason);
+  if (!APP_CONFIG.controls.releaseSupported && state.mode !== 'demo') throw new Error('Return to auto not configured');
+  await provider.release(unitId);
+  pending.delete(unitId);
+  appendLocalAudit({ type: 'control', source: unitId, actor: APP_CONFIG.operatorName, description: `Returned to automatic control${state.mode === 'demo' ? ' (demo)' : ''}` });
+  refresh();
+}
+function checkPending(equipment, now) {
+  for (const [id, p] of pending) {
+    const e = equipment.find((x) => x.id === id);
+    const r = e?.readings.runStatus;
+    if (isGood(r) && r.value === p.value && r.ts >= p.since) {
+      pending.delete(id);
+      appendLocalAudit({ type: 'control', source: id, actor: 'System', description: `Confirmed by read-back: unit is ${p.value ? 'running' : 'off'}${state.mode === 'demo' ? ' (demo)' : ''}` });
+    } else if (now - p.since > APP_CONFIG.controls.confirmTimeoutMs) {
+      pending.delete(id);
+      appendLocalAudit({ type: 'control', source: id, actor: 'System', description: `NOT confirmed: unit did not report ${p.value ? 'running' : 'off'} within ${APP_CONFIG.controls.confirmTimeoutMs / 1000} s` });
+    }
+  }
+}
+
 function offlineSnapshot(reason) {
   const zones = {}, equipment = {};
   for (const z of ZONES) { zones[z.id] = {}; for (const r of rolesFor('zone')) zones[z.id][r] = missing(reason); }
-  for (const e of EQUIPMENT) { equipment[e.id] = {}; for (const r of rolesFor('equipment')) equipment[e.id][r] = missing(reason); }
+  for (const e of EQUIPMENT) { equipment[e.id] = {}; for (const r of rolesFor('equipment', e.type)) equipment[e.id][r] = missing(reason); }
   return { zones, equipment, alarms: [], audit: [] };
 }
 
@@ -211,10 +308,13 @@ export async function start() {
   state.configuredMode = getMode();
   state.loading = true;
   firstSeen.clear();
+  live.clear();
+  pending.clear();
   if (state.configuredMode === 'demo') {
     provider = createDemoProvider();
     state.mode = 'demo';
     state.gateway = { configured: false, status: 'n/a', message: 'Demonstration mode — no gateway used', checkedAt: null };
+    await seedLiveFromDemo(gen);
   } else {
     const url = getGatewayUrl();
     if (!url) {

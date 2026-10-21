@@ -1,6 +1,6 @@
 /* Chart.js helpers: time-series line chart with acceptable-range band,
  * action-limit lines, crosshair and tooltips. Times in Africa/Johannesburg. */
-import { time, day, dateTimeShort } from '../util/format.js';
+import { time, timeSec, day, dateTimeShort } from '../util/format.js';
 
 export const ZONE_COLORS = { 'main-store': '#2a78d6', 'dispatch': '#d95926', 'storage-b': '#199e70', 'receiving': '#8b5fbf' };
 export const SINGLE_COLOR = '#173D30';
@@ -64,6 +64,7 @@ function ensure() {
 export function lineChart(canvas, series, opts) {
   ensure();
   const long = opts.rangeMs > 36 * 3600e3;
+  const short = opts.rangeMs <= 2 * 3600e3;
   const values = series.flatMap((s) => s.points.map((p) => p[1])).filter((v) => v != null);
   const extra = [opts.band?.low, opts.band?.high, ...(opts.action || [])].filter((v) => v != null);
   const lo = Math.min(...values, ...extra), hi = Math.max(...values, ...extra);
@@ -97,7 +98,7 @@ export function lineChart(canvas, series, opts) {
           grid: { color: '#EEF2EF' },
           border: { color: '#CDD6CF' },
           title: { display: true, text: 'Time (SAST)' },
-          ticks: { maxTicksLimit: long ? 8 : 7, maxRotation: 0, callback: (v) => (long ? day(v) : time(v)) },
+          ticks: { maxTicksLimit: long ? 8 : 7, maxRotation: 0, callback: (v) => (long ? day(v) : short ? timeSec(v).slice(0, 5) : time(v)) },
         },
         y: {
           suggestedMin: lo - pad, suggestedMax: hi + pad,
@@ -126,6 +127,7 @@ export function lineChart(canvas, series, opts) {
 }
 
 export const RANGES = {
+  'live': { label: 'Live 1 h', ms: 3600e3, step: 30e3, live: true },
   '24h': { label: '24 h', ms: 24 * 3600e3, step: 10 * 60e3 },
   '7d':  { label: '7 days', ms: 7 * 24 * 3600e3, step: 60 * 60e3 },
   '30d': { label: '30 days', ms: 30 * 24 * 3600e3, step: 3 * 60 * 60e3 },

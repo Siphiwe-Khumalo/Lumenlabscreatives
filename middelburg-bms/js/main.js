@@ -13,15 +13,19 @@ import alarms from './pages/alarms.js';
 import trends from './pages/trends.js';
 import audit from './pages/audit.js';
 import settings from './pages/settings.js';
+import model from './pages/model.js';
+import commissioning from './pages/commissioning.js';
 
 const PAGES = [
   { id: 'overview', label: 'Overview', icon: 'overview', page: overview },
+  { id: 'model', label: 'Facility Model', icon: 'model', page: model },
   { id: 'environment', label: 'Environmental Conditions', icon: 'environment', page: environment },
   { id: 'hvac', label: 'HVAC Systems', icon: 'hvac', page: hvac },
   { id: 'alarms', label: 'Alarm Register', icon: 'alarm', page: alarms },
   { id: 'trends', label: 'Trends & Reports', icon: 'trends', page: trends },
   { id: 'audit', label: 'Audit Trail', icon: 'audit', page: audit },
-  { id: 'settings', label: 'Settings', icon: 'settings', page: settings, sepBefore: true },
+  { id: 'commissioning', label: 'Commissioning', icon: 'checklist', page: commissioning, sepBefore: true },
+  { id: 'settings', label: 'Settings', icon: 'settings', page: settings },
 ];
 
 const $ = (sel) => document.querySelector(sel);
@@ -51,9 +55,11 @@ function renderTopbar() {
       </div>
       <div class="vsep"></div>
       <div class="clock" aria-label="Current site time"><strong data-time></strong><span data-date></span></div>
+      <button class="bell" type="button" data-wall aria-label="Start wall display" title="Wall display">${icon('display')}</button>
       <a class="bell" href="#/alarms" aria-label="Alarm Register" data-bell>${icon('bell')}<span class="badge-count zero" data-bell-count>0</span></a>
     </div>`;
   $('.menu-btn').addEventListener('click', () => setNavOpen(!$('#app').classList.contains('nav-open')));
+  $('[data-wall]').addEventListener('click', startWall);
 }
 
 function tickClock() {
@@ -101,6 +107,46 @@ function renderStatus(s) {
   }
 }
 
+/* ---- wall display ----------------------------------------------------------- */
+const WALL_PAGES = ['overview', 'model', 'hvac', 'alarms'];
+const WALL_SECONDS = 30;
+let wallTimer = null, wallIdx = 0, wallCountdown = null;
+
+function startWall() {
+  document.body.classList.add('wall');
+  document.documentElement.requestFullscreen?.().catch(() => {});
+  let bar = document.getElementById('wall-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'wall-bar';
+    bar.className = 'wall-bar';
+    document.body.appendChild(bar);
+    bar.addEventListener('click', (e) => { if (e.target.closest('[data-wall-exit]')) stopWall(); if (e.target.closest('[data-wall-next]')) wallNext(); });
+  }
+  wallIdx = Math.max(0, WALL_PAGES.indexOf(parseHash().id));
+  location.hash = `#/${WALL_PAGES[wallIdx]}`;
+  let left = WALL_SECONDS;
+  const paint = () => {
+    bar.innerHTML = `<span>${icon('display')} Wall display · ${esc(PAGES.find((p) => p.id === WALL_PAGES[wallIdx]).label)} · next in ${left} s</span>
+      <button class="btn sm" type="button" data-wall-next>Next page</button><button class="btn sm" type="button" data-wall-exit>Exit (Esc)</button>`;
+  };
+  paint();
+  clearInterval(wallCountdown);
+  wallCountdown = setInterval(() => { left -= 1; if (left <= 0) { wallNext(); left = WALL_SECONDS; } paint(); }, 1000);
+  wallTimer = { reset: () => { left = WALL_SECONDS; paint(); } };
+}
+function wallNext() {
+  wallIdx = (wallIdx + 1) % WALL_PAGES.length;
+  location.hash = `#/${WALL_PAGES[wallIdx]}`;
+  wallTimer?.reset();
+}
+function stopWall() {
+  clearInterval(wallCountdown); wallTimer = null;
+  document.body.classList.remove('wall');
+  document.getElementById('wall-bar')?.remove();
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+
 /* ---- router ---------------------------------------------------------------- */
 function parseHash() {
   const [path, query = ''] = (location.hash.replace(/^#\/?/, '') || 'overview').split('?');
@@ -131,7 +177,7 @@ function boot() {
   renderNav();
   renderTopbar();
   $('#scrim').addEventListener('click', () => setNavOpen(false));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setNavOpen(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setNavOpen(false); if (document.body.classList.contains('wall')) stopWall(); } });
   tickClock();
   setInterval(tickClock, 1000);
   store.subscribe((s) => {

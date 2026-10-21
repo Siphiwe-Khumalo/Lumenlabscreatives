@@ -9,6 +9,26 @@ import { icon } from '../ui/icons.js';
 import { esc, num, dateTime, ago } from '../util/format.js';
 import { statusChip, stateBox } from '../ui/components.js';
 import { isGood, QUALITY_LABEL } from '../data/quality.js';
+import { calibrationStatus, CALIBRATION_LABEL } from '../config/calibration.js';
+import { meanKineticTemperature } from '../data/analytics.js';
+import { getProvider } from '../data/store.js';
+
+const mktCache = {}; // zoneId -> { value, samples, from, to } | { error }
+
+function calibrationHTML(zoneId, sensor) {
+  const c = calibrationStatus(zoneId, sensor);
+  if (!c) return '<span class="muted">Not recorded</span>';
+  const chip = c.status === 'overdue' ? `<span class="status-chip st-critical">${icon('alarm')}Overdue</span>`
+    : c.status === 'due-soon' ? `<span class="status-chip st-warning">${icon('clock')}Due in ${c.daysLeft} d</span>` : '';
+  return `Last ${esc(c.last)} · next due ${esc(c.nextDue)} ${chip}`;
+}
+
+function mktHTML(zoneId) {
+  const m = mktCache[zoneId];
+  if (!m) return '<span class="muted">Calculating…</span>';
+  if (m.error) return `<span class="muted">${esc(m.error)}</span>`;
+  return `<strong>${num(m.value, 2)} °C</strong> <span class="muted small">last 30 days · ${m.samples} hourly samples</span>`;
+}
 
 const pct = (v, lo, hi) => `${Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100)).toFixed(2)}%`;
 const lim = (v, unit) => (v == null ? '<span class="muted">None</span>' : `${v} ${unit}`);
@@ -68,6 +88,8 @@ function zonePanel(z, mode) {
           <dt>Action limits</dt><dd>${lim(t.actionLow, '°C')} to ${lim(t.actionHigh, '°C')}</dd>
           <dt>Permitted setpoint adjustment</dt><dd>${lim(t.setpointMin, '°C')} to ${lim(t.setpointMax, '°C')}</dd>
           <dt>Evaluation</dt><dd>${esc(z.status.temperature.reason)}</dd>
+          <dt title="Single temperature expressing the cumulative thermal stress of the recorded temperatures (ΔH/R = 10 000 K)">Mean kinetic temperature</dt><dd>${mktHTML(z.id)}</dd>
+          <dt>Sensor calibration</dt><dd>${calibrationHTML(z.id, 'temperature')}</dd>
         </dl>
         <div class="control-row">
           <label class="sr-only" for="sp-${z.id}">New setpoint for ${esc(z.name)}</label>
@@ -84,11 +106,12 @@ function zonePanel(z, mode) {
           <dt>Acceptable range (alert limits)</dt><dd>${lim(h.alertLow, '%RH')} to ${lim(h.alertHigh, '%RH')}</dd>
           <dt>Action limits</dt><dd>${lim(h.actionLow, '%RH')} to ${lim(h.actionHigh, '%RH')}</dd>
           <dt>Evaluation</dt><dd>${esc(z.status.humidity.reason)}</dd>
+          <dt>Sensor calibration</dt><dd>${calibrationHTML(z.id, 'humidity')}</dd>
         </dl>
         <div class="notice">${icon('info')}<span>Monitoring only. No humidity control or override is mapped on this site.</span></div>
       </div>
     </div>
-    <div class="card-foot"><span>Limits: ${override ? '<strong>Browser override active</strong> (this browser only)' : esc(THRESHOLDS_LABEL)}</span><a href="#/settings">Edit thresholds</a></div>
+    <div class="card-foot"><span>Limits: ${override ? '<strong>Browser override active</strong> (this browser only)' : esc(THRESHOLDS_LABEL)}. ${esc(CALIBRATION_LABEL)}. MKT is a calculation on recorded data, not a compliance statement.${mode === 'demo' ? ' Values illustrative.' : ''}</span><a href="#/settings">Edit thresholds</a></div>
   </section>`;
 }
 
@@ -116,8 +139,24 @@ export default {
       history.replaceState(null, '', zone === 'all' ? '#/environment' : `#/environment?zone=${zone}`);
       if (last) render(last);
     });
+    async function loadMkt() {
+      const p = getProvider();
+      const now = Date.now();
+      for (const z of ZONES) {
+        if (!p?.capabilities.history) { mktCache[z.id] = { error: 'Needs history — historian not configured' }; continue; }
+        try {
+          const [d] = await p.history({ metric: 'temperature', zoneIds: [z.id], from: now - 30 * 864e5, to: now, stepMs: 3600e3 });
+          const vals = d.points.map((x) => x[1]).filter((v) => v != null);
+          const v = meanKineticTemperature(vals);
+          mktCache[z.id] = v == null ? { error: 'Not enough data' } : { value: v, samples: vals.length };
+        } catch (err) { mktCache[z.id] = { error: err.notConfigured ? 'Needs history — historian not configured' : err.message }; }
+      }
+      if (last) render(last);
+    }
+    let mktMode = null;
+
     return {
-      update: render,
+      update(s) { render(s); if (!s.loading && s.mode !== mktMode && s.mode !== 'starting') { mktMode = s.mode; loadMkt(); } },
       onParams(p) { zone = p.get('zone') || 'all'; sel.value = zone; if (last) render(last); },
     };
   },
