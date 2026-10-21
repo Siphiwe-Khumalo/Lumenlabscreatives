@@ -4,6 +4,7 @@
   "private": true,
   "description": "Middelburg Pharmaceutical Facility - Facility Environmental Monitoring (frontend). Plain HTML/CSS/JS, no build step.",
   "scripts": {
+    "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "serve:python": "python -m http.server 8080",
     "vendor": "node scripts/vendor.mjs"
