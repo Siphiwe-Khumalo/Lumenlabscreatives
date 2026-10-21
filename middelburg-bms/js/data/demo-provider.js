@@ -86,6 +86,7 @@ const good = (value, unit, ts) => ({ value, unit, ts, quality: 'good' });
 
 /* ---- equipment model ------------------------------------------------------ */
 const overrides = new Map(); // unitId -> enable value written in demo (only when controls are enabled)
+const spOverrides = new Map(); // unitId -> { value, at } setpoint written in demo
 
 function equipmentState(eq, t) {
   if (overrides.has(eq.id) && t >= overrides.get(eq.id).at) return overrides.get(eq.id).value ? 'running' : 'standby';
@@ -252,7 +253,8 @@ export function createDemoProvider() {
     const running = state === 'running';
     const enabled = overrides.has(eq.id) ? overrides.get(eq.id).value : true;
     const temp = round(ZONE_SOURCE_UNITS.has(eq.id) ? signal(eq.zoneId, 'temperature', ts) : unitSignal(eq, 'temperature', ts));
-    const sp = PROFILE[eq.zoneId].setpoint;
+    const spo = spOverrides.get(eq.id);
+    const sp = spo && ts >= spo.at ? spo.value : PROFILE[eq.zoneId].setpoint;
     const mode = running ? modeFor(eq, temp) : 'standby';
     const u = UNIT[eq.id];
     if (eq.type === 'rooftop') {
@@ -361,10 +363,11 @@ export function createDemoProvider() {
 
     /** Demo command: only reachable when APP_CONFIG.controls.enabled is true. Takes effect after a short delay. */
     async command(unitId, role, value) {
-      if (role !== 'enable') throw new Error('Only unit enable is supported');
+      if (role === 'temperatureSetpoint') { spOverrides.set(unitId, { value, at: Date.now() + 4000 }); return { accepted: true }; }
+      if (role !== 'enable') throw new Error('Unsupported control');
       overrides.set(unitId, { value, at: Date.now() + 4000 });
       return { accepted: true };
     },
-    async release(unitId) { overrides.delete(unitId); return { accepted: true }; },
+    async release(unitId) { overrides.delete(unitId); spOverrides.delete(unitId); return { accepted: true }; },
   };
 }

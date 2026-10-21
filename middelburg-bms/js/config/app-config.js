@@ -46,6 +46,7 @@ export const APP_CONFIG = Object.freeze({
     writePriority: null,          // Niagara priority level to write at (e.g. 8), to be confirmed
     releaseSupported: false,      // "Return to auto" (release the priority) once confirmed
     confirmTimeoutMs: 60000,      // a command not confirmed by read-back within this time is reported as failed
+    setpointStep: 0.5,            // °C per press of the − / + buttons
   },
 
   /** Live graphs: readings collected in the browser on every poll. */

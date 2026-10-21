@@ -21,7 +21,7 @@ let polling = false;
 let generation = 0;
 const firstSeen = new Map(); // derived condition id -> first observed ts (connected mode)
 const live = new Map();      // `${kind}:${id}:${role}` -> [[ts, value], ...] collected on each poll
-const pending = new Map();   // unitId -> { value, since } awaiting read-back confirmation
+const pending = new Map();   // `${unitId}|${role}` -> { unitId, role, value, since } awaiting read-back confirmation
 
 /** Roles recorded for the live graphs. */
 const LIVE_ROLES = { zone: ['temperature', 'humidity'], equipment: ['temperature', 'temperatureSetpoint', 'humidity'] };
@@ -203,7 +203,7 @@ function apply(snapshot, now = Date.now()) {
   }
   recordLive(zones, equipment, now);
   checkPending(equipment, now);
-  for (const e of equipment) e.pending = pending.get(e.id) || null;
+  for (const e of equipment) { e.pending = pending.get(`${e.id}|enable`) || null; e.pendingSetpoint = pending.get(`${e.id}|temperatureSetpoint`) || null; }
   const local = localAudit().map((x) => ({ ...x, demo: false }));
   state.zones = zones;
   state.equipment = equipment;
@@ -261,7 +261,7 @@ export async function commandUnit(unitId, value, note = '') {
   const avail = controlsAvailable();
   if (!avail.ok) throw new Error(avail.reason);
   await provider.command(unitId, 'enable', value);
-  pending.set(unitId, { value, since: Date.now() });
+  pending.set(`${unitId}|enable`, { unitId, role: 'enable', value, since: Date.now() });
   appendLocalAudit({ type: 'control', source: `${unitId}`, actor: APP_CONFIG.operatorName, description: `Command sent: switch ${value ? 'ON' : 'OFF'}${state.mode === 'demo' ? ' (demo)' : ''}${note ? '. Note: ' + note : ''}` });
   refresh();
 }
@@ -270,20 +270,46 @@ export async function releaseUnit(unitId) {
   if (!avail.ok) throw new Error(avail.reason);
   if (!APP_CONFIG.controls.releaseSupported && state.mode !== 'demo') throw new Error('Return to auto not configured');
   await provider.release(unitId);
-  pending.delete(unitId);
+  pending.delete(`${unitId}|enable`);
+  pending.delete(`${unitId}|temperatureSetpoint`);
   appendLocalAudit({ type: 'control', source: unitId, actor: APP_CONFIG.operatorName, description: `Returned to automatic control${state.mode === 'demo' ? ' (demo)' : ''}` });
   refresh();
 }
+/** Permitted setpoint range for a unit: its zone's setpoint adjustment limits. */
+export function setpointLimits(unitId) {
+  const eq = equipmentById(unitId);
+  const t = eq && getThresholds(eq.zoneId)?.temperature;
+  return { min: t?.setpointMin ?? null, max: t?.setpointMax ?? null, step: APP_CONFIG.controls.setpointStep };
+}
+
+/** Change a unit's temperature setpoint. Confirmed only when the unit reads back the new value. */
+export async function commandSetpoint(unitId, value, note = '') {
+  const avail = controlsAvailable();
+  if (!avail.ok) throw new Error(avail.reason);
+  const lim = setpointLimits(unitId);
+  if (!isFinite(value)) throw new Error('Enter a setpoint');
+  if (lim.min == null || lim.max == null) throw new Error('No permitted setpoint range configured for this zone');
+  if (value < lim.min || value > lim.max) throw new Error(`Setpoint must be between ${lim.min} and ${lim.max} °C`);
+  await provider.command(unitId, 'temperatureSetpoint', value);
+  pending.set(`${unitId}|temperatureSetpoint`, { unitId, role: 'temperatureSetpoint', value, since: Date.now() });
+  appendLocalAudit({ type: 'control', source: unitId, actor: APP_CONFIG.operatorName, description: `Setpoint change sent: ${value.toFixed(1)} °C${state.mode === 'demo' ? ' (demo)' : ''}${note ? '. Note: ' + note : ''}` });
+  refresh();
+}
+
 function checkPending(equipment, now) {
-  for (const [id, p] of pending) {
-    const e = equipment.find((x) => x.id === id);
-    const r = e?.readings.fanStatus;
-    if (isGood(r) && r.value === p.value && r.ts >= p.since) {
-      pending.delete(id);
-      appendLocalAudit({ type: 'control', source: id, actor: 'System', description: `Confirmed by read-back: unit is ${p.value ? 'running' : 'off'}${state.mode === 'demo' ? ' (demo)' : ''}` });
+  const demo = state.mode === 'demo' ? ' (demo)' : '';
+  for (const [key, p] of pending) {
+    const e = equipment.find((x) => x.id === p.unitId);
+    const isSp = p.role === 'temperatureSetpoint';
+    const r = isSp ? e?.readings.temperatureSetpoint : e?.readings.fanStatus;
+    const matches = isGood(r) && r.ts >= p.since && (isSp ? Math.abs(r.value - p.value) < 0.05 : r.value === p.value);
+    const what = isSp ? `setpoint ${p.value.toFixed(1)} °C` : `unit ${p.value ? 'running' : 'off'}`;
+    if (matches) {
+      pending.delete(key);
+      appendLocalAudit({ type: 'control', source: p.unitId, actor: 'System', description: `Confirmed by read-back: ${what}${demo}` });
     } else if (now - p.since > APP_CONFIG.controls.confirmTimeoutMs) {
-      pending.delete(id);
-      appendLocalAudit({ type: 'control', source: id, actor: 'System', description: `NOT confirmed: unit did not report ${p.value ? 'running' : 'off'} within ${APP_CONFIG.controls.confirmTimeoutMs / 1000} s` });
+      pending.delete(key);
+      appendLocalAudit({ type: 'control', source: p.unitId, actor: 'System', description: `NOT confirmed: unit did not report ${what} within ${APP_CONFIG.controls.confirmTimeoutMs / 1000} s` });
     }
   }
 }
