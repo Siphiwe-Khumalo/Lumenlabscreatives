@@ -57,8 +57,8 @@ async function geocode() {
       if (!res.ok) { lastError = `Geocoder returned HTTP ${res.status}`; continue; }
       hits = await res.json();
     } catch (err) {
-      lastError = err.name === 'AbortError' ? 'Geocoder timed out' : `Geocoder unreachable (${err.message})`;
-      continue;
+      // Network failure (offline or blocked): broader queries would fail the same way, so stop now.
+      throw new Error(err.name === 'AbortError' ? 'Geocoder timed out' : `Geocoder unreachable (${err.message})`);
     }
     const valid = (Array.isArray(hits) ? hits : []).filter((h) => {
       const ad = h.address || {};
