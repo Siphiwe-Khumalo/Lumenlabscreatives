@@ -42,7 +42,7 @@ geocoding-failure fallback.
 | Overview | Zone ranges, HVAC availability (hybrid and rooftop separately), alarm summary, **live** temperature and humidity graphs (default), zone table, recent events, location map |
 | Facility Model | Graphical warehouse model: 3D view and plan view of the same layout. Zones coloured by status with live readings; hybrid units at floor level, rooftop units on the roof |
 | Environmental Conditions | Measured vs setpoint, limits, humidity (monitoring only), 30-day mean kinetic temperature, sensor calibration dates |
-| HVAC Systems | **6 hybrid units and 5 rooftop units in separate groups**, unit cards with on/off toggles (locked), live detail panel (supply, return and space temperature), run hours and duty rotation |
+| HVAC Systems | **6 hybrid units and 5 rooftop units in separate groups**, unit cards with on/off toggles (locked), live detail panel (space temperature and setpoint), unit faults |
 | Alarm Register | Filters, search, detail panel, demo acknowledgement, escalation policy |
 | Trends & Reports | Live 1 h / 24 h / 7 d / 30 d, period summary with MKT, excursion report, HVAC state history, print, CSV |
 | Audit Trail | Acknowledgements, configuration, unit control, commissioning, maintenance, notifications, communication, service |
@@ -57,7 +57,7 @@ Overview, Facility Model, HVAC and Alarms every 30 s (Esc to exit).
 The on/off toggles are built but **locked** (`controls.enabled: false` in `js/config/app-config.js`).
 To enable them once Aina confirms the points and approval:
 
-1. Map `enable` (unit on/off) in `js/config/points.js` and set `writable: true`.
+1. Confirm which point the toggle writes (`enable` role) and set `writable: true` on it in `js/config/points.js`.
 2. Set `controls.writePriority` (Niagara priority level) and, if supported, `controls.releaseSupported`.
 3. Set `controls.enabled: true`.
 
@@ -72,10 +72,6 @@ gateway history endpoint (`services.history`).
 
 **The claude.ai hosted copy is demo-only:** its frame blocks connections to other servers, so it can
 never reach the BMS. Live data needs the dashboard served on a machine that can reach the gateway.
-
-Roles for the new unit readings (supply/return air, fan status, compressor stage, filter alarm, run
-hours, fault code, hybrid stage) have **no placeholder points**; they show "Not mapped" in connected
-mode until the real points are added.
 
 ## Modes
 
@@ -114,16 +110,28 @@ js/pages/                overview, model, environment, hvac, alarms, trends, aud
 vendor/                  leaflet 1.9.4, chart.js 4.4.9, Inter (@fontsource/inter 5.2.5)
 ```
 
-## Replacing the placeholder points
+## Site points
 
-Edit **only** `js/config/points.js`: `BASE_PATH`, `ROLE_POINTS[*].point`, `ZONE_UNITS`,
-`EQUIPMENT_UNITS`. UI and data code use logical roles (`temperature`, `humidity`,
-`temperatureSetpoint`, `runStatus`, `operatingMode`, `enable`, `airflow`, `fanSchedule`).
-Humidity is monitoring-only. Do not add humidity or CO2 write or override points.
+`js/config/points.js` holds the site points supplied for **RUT_1** (rooftop, BACnet) and
+**HYBRID_1** (hybrid, Modbus). Units 2–n follow the same pattern with the number changed:
 
-The verbatim ARC `SLOT_PATHS` reference block still needs to be pasted into
-`ARC_SLOT_PATHS_REFERENCE` (see the TODO in that file). The ARC source was not available
-when this app was built.
+| Type | Folder | Points |
+|---|---|---|
+| Rooftop | `Drivers/BcpBacnetNetwork/OFFICES/points/RUT_n/` | `SPACE_TEMPn`, `R_Humidityn`, `UnitnAlarm`, `UnitnSAF`, `UnitnMode`, `UninStartCmd`, `UnitnEnable`, `UnitnSetpoint` |
+| Hybrid | `Drivers/ModbusAsyncNetwork/HYBRID_n/points/` | `BMS_Enable`, `BMSControl`, `REMOTE_STATUS`, `COOL_MODE`, `HEAT_MODE`, `FAN_ONLY_MODE`, `SUPPLY_AIR_FAN`, `FAN_SPEED`, `STATIC_PRESSURE_STATUS`, `STATIC_PESSURE_SETPOINT`, `CALCULATED_AIRFLOW`, `STATIC_AIR_PRESSURE`, `STATIC_PRESSURE_FAILURE`, `NO_AIRFLOW`, `SUPPLY_AIR_FAN_TRIP`, `ROOM_TEMP_AVERAGE`, `ROOM_TEMP_SETPOINT`, `ROOM_TEMP1_FAILURE`, `ROOM_TEMP2_FAILURE`, `ONCOIL_TEMP_FAILURE`, `DIRTY_FILTER` |
+
+Names are kept exactly as supplied (including `Uni1StartCmd` and `STATIC_PESSURE_SETPOINT`).
+The supplied ORD form is `station:|slot:/Drivers/...`; the app sends the slot path
+(`Drivers/...`) to the gateway, which adds the ORD prefix. 5 rooftop × 8 + 6 hybrid × 21 = **166 points**.
+
+**To confirm on site** (all shown as assumptions in the UI):
+- Units 2–n really follow the unit 1 pattern (Commissioning page lists every derived point).
+- Which unit's sensors represent each zone (`ZONE_SOURCES`); humidity exists only on rooftop units.
+- Running = supply air fan on; "stopped" = rooftop enabled + start command on but fan off, or hybrid fan trip / no airflow.
+- Alarm points: true = alarm.
+- Rooftop `UnitnMode` values (numeric states shown as "Mode 2" until mapped in `enumMap`).
+- Units for fan speed (%), airflow (m³/h) and static pressure (Pa).
+- Which point the on/off toggle writes: `UnitnEnable` or `UninStartCmd`; `BMS_Enable` or `BMSControl`.
 
 ## Proposed gateway contract (proposed, not implemented)
 

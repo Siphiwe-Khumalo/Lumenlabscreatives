@@ -19,7 +19,7 @@ export default {
     let checks = readJSON(KEY, {}) || {};
     let last = null;
     const ui = { q: '', filter: 'all' };
-    const rows = mappingRows(EQUIPMENT);
+    const rows = mappingRows();
 
     root.innerHTML = `<div class="page-head">
         <div class="titles"><h1>Commissioning</h1><p>Check every point reads correctly before handover</p></div>
@@ -35,17 +35,16 @@ export default {
           <label class="search"><span class="sr-only">Search points</span>${icon('search')}<input class="input" type="search" id="comm-q" placeholder="Search unit, zone or reading" data-q></label>
           <label class="field"><span>Show</span><select class="select" id="comm-filter" data-filter>
             <option value="all">All points</option><option value="todo">Not yet verified</option><option value="done">Verified</option>
-            <option value="unmapped">Not mapped</option><option value="bad">Not reading (Unknown)</option></select></label>
+            <option value="derived">Derived from unit 1 pattern</option><option value="bad">Not reading (Unknown)</option></select></label>
         </div>
         <div data-table></div>
-        <div class="table-meta"><span>Ticks are saved in this browser only and recorded in the Audit Trail as "This browser only".</span><span>${esc(POINT_MAP_STATUS.label)}</span></div>
+        <div class="table-meta"><span>Ticks are saved in this browser only and recorded in the Audit Trail as "This browser only".</span><span>${esc(POINT_MAP_STATUS.note)}</span></div>
       </section>`;
     const $ = (s) => root.querySelector(s);
 
-    const nameOf = (r) => (r.kind === 'Zone' ? ZONES.find((z) => z.id === r.id)?.name : r.id) || r.id;
+    const nameOf = (r) => r.id;
     function readingFor(r) {
       if (!last) return null;
-      if (r.kind === 'Zone') return last.zones.find((z) => z.id === r.id)?.readings[r.role] || null;
       return last.equipment.find((e) => e.id === r.id)?.readings[r.role] || null;
     }
 
@@ -55,9 +54,9 @@ export default {
       initialSort: { key: 'id', dir: 'asc' },
       empty: 'No points match the current filter.',
       columns: [
-        { key: 'id', label: 'Zone / unit', sort: (r) => `${r.kind}${r.id}`, render: (r) => `<strong>${esc(nameOf(r))}</strong><span class="sub">${esc(r.kind)} · ${esc(r.unit)}</span>` },
+        { key: 'id', label: 'Unit', sort: (r) => `${r.kind}${r.id}`, render: (r) => `<strong class="mono">${esc(r.id)}</strong><span class="sub">${esc(r.kind)} · ${esc(r.controller)}</span>` },
         { key: 'role', label: 'Reading', sort: (r) => r.label, render: (r) => esc(r.label) },
-        { key: 'path', label: 'Point', sortable: false, render: (r) => (r.mapped ? `<span class="mono">${esc(r.path)}</span>` : `<span class="tag placeholder">${esc(POINT_MAP_STATUS.unmappedLabel)}</span>`) },
+        { key: 'path', label: 'Point', sortable: false, render: (r) => `<span class="mono">${esc(r.path)}</span>${r.derived ? `<span class="sub">${esc(POINT_MAP_STATUS.derivedLabel)}</span>` : ''}` },
         { key: 'value', label: 'Live value', sortable: false, render: (r) => { const rd = readingFor(r); return rd ? `${readingHTML(rd)}${rd.ts ? `<span class="sub">${esc(timeSec(rd.ts))}</span>` : ''}` : '—'; } },
         { key: 'check', label: 'Verified', sort: (r) => (checks[rowKey(r)] ? 1 : 0), render: (r) => {
           const c = checks[rowKey(r)];
@@ -75,8 +74,8 @@ export default {
         const rd = readingFor(r);
         if (ui.filter === 'todo' && checks[rowKey(r)]) return false;
         if (ui.filter === 'done' && !checks[rowKey(r)]) return false;
-        if (ui.filter === 'unmapped' && r.mapped) return false;
-        if (ui.filter === 'bad' && (!r.mapped || isGood(rd))) return false;
+        if (ui.filter === 'derived' && !r.derived) return false;
+        if (ui.filter === 'bad' && isGood(rd)) return false;
         return !q || [nameOf(r), r.id, r.label, r.path].join(' ').toLowerCase().includes(q);
       });
     }
@@ -87,8 +86,8 @@ export default {
       if (document.activeElement?.matches('.note-in')) return; // do not re-render while typing a note
       table.setRows(filtered());
       const done = rows.filter((r) => checks[rowKey(r)]).length;
-      const unmapped = rows.filter((r) => !r.mapped).length;
-      $('[data-progress-text]').textContent = `${done} of ${rows.length} points verified · ${unmapped} not mapped yet`;
+      const derived = rows.filter((r) => r.derived).length;
+      $('[data-progress-text]').textContent = `${done} of ${rows.length} points verified · ${derived} derived from the unit 1 pattern`;
       $('[data-progress]').style.width = `${(done / rows.length) * 100}%`;
       $('[data-note]').innerHTML = s.mode === 'demo'
         ? `<div class="notice demo">${icon('info')}<span><strong>Demonstration values.</strong> Live values below are illustrative. Verify points only against the connected site, not in demo mode.</span></div>`
@@ -121,11 +120,11 @@ export default {
     $('[data-q]').addEventListener('input', (ev) => { ui.q = ev.target.value; if (last) render(last); });
     $('[data-filter]').addEventListener('change', (ev) => { ui.filter = ev.target.value; if (last) render(last); });
     $('[data-export]').addEventListener('click', () => {
-      const lines = ['scope,zone_or_unit,controller,reading,point,mapped,live_value,quality,verified_by,verified_at,note'];
+      const lines = ['type,unit,controller,reading,ord,derived,live_value,quality,verified_by,verified_at,note'];
       for (const r of rows) {
         const rd = readingFor(r), c = checks[rowKey(r)];
         const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        lines.push([r.kind, nameOf(r), r.unit, r.label, r.path || '', r.mapped ? 'yes' : 'no', isGood(rd) ? rd.value : '', rd?.quality || '', c?.by || '', c ? dateTime(c.at) : '', c?.note || ''].map(cell).join(','));
+        lines.push([r.kind, r.id, r.controller, r.label, r.ord, r.derived ? 'yes' : 'no', isGood(rd) ? rd.value : '', rd?.quality || '', c?.by || '', c ? dateTime(c.at) : '', c?.note || ''].map(cell).join(','));
       }
       openDrawer({
         title: 'Commissioning checklist',

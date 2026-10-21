@@ -1,8 +1,8 @@
 /* Environmental Conditions — per-zone temperature (actual vs setpoint) and
  * humidity (monitoring only). */
-import { ZONES, NAMES_ILLUSTRATIVE } from '../config/site.js';
+import { ZONES, NAMES_ILLUSTRATIVE, equipmentForZone } from '../config/site.js';
 import { THRESHOLDS_LABEL } from '../config/thresholds.js';
-import { ROLE_POINTS } from '../config/points.js';
+import { ROLE_POINTS, controllerName } from '../config/points.js';
 import { APP_CONFIG } from '../config/app-config.js';
 import { hasThresholdOverride } from '../config/settings-store.js';
 import { icon } from '../ui/icons.js';
@@ -75,7 +75,7 @@ function zonePanel(z, mode) {
   const override = hasThresholdOverride(z.id);
   return `<section class="card zone-panel" id="zone-${z.id}" aria-labelledby="zh-${z.id}">
     <div class="card-head">
-      <h2 id="zh-${z.id}">${esc(z.name)}</h2><span class="sub">${esc(z.description)} · served by ${esc(z.equipmentId)}</span>
+      <h2 id="zh-${z.id}">${esc(z.name)}</h2><span class="sub">${esc(z.description)} · sensor: ${esc(z.sourceUnit)} (${esc(controllerName(z.sourceUnit))}, to be confirmed) · units: ${esc(equipmentForZone(z.id).map((e) => e.id).join(', '))}</span>
       <div class="actions">${statusChip(z.status.overall)}<span class="small muted">Last update ${z.lastUpdate ? `${esc(dateTime(z.lastUpdate).slice(11))} SAST (${esc(ago(z.lastUpdate))})` : '—'}</span></div>
     </div>
     <div class="card-body readings">

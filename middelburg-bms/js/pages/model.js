@@ -93,8 +93,9 @@ export default {
         body: `<dl class="kv">
             <dt>State</dt><dd>${esc(UNIT_STATE_LABEL[e.opState])}</dd>
             <dt>Space temperature</dt><dd>${readingHTML(r.temperature)}</dd>
-            <dt>Supply air</dt><dd>${readingHTML(r.supplyAirTemp)}</dd>
-            <dt>Return air</dt><dd>${readingHTML(r.returnAirTemp)}</dd>
+            <dt>Setpoint</dt><dd>${readingHTML(r.temperatureSetpoint)}</dd>
+            ${e.type === 'rooftop' ? `<dt>Humidity</dt><dd>${readingHTML(r.humidity)}</dd>` : `<dt>Airflow</dt><dd>${readingHTML(r.airflow, { digits: 0 })}</dd>`}
+            <dt>Faults</dt><dd>${e.faults?.length ? esc(e.faults.map((f) => f.label).join(', ')) : 'None'}</dd>
             <dt>Open alarms</dt><dd>${e.openAlarms || 'None'}</dd>
           </dl>
           <a class="btn" href="#/hvac">${icon('hvac')}Open HVAC Systems</a>`,

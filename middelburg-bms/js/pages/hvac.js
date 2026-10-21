@@ -1,7 +1,7 @@
 /* HVAC Systems — Hybrid units on one side, Rooftop units on the other.
- * Unit cards with locked on/off toggles, live detail panel, run hours and duty. */
+ * Unit cards with locked on/off toggles, live detail panel and active faults. */
 import { NAMES_ILLUSTRATIVE, EQUIPMENT_TYPES } from '../config/site.js';
-import { ROLE_POINTS } from '../config/points.js';
+import { ROLE_POINTS, alarmRoles, controllerName } from '../config/points.js';
 import { APP_CONFIG } from '../config/app-config.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, dateTime, timeSec, ago } from '../util/format.js';
@@ -17,30 +17,31 @@ const STATE = {
   unknown: { label: 'Unknown', st: 'unknown', ic: 'info' },
 };
 const stateChip = (s) => `<span class="status-chip st-${STATE[s].st}">${icon(STATE[s].ic)}${STATE[s].label}</span>`;
-const MODE_LABEL = { heating: 'Heating', cooling: 'Cooling', standby: 'Standby', unknown: 'Unknown' };
-const LIVE_COLORS = { supplyAirTemp: '#2a78d6', returnAirTemp: '#d95926', temperature: '#199e70' };
+const MODE_LABEL = { heating: 'Heating', cooling: 'Cooling', standby: 'Standby', 'fan only': 'Fan only', unknown: 'Unknown' };
+const LIVE_COLORS = { temperature: '#2a78d6', temperatureSetpoint: '#d95926' };
+const LIVE_ROLES = ['temperature', 'temperatureSetpoint'];
 
 /** Formats any role's reading for display ("Not mapped", "Unknown", or the value). */
 function roleValue(role, r) {
-  if (r?.error === 'Role not mapped') return '<span class="muted">Not mapped</span>';
   if (!isGood(r)) return `<span class="v-unknown">Unknown</span> <span class="q-flag">${esc(QUALITY_LABEL[r?.quality] || 'Missing')}</span>`;
+  const def = ROLE_POINTS[role];
   const v = r.value;
+  if (def.alarm) return v ? `<span class="status-chip st-${def.severity === 'critical' ? 'critical' : 'warning'}">${icon('alarm')}Alarm</span>` : 'Normal';
   switch (role) {
-    case 'runStatus': return v ? 'Running' : 'Off';
     case 'enable': return v ? 'Enabled' : 'Disabled';
-    case 'fanSchedule': return v ? 'Scheduled on' : 'Scheduled off';
     case 'fanStatus': return v ? 'Running' : 'Off';
-    case 'filterAlarm': return v ? '<span class="status-chip st-warning">Alarm — replace filter</span>' : 'Normal';
+    case 'startCommand': case 'bmsControl': case 'remoteStatus': case 'coolMode': case 'heatMode': case 'fanOnlyMode': case 'staticPressureStatus':
+      return v ? 'On' : 'Off';
     case 'operatingMode': return MODE_LABEL[v] || esc(v);
-    case 'compressorStage': return `${v} on`;
-    case 'runHours': return `${Number(v).toLocaleString('en-ZA')} h`;
-    case 'airflow': return `${num(v, 0)} ${esc(r.unit || '')}${ROLE_POINTS.airflow.unitConfirmed ? '' : ' <span class="small muted">(unit assumed)</span>'}`;
-    default: return readingHTML(r);
+    default:
+      if (def.kind === 'number') return `${num(v, def.unit === '°C' || def.unit === '%RH' ? 1 : 0)} ${esc(def.unit || '')}${def.unitConfirmed === false ? ' <span class="small muted">(unit assumed)</span>' : ''}`;
+      return esc(v);
   }
 }
 
-const DETAIL_ROLES = ['runStatus', 'operatingMode', 'hybridStage', 'enable', 'fanSchedule', 'fanStatus', 'compressorStage',
-  'temperature', 'temperatureSetpoint', 'supplyAirTemp', 'returnAirTemp', 'airflow', 'filterAlarm', 'faultCode', 'runHours'];
+/** Detail order: state first, then temperatures, air side, then alarm points. */
+const DETAIL_ORDER = ['fanStatus', 'enable', 'startCommand', 'bmsControl', 'remoteStatus', 'operatingMode', 'coolMode', 'heatMode', 'fanOnlyMode',
+  'temperature', 'temperatureSetpoint', 'humidity', 'fanSpeed', 'airflow', 'staticPressure', 'staticPressureSetpoint', 'staticPressureStatus'];
 
 export default {
   mount(root) {
@@ -59,8 +60,8 @@ export default {
       <div data-ctrl-note></div>
       <div class="unit-groups" data-groups></div>
       <section class="card" aria-labelledby="duty-h">
-        <div class="card-head"><h2 id="duty-h">Run hours and duty rotation</h2><span data-duty-tag></span>
-          <span class="sub">Units well above their group average are candidates for duty rotation or earlier service.</span></div>
+        <div class="card-head"><h2 id="duty-h">Unit faults</h2><span data-duty-tag></span>
+          <span class="sub">Alarm points reported by each unit. Rooftop units have one general alarm; hybrid units report each fault separately.</span></div>
         <div data-duty></div>
       </section>`;
     const $ = (s) => root.querySelector(s);
@@ -81,13 +82,13 @@ export default {
         </header>
         <dl class="unit-vals">
           <div><dt>Space</dt><dd>${readingHTML(r.temperature)}</dd></div>
-          <div><dt>Supply air</dt><dd>${readingHTML(r.supplyAirTemp)}</dd></div>
-          <div><dt>Return air</dt><dd>${readingHTML(r.returnAirTemp)}</dd></div>
-          <div><dt>Mode</dt><dd>${e.mode === 'unknown' ? '<span class="v-unknown">Unknown</span>' : MODE_LABEL[e.mode]}${e.type === 'hybrid' && isGood(r.hybridStage) ? `<span class="sub">${esc(r.hybridStage.value)}</span>` : ''}</dd></div>
+          <div><dt>Setpoint</dt><dd>${readingHTML(r.temperatureSetpoint)}</dd></div>
+          ${e.type === 'rooftop' ? `<div><dt>Humidity</dt><dd>${readingHTML(r.humidity)}</dd></div>` : `<div><dt>Fan speed</dt><dd>${readingHTML(r.fanSpeed, { digits: 0 })}</dd></div>`}
+          <div><dt>Mode</dt><dd>${e.mode === 'unknown' ? '<span class="v-unknown">Unknown</span>' : esc(MODE_LABEL[e.mode] || e.mode)}</dd></div>
         </dl>
         <footer>
           ${toggleHTML({ id: e.id, on: isGood(r.enable) ? r.enable.value : null, disabled: !ctrl.ok || !!e.pending || !isGood(r.enable), reason: ctrl.ok ? 'Current state unknown' : ctrl.reason, pending: !!e.pending, label: `${e.id} on/off` })}
-          <span class="unit-meta">${e.openAlarms ? statusChip(e.alarmStatus, `${e.openAlarms} alarm${e.openAlarms > 1 ? 's' : ''}`) : ''}<span class="muted small" title="${esc(dateTime(e.lastUpdate))}">${e.lastUpdate ? esc(timeSec(e.lastUpdate)) : 'No data'}</span></span>
+          <span class="unit-meta">${e.faults?.length ? `<span class="status-chip st-${e.faults.some((f) => f.severity === 'critical') ? 'critical' : 'warning'}" title="${esc(e.faults.map((f) => f.label).join(', '))}">${icon('alarm')}${e.faults.length === 1 ? esc(e.faults[0].label) : `${e.faults.length} faults`}</span>` : ''}${e.openAlarms && !e.faults?.length ? statusChip(e.alarmStatus, `${e.openAlarms} alarm${e.openAlarms > 1 ? 's' : ''}`) : ''}<span class="muted small" title="${esc(dateTime(e.lastUpdate))}">${e.lastUpdate ? esc(timeSec(e.lastUpdate)) : 'No data'}</span></span>
         </footer>
       </article>`;
     }
@@ -112,25 +113,18 @@ export default {
     }
 
     function duty(s) {
-      const rows = Object.entries(EQUIPMENT_TYPES).map(([type, t]) => {
+      const cols = Object.entries(EQUIPMENT_TYPES).map(([type, t]) => {
         const units = s.equipment.filter((e) => e.type === type);
-        const hrs = units.map((e) => (isGood(e.readings.runHours) ? e.readings.runHours.value : null));
-        const known = hrs.filter((h) => h != null);
-        if (!known.length) return `<div class="duty-group"><h3>${esc(t.label)}</h3><p class="muted small">Run hours ${units.some((e) => e.readings.runHours?.error === 'Role not mapped') ? 'not mapped yet' : 'not available'}.</p></div>`;
-        const avg = known.reduce((a, b) => a + b, 0) / known.length;
-        const max = Math.max(...known);
-        return `<div class="duty-group"><h3>${esc(t.label)} <span class="muted small">group average ${Math.round(avg).toLocaleString('en-ZA')} h</span></h3>
-          ${units.map((e, i) => {
-            const h = hrs[i];
-            const dev = h == null ? null : (h - avg) / avg;
-            const flag = dev != null && dev > 0.25; // 25 % above the group average
-            return `<div class="duty-row"><span class="mono">${esc(e.id)}</span>
-              <div class="duty-bar" role="img" aria-label="${esc(e.id)} run hours ${h ?? 'unknown'}"><i style="width:${h == null ? 0 : (h / max) * 100}%" class="${flag ? 'hi' : ''}"></i><b style="left:${(avg / max) * 100}%" title="Group average"></b></div>
-              <span class="num">${h == null ? '<span class="v-unknown">Unknown</span>' : `${h.toLocaleString('en-ZA')} h`}</span>
-              <span class="small ${flag ? '' : 'muted'}">${dev == null ? '' : flag ? `<span class="status-chip st-warning">+${Math.round(dev * 100)}% — rotate duty</span>` : `${dev >= 0 ? '+' : ''}${Math.round(dev * 100)}%`}</span></div>`;
-          }).join('')}</div>`;
+        const roles = alarmRoles(type);
+        return `<div class="duty-group"><h3>${esc(t.label)}</h3><div class="table-wrap"><table class="data fault-grid">
+          <thead><tr><th>Unit</th>${roles.map((r) => `<th title="${esc(ROLE_POINTS[r].label)}">${esc(ROLE_POINTS[r].label.replace('Room temperature sensor', 'Room temp').replace('On-coil temperature sensor', 'On-coil temp').replace('Supply air fan', 'Fan'))}</th>`).join('')}</tr></thead>
+          <tbody>${units.map((e) => `<tr><td class="mono">${esc(e.id)}</td>${roles.map((r) => {
+            const rd = e.readings[r];
+            if (!isGood(rd)) return '<td><span class="dot unk" title="Unknown"></span></td>';
+            return rd.value ? `<td><span class="status-chip st-${ROLE_POINTS[r].severity === 'critical' ? 'critical' : 'warning'}">Alarm</span></td>` : '<td><span class="dot ok" title="Normal"></span></td>';
+          }).join('')}</tr>`).join('')}</tbody></table></div></div>`;
       });
-      return `<div class="duty">${rows.join('')}</div>`;
+      return `<div class="duty">${cols.join('')}</div><div class="table-meta"><span>Green dot = normal · grey = unknown. Alarm polarity (true = alarm) is assumed — confirm on site.</span></div>`;
     }
 
     function render(s) {
@@ -162,8 +156,9 @@ export default {
     /* ---- detail drawer ------------------------------------------------------- */
     function detailBody(e) {
       const ctrl = controlsAvailable();
-      const roles = DETAIL_ROLES.filter((r) => r in e.readings);
+      const roles = [...DETAIL_ORDER.filter((r) => r in e.readings), ...alarmRoles(e.type)];
       return `<dl class="kv">
+          <dt>Controller</dt><dd class="mono">${esc(controllerName(e.id))}</dd>
           <dt>Operating state</dt><dd>${stateChip(e.opState)}</dd>
           ${roles.map((r) => `<dt>${esc(ROLE_POINTS[r].label)}</dt><dd>${roleValue(r, e.readings[r])}</dd>`).join('')}
           <dt>Last update</dt><dd>${e.lastUpdate ? `${esc(dateTime(e.lastUpdate))} SAST (${esc(ago(e.lastUpdate))})` : 'No timestamp'}</dd>
@@ -179,7 +174,7 @@ export default {
 
     function liveSeries(id) {
       const from = Date.now() - APP_CONFIG.live.windowMs;
-      return ['supplyAirTemp', 'returnAirTemp', 'temperature'].map((role) => ({ role, label: ROLE_POINTS[role].label, color: LIVE_COLORS[role], points: getLive('equipment', id, role, from) }));
+      return LIVE_ROLES.map((role) => ({ role, label: ROLE_POINTS[role].label, color: LIVE_COLORS[role], points: getLive('equipment', id, role, from) }));
     }
 
     function drawChart() {
@@ -206,8 +201,8 @@ export default {
       const drawer = openDrawer({
         title: `${e.id} · ${e.name}`,
         subtitle: `${esc(EQUIPMENT_TYPES[e.type].label.slice(0, -1))} · serves ${esc(e.zoneName || '')}${last.mode === 'demo' ? ' · Demonstration data' : ''}`,
-        body: `<div><h3>Live temperatures (last hour)</h3>
-            <div class="legend" style="padding:6px 0">${['supplyAirTemp', 'returnAirTemp', 'temperature'].map((r) => `<span><i style="background:${LIVE_COLORS[r]}"></i>${ROLE_POINTS[r].label}</span>`).join('')}</div>
+        body: `<div><h3>Live temperature and setpoint (last hour)</h3>
+            <div class="legend" style="padding:6px 0">${LIVE_ROLES.map((r) => `<span><i style="background:${LIVE_COLORS[r]}"></i>${ROLE_POINTS[r].label}</span>`).join('')}</div>
             <div data-unit-chart></div></div>
           <div data-unit-body></div>`,
         onClose: () => { detail?.chart?.destroy(); detail = null; },

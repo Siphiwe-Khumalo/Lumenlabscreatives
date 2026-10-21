@@ -9,7 +9,7 @@
 import { APP_CONFIG } from '../config/app-config.js';
 import { ZONES, EQUIPMENT, equipmentById, zoneById } from '../config/site.js';
 import { getMode, getGatewayUrl, getThresholds, localAudit, appendLocalAudit } from '../config/settings-store.js';
-import { rolesFor } from '../config/points.js';
+import { ROLE_POINTS, ZONE_SOURCES, ZONE_ROLES, rolesForType, alarmRoles } from '../config/points.js';
 import { createDemoProvider } from './demo-provider.js';
 import { createConnectedProvider } from './connected-provider.js';
 import { normalise, evaluate, worst, missing, isGood } from './quality.js';
@@ -24,7 +24,7 @@ const live = new Map();      // `${kind}:${id}:${role}` -> [[ts, value], ...] co
 const pending = new Map();   // unitId -> { value, since } awaiting read-back confirmation
 
 /** Roles recorded for the live graphs. */
-const LIVE_ROLES = { zone: ['temperature', 'humidity'], equipment: ['temperature', 'supplyAirTemp', 'returnAirTemp'] };
+const LIVE_ROLES = { zone: ['temperature', 'humidity'], equipment: ['temperature', 'temperatureSetpoint', 'humidity'] };
 
 export const state = {
   configuredMode: getMode(),
@@ -46,20 +46,41 @@ function emit() { for (const fn of listeners) { try { fn(state); } catch (e) { c
 export const getProvider = () => provider;
 
 /* ---- derivation ----------------------------------------------------------- */
-function deriveEquipmentState(r) {
-  if (!isGood(r.runStatus)) return 'unknown';
-  if (r.runStatus.value) return 'running';
-  const enabled = isGood(r.enable) ? r.enable.value : null;
-  const scheduled = isGood(r.fanSchedule) ? r.fanSchedule.value : null;
-  if (enabled === true && scheduled === true) return 'stopped'; // should be running
-  if (enabled == null || scheduled == null) return 'unknown';
+const val = (r) => (isGood(r) ? r.value : null);
+
+/**
+ * Operating state from the unit's own points (rules to be confirmed on site):
+ *   running  supply air fan on
+ *   stopped  rooftop: enabled and start command on, fan off;  hybrid: fan trip or no-airflow alarm
+ *   standby  fan off otherwise
+ *   unknown  fan status not readable
+ */
+function deriveEquipmentState(type, r) {
+  const fan = val(r.fanStatus);
+  if (fan == null) return 'unknown';
+  if (type === 'hybrid' && (val(r.fanTrip) === true || val(r.noAirflow) === true)) return 'stopped';
+  if (fan) return 'running';
+  if (type === 'rooftop' && val(r.enable) === true && val(r.startCommand) === true) return 'stopped';
   return 'standby';
 }
 
-function buildZones(raw, now) {
+/** Rooftop: single mode point. Hybrid: three mode flags. */
+function deriveMode(type, r) {
+  if (type === 'rooftop') return isGood(r.operatingMode) ? r.operatingMode.value : 'unknown';
+  const flags = [val(r.coolMode), val(r.heatMode), val(r.fanOnlyMode)];
+  if (flags.some((f) => f == null)) return 'unknown';
+  if (flags[0]) return 'cooling';
+  if (flags[1]) return 'heating';
+  if (flags[2]) return 'fan only';
+  return 'standby';
+}
+
+/** Zone readings come from the unit named in ZONE_SOURCES. */
+function buildZones(rawEquipment, now) {
   return ZONES.map((z) => {
+    const src = ZONE_SOURCES[z.id];
     const readings = {};
-    for (const role of rolesFor('zone')) readings[role] = normalise(raw?.[z.id]?.[role], now);
+    for (const role of ZONE_ROLES) readings[role] = normalise(rawEquipment?.[src]?.[role], now);
     const limits = getThresholds(z.id);
     const status = {
       temperature: evaluate(readings.temperature, limits.temperature),
@@ -67,19 +88,20 @@ function buildZones(raw, now) {
     };
     status.overall = worst([status.temperature.status, status.humidity.status]);
     const ts = [readings.temperature.ts, readings.humidity.ts].filter((t) => t != null);
-    return { ...z, readings, limits, status, lastUpdate: ts.length ? Math.max(...ts) : null };
+    return { ...z, sourceUnit: src, readings, limits, status, lastUpdate: ts.length ? Math.max(...ts) : null };
   });
 }
 
 function buildEquipment(raw, now, zones) {
   return EQUIPMENT.map((e) => {
     const readings = {};
-    for (const role of rolesFor('equipment', e.type)) readings[role] = normalise(raw?.[e.id]?.[role], now);
-    const opState = deriveEquipmentState(readings);
-    const mode = isGood(readings.operatingMode) && readings.operatingMode.value ? readings.operatingMode.value : 'unknown';
+    for (const role of rolesForType(e.type)) readings[role] = normalise(raw?.[e.id]?.[role], now);
+    const opState = deriveEquipmentState(e.type, readings);
+    const mode = deriveMode(e.type, readings);
+    const faults = alarmRoles(e.type).filter((role) => val(readings[role]) === true).map((role) => ({ role, label: ROLE_POINTS[role].label, severity: ROLE_POINTS[role].severity }));
     const zone = zones.find((z) => z.id === e.zoneId);
     const tsList = Object.values(readings).map((r) => r.ts).filter((t) => t != null);
-    return { ...e, zoneName: zone?.name, readings, opState, mode, lastUpdate: tsList.length ? Math.max(...tsList) : null };
+    return { ...e, zoneName: zone?.name, readings, opState, mode, faults, lastUpdate: tsList.length ? Math.max(...tsList) : null };
   });
 }
 
@@ -129,7 +151,7 @@ function derivedConditions(zones, equipment, now) {
   if (state.mode === 'connected') {
     for (const e of equipment) {
       const id = `LIVE-${e.id}-comms`;
-      const mapped = Object.values(e.readings).filter((r) => r.error !== 'Role not mapped');
+      const mapped = Object.values(e.readings);
       if (mapped.length && mapped.every((r) => !isGood(r))) {
         add(id, {
           severity: 'warning', category: 'communication', source: { type: 'equipment', id: e.id, name: `${e.id} · ${e.name}` }, zoneId: e.zoneId, role: null,
@@ -141,19 +163,30 @@ function derivedConditions(zones, equipment, now) {
   }
   for (const e of equipment) {
     const id = `LIVE-${e.id}-stopped`;
-    if (e.opState === 'stopped') {
+    if (e.opState === 'stopped' && e.type === 'rooftop') {
       add(id, {
-        severity: 'critical', category: 'equipment', source: { type: 'equipment', id: e.id, name: e.name }, zoneId: e.zoneId, role: 'runStatus',
-        description: 'Unit not running while enabled and scheduled', threshold: { label: 'Expected', text: 'Running when enabled and scheduled' },
-        details: 'Condition evaluated in this browser from run status, enable and schedule.',
+        severity: 'critical', category: 'equipment', source: { type: 'equipment', id: e.id, name: `${e.id} · ${e.name}` }, zoneId: e.zoneId, role: 'fanStatus',
+        description: 'Supply air fan off while unit enabled and started', threshold: { label: 'Expected', text: 'Fan running when enabled and started' },
+        details: 'Condition evaluated in this browser from the enable, start command and supply fan points.',
       });
     } else firstSeen.delete(id);
+    // Fault points reported by the unit itself.
+    for (const role of alarmRoles(e.type)) {
+      const fid = `LIVE-${e.id}-${role}`;
+      if (val(e.readings[role]) === true) {
+        add(fid, {
+          severity: ROLE_POINTS[role].severity, category: 'equipment', source: { type: 'equipment', id: e.id, name: `${e.id} · ${e.name}` }, zoneId: e.zoneId, role,
+          description: ROLE_POINTS[role].label, threshold: { label: 'Expected', text: 'Not in alarm' },
+          details: 'Reported by the unit\'s alarm point. Shown as an active condition; no acknowledgement service is configured.',
+        });
+      } else firstSeen.delete(fid);
+    }
   }
   return out;
 }
 
 function apply(snapshot, now = Date.now()) {
-  const zones = buildZones(snapshot?.zones, now);
+  const zones = buildZones(snapshot?.equipment, now);
   const equipment = buildEquipment(snapshot?.equipment, now, zones);
   let alarms = (snapshot?.alarms || []).slice();
   if (state.mode !== 'demo') alarms = derivedConditions(zones, equipment, now);
@@ -209,7 +242,7 @@ async function seedLiveFromDemo(gen) {
     if (gen !== generation) return;
     for (const d of data) live.set(`zone:${d.zoneId}:${metric}`, d.points.filter((p) => p[1] != null));
   }
-  for (const e of EQUIPMENT) for (const role of ['supplyAirTemp', 'returnAirTemp']) {
+  for (const e of EQUIPMENT) for (const role of ['temperature', 'temperatureSetpoint']) {
     live.set(`equipment:${e.id}:${role}`, (await provider.unitHistory({ unitId: e.id, role, from, to: now, stepMs: step })).filter((p) => p[1] != null));
   }
 }
@@ -244,7 +277,7 @@ export async function releaseUnit(unitId) {
 function checkPending(equipment, now) {
   for (const [id, p] of pending) {
     const e = equipment.find((x) => x.id === id);
-    const r = e?.readings.runStatus;
+    const r = e?.readings.fanStatus;
     if (isGood(r) && r.value === p.value && r.ts >= p.since) {
       pending.delete(id);
       appendLocalAudit({ type: 'control', source: id, actor: 'System', description: `Confirmed by read-back: unit is ${p.value ? 'running' : 'off'}${state.mode === 'demo' ? ' (demo)' : ''}` });
@@ -256,10 +289,9 @@ function checkPending(equipment, now) {
 }
 
 function offlineSnapshot(reason) {
-  const zones = {}, equipment = {};
-  for (const z of ZONES) { zones[z.id] = {}; for (const r of rolesFor('zone')) zones[z.id][r] = missing(reason); }
-  for (const e of EQUIPMENT) { equipment[e.id] = {}; for (const r of rolesFor('equipment', e.type)) equipment[e.id][r] = missing(reason); }
-  return { zones, equipment, alarms: [], audit: [] };
+  const equipment = {};
+  for (const e of EQUIPMENT) { equipment[e.id] = {}; for (const r of rolesForType(e.type)) equipment[e.id][r] = missing(reason); }
+  return { equipment, alarms: [], audit: [] };
 }
 
 /* ---- lifecycle ------------------------------------------------------------ */

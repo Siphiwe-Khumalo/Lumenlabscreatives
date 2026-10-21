@@ -4,7 +4,7 @@ import { ZONES, EQUIPMENT } from '../config/site.js';
 import { CHANNELS, ESCALATION, NOTIFICATIONS_LABEL } from '../config/notifications.js';
 import { APP_CONFIG } from '../config/app-config.js';
 import { THRESHOLDS_LABEL, DEFAULT_THRESHOLDS } from '../config/thresholds.js';
-import { POINT_MAP_STATUS, mappingRows, ARC_SLOT_PATHS_REFERENCE, BASE_PATH } from '../config/points.js';
+import { POINT_MAP_STATUS, mappingRows, BASE_PATHS, ZONE_SOURCES, ORD_PREFIX } from '../config/points.js';
 import {
   getMode, getGatewayUrl, validateGatewayUrl, saveConnection,
   getThresholds, saveThresholdOverride, clearThresholdOverride, hasThresholdOverride, appendLocalAudit,
@@ -28,7 +28,7 @@ GET  {gateway}/health
      200 { "status": "ok", "jace": "reachable", "time": "<ISO 8601>" }
 
 GET  {gateway}/query/readPoint/<slot path>
-     e.g. /query/readPoint/${BASE_PATH('<UNIT>')}<POINT>
+     e.g. /query/readPoint/${BASE_PATHS.rooftop(1)}<POINT>   (slot path; the gateway adds "${ORD_PREFIX}")
      200 { "value": 21.4, "timestamp": "<ISO 8601>", "status": "ok" | "fault" | "stale" | "down" }
      404 point not found
 
@@ -71,9 +71,9 @@ export default {
       </section>
 
       <section class="card" aria-labelledby="pm-h">
-        <div class="card-head"><h2 id="pm-h">Point mapping</h2><span class="tag placeholder">${esc(POINT_MAP_STATUS.label)}</span><span class="sub">Source: js/config/points.js</span></div>
-        <div class="card-body" style="padding-bottom:0"><div class="notice warn">${icon('alarm')}<span><strong>Placeholder — copied from ARC Glasshouse. Not confirmed for the Middelburg site.</strong> ${esc(POINT_MAP_STATUS.note)} Humidity is monitoring only; no humidity or CO2 write/override points are mapped. All roles are read-only.
-          ${ARC_SLOT_PATHS_REFERENCE ? '' : ' The verbatim ARC SLOT_PATHS reference block has not yet been pasted into points.js.'}</span></div></div>
+        <div class="card-head"><h2 id="pm-h">Point mapping</h2><span class="tag">Site points</span><span class="sub">Source: js/config/points.js</span></div>
+        <div class="card-body" style="padding-bottom:0;display:flex;flex-direction:column;gap:10px"><div class="notice warn">${icon('alarm')}<span><strong>Unit 1 points supplied; units 2–6 derived.</strong> ${esc(POINT_MAP_STATUS.note)} Humidity is monitoring only. All points are read-only until controls are approved.</span></div>
+          <div class="notice">${icon('info')}<span><strong>Zone sensors (to be confirmed):</strong> ${Object.entries(ZONE_SOURCES).map(([z, u]) => `${esc(ZONES.find((x) => x.id === z).name)} ← ${esc(u)}`).join(' · ')}. Humidity exists only on the rooftop units.</span></div></div>
         <div data-map-table style="margin-top:12px"></div>
       </section>
 
@@ -139,21 +139,20 @@ export default {
     $('[data-gw]').value = getGatewayUrl();
 
     const mapTable = createTable({
-      caption: 'Active placeholder point mapping',
+      caption: 'Site point mapping',
       rowKey: (r) => `${r.id}-${r.role}`,
       initialSort: { key: 'id', dir: 'asc' },
       columns: [
-        { key: 'kind', label: 'Scope' },
-        { key: 'id', label: 'Zone / equipment', render: (r) => esc(ZONES.find((z) => z.id === r.id)?.name || r.id) },
-        { key: 'role', label: 'Role', render: (r) => `<span class="mono">${esc(r.role)}</span><span class="sub">${esc(r.label)}</span>` },
-        { key: 'unit', label: 'Unit' },
-        { key: 'path', label: 'Slot path', sort: (r) => r.path || '~', render: (r) => (r.path ? `<span class="mono">${esc(r.path)}</span>` : '<span class="muted">—</span>') },
+        { key: 'kind', label: 'Type' },
+        { key: 'id', label: 'Unit', render: (r) => `<strong class="mono">${esc(r.id)}</strong><span class="sub">${esc(r.controller)}</span>` },
+        { key: 'role', label: 'Reading', render: (r) => `${esc(r.label)}<span class="sub mono">${esc(r.role)}</span>` },
+        { key: 'path', label: 'Point (slot path)', sort: (r) => r.path, render: (r) => `<span class="mono">${esc(r.path)}</span>` },
         { key: 'writable', label: 'Access', sort: (r) => (r.writable ? 1 : 0), render: (r) => (r.writable ? 'Read/write' : 'Read only') },
-        { key: 'status', label: 'Status', sort: (r) => (r.mapped ? 0 : 1), render: (r) => `<span class="tag placeholder">${esc(r.mapped ? POINT_MAP_STATUS.label : POINT_MAP_STATUS.unmappedLabel)}</span>` },
+        { key: 'status', label: 'Status', sort: (r) => (r.derived ? 1 : 0), render: (r) => (r.derived ? `<span class="tag placeholder">${esc(POINT_MAP_STATUS.derivedLabel)}</span>` : `<span class="tag live">${esc(POINT_MAP_STATUS.label)}</span>`) },
       ],
     });
     $('[data-map-table]').appendChild(mapTable.el);
-    mapTable.setRows(mappingRows(EQUIPMENT));
+    mapTable.setRows(mappingRows());
 
     function renderThresholds() {
       $('[data-thr]').innerHTML = ZONES.map((z) => {

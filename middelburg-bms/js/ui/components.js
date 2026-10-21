@@ -29,7 +29,7 @@ export function readingHTML(r, { digits = 1, unit } = {}) {
     const q = r?.quality ? QUALITY_LABEL[r.quality] : 'Missing';
     return `<span class="v-unknown" title="${esc(r?.error || '')}">Unknown</span> <span class="q-flag">${esc(q)}</span>`;
   }
-  const v = typeof r.value === 'number' ? num(r.value, digits) : esc(r.value);
+  const v = typeof r.value === 'number' ? num(r.value, digits) : typeof r.value === 'boolean' ? (r.value ? 'On' : 'Off') : esc(r.value);
   return `${v}${unit ?? r.unit ? ` <span class="muted">${esc(unit ?? r.unit)}</span>` : ''}`;
 }
 

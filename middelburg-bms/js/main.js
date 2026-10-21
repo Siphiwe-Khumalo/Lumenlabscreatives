@@ -101,7 +101,7 @@ function renderStatus(s) {
   } else if (s.mode === 'offline') {
     banner.innerHTML = `<div class="mode-banner offline" role="status">${icon('alarm')}<div><strong>OFFLINE</strong> — No live site data. ${esc(s.gateway.message)} All readings are shown as Unknown.</div></div>`;
   } else if (s.mode === 'connected') {
-    banner.innerHTML = `<div class="mode-banner connected" role="status">${icon('check')}<div><strong>CONNECTED</strong> — Gateway health check succeeded at ${esc(dateTime(s.gateway.checkedAt))}. Point mapping: ${esc(POINT_MAP_STATUS.label)}.</div></div>`;
+    banner.innerHTML = `<div class="mode-banner connected" role="status">${icon('check')}<div><strong>CONNECTED</strong> — Gateway health check succeeded at ${esc(dateTime(s.gateway.checkedAt))}. Points: ${esc(POINT_MAP_STATUS.note)}</div></div>`;
   } else {
     banner.innerHTML = `<div class="mode-banner offline" role="status">${icon('refresh')}<div><strong>STARTING</strong> — ${esc(s.gateway.message || 'Initialising data source…')}</div></div>`;
   }

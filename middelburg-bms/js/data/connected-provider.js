@@ -15,8 +15,8 @@
  *   - a failed read NEVER falls back to mock data: it becomes a 'bad' or
  *     'missing' reading and the UI shows Unknown. */
 import { APP_CONFIG } from '../config/app-config.js';
-import { ZONES, EQUIPMENT } from '../config/site.js';
-import { ROLE_POINTS, ZONE_UNITS, EQUIPMENT_UNITS, slotPath, rolesFor } from '../config/points.js';
+import { EQUIPMENT } from '../config/site.js';
+import { ROLE_POINTS, ZONE_SOURCES, slotPath, rolesForType } from '../config/points.js';
 import { RequestQueue } from './request-queue.js';
 import { missing } from './quality.js';
 
@@ -54,7 +54,8 @@ function coerce(role, raw) {
     if (s.includes('heat')) return 'heating';
     if (s.includes('cool')) return 'cooling';
     if (s.includes('standby') || s.includes('idle') || s.includes('off')) return 'standby';
-    return null;
+    if (s.includes('fan')) return 'fan only';
+    return `Mode ${String(raw)}`; // unmapped state: shown as reported until enumMap is filled in
   }
   return raw;
 }
@@ -85,7 +86,7 @@ export function createConnectedProvider(gatewayUrl) {
     return { value, unit: ROLE_POINTS[role].unit, ts, quality, error: quality === 'good' ? undefined : `Point status: ${status}` };
   }
 
-  const unitPath = (unitId, role) => slotPath(EQUIPMENT_UNITS[unitId], role);
+  const unitPath = (unitId, role) => slotPath(unitId, role);
 
   async function readHistory(path, from, to) {
     if (!APP_CONFIG.services.history) throw new NotConfiguredError('Historian');
@@ -124,21 +125,18 @@ export function createConnectedProvider(gatewayUrl) {
         if (!cache.has(path)) cache.set(path, readPoint(role, path));
         return cache.get(path);
       };
-      const zones = {}, equipment = {};
-      for (const z of ZONES) {
-        zones[z.id] = {};
-        for (const role of rolesFor('zone')) zones[z.id][role] = await read(role, slotPath(ZONE_UNITS[z.id], role));
-      }
+      // Zone readings are derived by the store from the units in ZONE_SOURCES.
+      const equipment = {};
       for (const e of EQUIPMENT) {
         equipment[e.id] = {};
-        for (const role of rolesFor('equipment', e.type)) equipment[e.id][role] = await read(role, slotPath(EQUIPMENT_UNITS[e.id], role));
+        for (const role of rolesForType(e.type)) equipment[e.id][role] = await read(role, slotPath(e.id, role));
       }
-      return { ts: Date.now(), zones, equipment, alarms: [], audit: [] };
+      return { ts: Date.now(), equipment, alarms: [], audit: [] };
     },
 
     async history({ metric, zoneIds, from, to }) {
       const out = [];
-      for (const zoneId of zoneIds) out.push({ zoneId, points: await readHistory(slotPath(ZONE_UNITS[zoneId], metric), from, to) });
+      for (const zoneId of zoneIds) out.push({ zoneId, points: await readHistory(slotPath(ZONE_SOURCES[zoneId], metric), from, to) });
       return out;
     },
     async unitHistory({ unitId, role, from, to }) { return readHistory(unitPath(unitId, role), from, to); },

@@ -27,9 +27,9 @@ const EVENTS = [
   { zone: 'receiving',  metric: 'temperature', at: T0 - 9 * DAY,  width: 60 * MIN, amp: -9.2 },
 ];
 
-// The Receiving reference sensor and HYB-04 (same controller) stop reporting 47 minutes before load.
+// RTU-04 (the Receiving zone's sensor) stops reporting 47 minutes before load.
 const COMMS_LOST_AT = T0 - 47 * MIN;
-const COMMS_LOST = new Set(['receiving', 'HYB-04']);
+const COMMS_LOST = new Set(['receiving', 'RTU-04']);
 const RTU03_STOP = [T0 - 3 * DAY - 5 * HOUR, T0 - 3 * DAY - 3 * HOUR];
 
 // Per-unit illustrative characteristics.
@@ -89,7 +89,7 @@ const overrides = new Map(); // unitId -> enable value written in demo (only whe
 
 function equipmentState(eq, t) {
   if (overrides.has(eq.id) && t >= overrides.get(eq.id).at) return overrides.get(eq.id).value ? 'running' : 'standby';
-  if (eq.id === 'HYB-04' && t > COMMS_LOST_AT) return 'unknown';
+  if (eq.id === 'RTU-04' && t > COMMS_LOST_AT) return 'unknown';
   if (eq.id === 'RTU-03' && t > RTU03_STOP[0] && t < RTU03_STOP[1]) return 'stopped';
   const duty = UNIT[eq.id].duty;
   if (duty < 0.9) {
@@ -106,16 +106,16 @@ function modeFor(eq, zoneTemp) {
   return zoneTemp < sp - 1.5 ? 'heating' : 'cooling';
 }
 
+/** Unit-level numeric signals. A unit's space temperature follows its zone with a small per-unit offset. */
 function unitSignal(eq, role, t) {
-  const zt = signal(eq.zoneId, 'temperature', t);
-  const state = equipmentState(eq, t);
-  const on = state === 'running';
-  const mode = modeFor(eq, zt);
-  const n = noise(seedOf(eq.id, role), t);
-  if (role === 'supplyAirTemp') return on ? (mode === 'cooling' ? 13.5 + (zt - 20) * 0.4 + n * 0.4 : 32 + n * 0.6) : zt - 0.4 + n * 0.2;
-  if (role === 'returnAirTemp') return zt + 0.7 + n * 0.25;
+  const off = ((seedOf(eq.id, 'off') % 9) - 4) / 10; // -0.4 .. +0.4 °C
+  if (role === 'temperature') return signal(eq.zoneId, 'temperature', t) + off + noise(seedOf(eq.id, 'tn'), t) * 0.1;
+  if (role === 'humidity') return signal(eq.zoneId, 'humidity', t);
+  if (role === 'temperatureSetpoint') return PROFILE[eq.zoneId].setpoint;
   return null;
 }
+/** Zone source units read the zone signal exactly, so zone readings and alarms agree. */
+const ZONE_SOURCE_UNITS = new Set(['RTU-01', 'RTU-03', 'RTU-05', 'RTU-04']);
 
 /* ---- alarm / audit scenario ----------------------------------------------- */
 const demoNotice = (channel, recipient, status, at) => ({ channel, recipient, status, at, demo: true });
@@ -131,11 +131,11 @@ function buildAlarms() {
   const list = [
     {
       id: 'DEMO-1049', severity: 'warning', status: 'active', category: 'equipment',
-      source: e('RTU-02'), zoneId: 'main-store', role: 'filterAlarm',
-      description: 'Filter alarm — filter requires replacement',
+      source: e('HYB-05'), zoneId: 'main-store', role: 'dirtyFilter',
+      description: 'Dirty filter',
       raisedAt: T0 - 5 * HOUR - 12 * MIN, valueAtRaise: { value: 'Alarm', unit: null },
-      threshold: { label: 'Expected', text: 'No filter alarm' },
-      details: 'The filter alarm on RTU-02 is active. Schedule a filter change.',
+      threshold: { label: 'Expected', text: 'No dirty-filter alarm' },
+      details: 'The dirty-filter alarm on HYB-05 is active. Schedule a filter change.',
       notifications: [demoNotice('Email', 'Maintenance (demo contact)', 'Sent', T0 - 5 * HOUR - 11 * MIN)],
     },
     {
@@ -149,12 +149,12 @@ function buildAlarms() {
     },
     {
       id: 'DEMO-1047', severity: 'warning', status: 'acknowledged', category: 'communication',
-      source: e('HYB-04'), zoneId: 'receiving', role: null,
-      description: 'Communication interruption — no updates from HYB-04 / Receiving sensor',
+      source: e('RTU-04'), zoneId: 'receiving', role: null,
+      description: 'Communication interruption — no updates from RTU-04 (Receiving sensor)',
       raisedAt: COMMS_LOST_AT + 10 * MIN, valueAtRaise: null,
       threshold: { label: 'Stale after', text: `${APP_CONFIG.staleAfterMs / MIN} min without update` },
       ackAt: COMMS_LOST_AT + 18 * MIN, ackBy: 'Demo Operator', ackNote: 'Technician informed (demonstration record).',
-      details: 'Readings for the Receiving zone sensor and HYB-04 have not updated. Values are shown as Unknown until communication is restored.',
+      details: 'Readings from RTU-04, which provides the Receiving zone temperature and humidity, have not updated. Values are shown as Unknown until communication is restored.',
       notifications: [demoNotice('WhatsApp', 'Duty technician (demo contact)', 'Delivered', COMMS_LOST_AT + 11 * MIN)],
     },
     {
@@ -169,10 +169,10 @@ function buildAlarms() {
     },
     {
       id: 'DEMO-1036', severity: 'critical', status: 'cleared', category: 'equipment',
-      source: e('RTU-03'), zoneId: 'dispatch', role: 'runStatus',
-      description: 'Unit not running while enabled and scheduled',
+      source: e('RTU-03'), zoneId: 'dispatch', role: 'fanStatus',
+      description: 'Supply air fan off while unit enabled and started',
       raisedAt: RTU03_STOP[0] + 2 * MIN, clearedAt: RTU03_STOP[1], valueAtRaise: { value: 'Stopped', unit: null },
-      threshold: { label: 'Expected', text: 'Running when enabled and scheduled' },
+      threshold: { label: 'Expected', text: 'Fan running when enabled and started' },
       ackAt: RTU03_STOP[0] + 22 * MIN, ackBy: 'Demo Operator', ackNote: 'Reset by technician on site (demonstration record).',
       details: 'RTU-03 stopped for approximately two hours.',
       notifications: [demoNotice('WhatsApp', 'Duty technician (demo contact)', 'Delivered', RTU03_STOP[0] + 3 * MIN), demoNotice('WhatsApp', 'Site manager (demo contact) — escalation level 3', 'Delivered', RTU03_STOP[0] + 32 * MIN)],
@@ -235,7 +235,7 @@ function buildAudit(alarms) {
   push(T0 - 14 * DAY - 1 * HOUR - 30 * MIN, 'service', 'Monitoring service', 'System', 'Monitoring service restarted after network interruption');
   push(T0 - 6 * DAY - 2 * HOUR, 'configuration', 'Thresholds · Storage Zone B', 'Demo Engineer', 'Humidity alert limit reviewed — unchanged (60 %RH)');
   push(T0 - 12 * DAY, 'configuration', 'Notification recipients', 'Demo Engineer', 'Duty technician added to WhatsApp escalation list');
-  push(T0 - 18 * DAY, 'maintenance', 'RTU-01 · Rooftop unit 1', 'Demo Technician', 'Filters replaced; run hours 21 210 h');
+  push(T0 - 18 * DAY, 'maintenance', 'HYB-01 · Hybrid unit 1', 'Demo Technician', 'Filters replaced');
   push(T0 - 20 * DAY, 'service', 'Monitoring service', 'System', 'Monitoring service started');
   push(T0 - 27 * DAY, 'configuration', 'Zones', 'Demo Engineer', 'Zone names imported from placeholder list');
   return out;
@@ -246,41 +246,51 @@ export function createDemoProvider() {
   const alarms = buildAlarms();
   const audit = buildAudit(alarms);
 
-  function zoneReadings(zoneId, now) {
-    const ts = lastSample(zoneId, now);
-    return {
-      temperature: good(round(signal(zoneId, 'temperature', ts)), '°C', ts),
-      humidity: good(round(signal(zoneId, 'humidity', ts)), '%RH', ts),
-      temperatureSetpoint: good(PROFILE[zoneId].setpoint, '°C', ts),
-    };
-  }
-
   function equipmentReadings(eq, now) {
     const ts = lastSample(eq.id, now);
     const state = equipmentState(eq, ts);
     const running = state === 'running';
     const enabled = overrides.has(eq.id) ? overrides.get(eq.id).value : true;
-    const temp = round(signal(eq.zoneId, 'temperature', ts));
+    const temp = round(ZONE_SOURCE_UNITS.has(eq.id) ? signal(eq.zoneId, 'temperature', ts) : unitSignal(eq, 'temperature', ts));
+    const sp = PROFILE[eq.zoneId].setpoint;
+    const mode = running ? modeFor(eq, temp) : 'standby';
     const u = UNIT[eq.id];
-    const hours = u.hours + Math.floor(((ts - (T0 - 30 * DAY)) / HOUR) * u.duty);
-    const r = {
-      runStatus: good(running, null, ts),
-      operatingMode: good(running ? modeFor(eq, temp) : 'standby', null, ts),
-      enable: good(enabled, null, ts),
-      airflow: good(running ? Math.round(u.flow + noise(seedOf(eq.id, 'af'), ts) * 120) : 0, 'm³/h', ts),
-      fanSchedule: good(enabled && (u.duty >= 0.9 || running), null, ts),
+    if (eq.type === 'rooftop') {
+      return {
+        temperature: good(temp, '°C', ts),
+        temperatureSetpoint: good(sp, '°C', ts),
+        humidity: good(round(signal(eq.zoneId, 'humidity', ts)), '%RH', ts),
+        enable: good(enabled, null, ts),
+        startCommand: good(enabled && (state !== 'standby'), null, ts),
+        fanStatus: good(running, null, ts),
+        operatingMode: good(mode, null, ts),
+        unitAlarm: good(state === 'stopped', null, ts),
+      };
+    }
+    const flow = running ? Math.round(u.flow + noise(seedOf(eq.id, 'af'), ts) * 120) : 0;
+    return {
       temperature: good(temp, '°C', ts),
-      temperatureSetpoint: good(PROFILE[eq.zoneId].setpoint, '°C', ts),
-      supplyAirTemp: good(round(unitSignal(eq, 'supplyAirTemp', ts)), '°C', ts),
-      returnAirTemp: good(round(unitSignal(eq, 'returnAirTemp', ts)), '°C', ts),
+      temperatureSetpoint: good(sp, '°C', ts),
+      enable: good(enabled, null, ts),
+      bmsControl: good(true, null, ts),
+      remoteStatus: good(true, null, ts),
       fanStatus: good(running, null, ts),
-      compressorStage: good(running ? (temp > PROFILE[eq.zoneId].setpoint + 1 ? 2 : 1) : 0, null, ts),
-      filterAlarm: good(eq.id === 'RTU-02', null, ts),
-      runHours: good(hours, 'h', ts),
-      faultCode: good(eq.id === 'RTU-02' ? 'F12 — filter differential pressure' : 'None', null, ts),
+      coolMode: good(running && mode === 'cooling', null, ts),
+      heatMode: good(running && mode === 'heating', null, ts),
+      fanOnlyMode: good(false, null, ts),
+      fanSpeed: good(running ? Math.round(62 + noise(seedOf(eq.id, 'fs'), ts) * 8) : 0, '%', ts),
+      airflow: good(flow, 'm³/h', ts),
+      staticPressure: good(running ? Math.round(250 + noise(seedOf(eq.id, 'sp'), ts) * 12) : 0, 'Pa', ts),
+      staticPressureSetpoint: good(250, 'Pa', ts),
+      staticPressureStatus: good(running, null, ts),
+      staticPressureFailure: good(false, null, ts),
+      noAirflow: good(false, null, ts),
+      fanTrip: good(false, null, ts),
+      roomTemp1Failure: good(false, null, ts),
+      roomTemp2Failure: good(false, null, ts),
+      oncoilTempFailure: good(false, null, ts),
+      dirtyFilter: good(eq.id === 'HYB-05', null, ts),
     };
-    if (eq.type === 'hybrid') r.hybridStage = good(running ? (temp > PROFILE[eq.zoneId].setpoint + 1.2 ? 'Mechanical cooling (DX)' : 'Evaporative') : 'Off', null, ts);
-    return r;
   }
 
   return {
@@ -291,10 +301,9 @@ export function createDemoProvider() {
 
     async snapshot() {
       const now = Date.now();
-      const zones = {}, equipment = {};
-      for (const z of ZONES) zones[z.id] = zoneReadings(z.id, now);
+      const equipment = {};
       for (const e of EQUIPMENT) equipment[e.id] = equipmentReadings(e, now);
-      return { ts: now, zones, equipment, alarms: alarms.map((a) => ({ ...a })), audit: audit.slice() };
+      return { ts: now, equipment, alarms: alarms.map((a) => ({ ...a })), audit: audit.slice() };
     },
 
     /** Returns [{ zoneId, points: [[ts, value|null], ...] }] */
@@ -311,7 +320,7 @@ export function createDemoProvider() {
       });
     },
 
-    /** Unit-level numeric history (supply / return air). */
+    /** Unit-level numeric history (space temperature, setpoint). */
     async unitHistory({ unitId, role, from, to, stepMs }) {
       const eq = equipmentById(unitId);
       const now = Date.now();
