@@ -7,10 +7,38 @@ const KEY = 'mbms.settings.v1';
 
 function load() { return readJSON(KEY, {}) || {}; }
 
+/** 'demo' only when the DEMO flag is explicitly on (config, hosted page, or this browser's Settings). */
 export function getMode() {
-  const m = load().mode;
-  return m === 'connected' || m === 'demo' ? m : APP_CONFIG.defaultMode;
+  if (typeof window !== 'undefined' && window.MBMS_DEMO === true) return 'demo';
+  if (APP_CONFIG.demo) return 'demo';
+  return load().mode === 'demo' ? 'demo' : 'connected';
 }
+
+/** Demo scenarios (DEMO flag only). URL ?scenario=... overrides for testing. */
+export const DEMO_SCENARIOS = {
+  normal: 'Typical day (one sensor outage in history, one unit offline, one fan stopped)',
+  'all-live': 'All sensors live, all units running',
+  'comms-lost': 'JACE connection lost',
+  'no-confirm': 'Controller ignores commands (feedback never confirms)',
+};
+export function getDemoScenario() {
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('scenario') : null;
+  const v = q || load().scenario;
+  return v in DEMO_SCENARIOS ? v : 'normal';
+}
+export function saveDemoScenario(v) { const s = load(); s.scenario = v; return writeJSON(KEY, s); }
+
+/** Signed-in user (no authentication backend: the role selector is a convenience, not security). */
+export const ROLES = {
+  viewer: 'Viewer — read only',
+  operator: 'Operator — can operate unit controls',
+  admin: 'Admin — controls and settings',
+};
+export function getUser() {
+  const u = load().user || {};
+  return { name: typeof u.name === 'string' && u.name.trim() ? u.name.trim() : 'Operator', role: u.role in ROLES ? u.role : 'operator' };
+}
+export function saveUser(user) { const s = load(); s.user = { name: user.name, role: user.role }; return writeJSON(KEY, s); }
 
 export function getGatewayUrl() {
   const v = load().gatewayUrl;
@@ -76,6 +104,6 @@ const AUDIT_KEY = 'mbms.localAudit.v1';
 export function localAudit() { return readJSON(AUDIT_KEY, []) || []; }
 export function appendLocalAudit(entry) {
   const list = localAudit();
-  list.unshift({ id: 'L-' + Date.now().toString(36), ts: Date.now(), origin: 'browser', ...entry });
-  writeJSON(AUDIT_KEY, list.slice(0, 300));
+  list.unshift({ id: 'L-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), origin: 'browser', ...entry });
+  writeJSON(AUDIT_KEY, list.slice(0, 1000));
 }

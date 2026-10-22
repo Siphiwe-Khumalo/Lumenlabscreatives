@@ -1,14 +1,14 @@
-/* App shell: sidebar, header, mode banner, hash router. */
+/* App shell: sidebar, top bar (site, connection, user & role, clock), banners, hash router. */
 import { SITE } from './config/site.js';
-import { POINT_MAP_STATUS } from './config/points.js';
+import { ROLES } from './config/settings-store.js';
 import { icon } from './ui/icons.js';
-import { esc, dayLong, timeSec, dateTime } from './util/format.js';
+import { esc, dayLong, timeSec, time, ago } from './util/format.js';
 import * as store from './data/store.js';
 import { closeDrawer } from './ui/components.js';
 
 import overview from './pages/overview.js';
 import environment from './pages/environment.js';
-import hvac from './pages/hvac.js';
+import controls from './pages/controls.js';
 import alarms from './pages/alarms.js';
 import trends from './pages/trends.js';
 import audit from './pages/audit.js';
@@ -17,10 +17,10 @@ import model from './pages/model.js';
 import commissioning from './pages/commissioning.js';
 
 const PAGES = [
+  { id: 'controls', label: 'Controls', icon: 'hvac', page: controls },
   { id: 'overview', label: 'Overview', icon: 'overview', page: overview },
   { id: 'model', label: 'Facility Model', icon: 'model', page: model },
   { id: 'environment', label: 'Environmental Conditions', icon: 'environment', page: environment },
-  { id: 'hvac', label: 'HVAC Systems', icon: 'hvac', page: hvac },
   { id: 'alarms', label: 'Alarm Register', icon: 'alarm', page: alarms },
   { id: 'trends', label: 'Trends & Reports', icon: 'trends', page: trends },
   { id: 'audit', label: 'Audit Trail', icon: 'audit', page: audit },
@@ -49,9 +49,14 @@ function renderTopbar() {
     <button class="btn ghost icon-btn menu-btn" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">${icon('menu')}</button>
     <div class="facility"><strong>${esc(SITE.name)}</strong><span>${esc(SITE.subtitle)} · ${esc(SITE.location)}</span></div>
     <div class="topbar-right">
-      <div class="conn" aria-live="polite">
-        <div class="conn-row"><span class="lbl">Monitoring service</span><span data-svc></span></div>
-        <div class="conn-row"><span class="lbl">Connection</span><span data-conn></span></div>
+      <span class="conn-pill checking" data-conn aria-live="polite"><span class="dot"></span><span data-conn-text>Connecting…</span></span>
+      <div class="vsep"></div>
+      <div class="user-box">
+        <span class="user-name" data-user-name title="Signed-in name (change in Settings)"></span>
+        <label class="sr-only" for="role-select">Role</label>
+        <select class="select" id="role-select" data-role title="Role (no authentication backend: this selector is not security)">
+          ${Object.keys(ROLES).map((r) => `<option value="${r}">${r[0].toUpperCase() + r.slice(1)}</option>`).join('')}
+        </select>
       </div>
       <div class="vsep"></div>
       <div class="clock" aria-label="Current site time"><strong data-time></strong><span data-date></span></div>
@@ -60,6 +65,14 @@ function renderTopbar() {
     </div>`;
   $('.menu-btn').addEventListener('click', () => setNavOpen(!$('#app').classList.contains('nav-open')));
   $('[data-wall]').addEventListener('click', startWall);
+  $('[data-role]').addEventListener('change', (e) => store.setUser({ name: store.state.user.name, role: e.target.value }));
+}
+
+/** Keeps every "Updated n s ago" current. */
+function tickAges() {
+  document.querySelectorAll('[data-age]').forEach((el) => {
+    el.textContent = `${el.dataset.prefix || 'Updated'} ${ago(Number(el.dataset.age))}`;
+  });
 }
 
 function tickClock() {
@@ -70,45 +83,36 @@ function tickClock() {
 }
 
 function renderStatus(s) {
-  const svc = $('[data-svc]'), conn = $('[data-conn]');
-  const chip = (dot, text) => `<span class="dot ${dot}"></span> ${esc(text)}`;
-  if (s.mode === 'demo') {
-    svc.innerHTML = chip('warn', 'Simulated (demo)');
-    conn.innerHTML = chip('unk', 'Not connected — demo data');
-  } else if (s.mode === 'connected') {
-    svc.innerHTML = chip('ok', 'Gateway healthy');
-    conn.innerHTML = chip('ok', `Connected · ${s.gateway.checkedAt ? timeSec(s.gateway.checkedAt) : ''}`);
-  } else if (s.mode === 'offline') {
-    svc.innerHTML = chip('unk', 'Unavailable');
-    conn.innerHTML = chip('crit', s.gateway.configured ? 'Offline — gateway unreachable' : 'Offline — not configured');
-  } else {
-    svc.innerHTML = chip('unk', 'Starting…');
-    conn.innerHTML = chip('unk', 'Checking…');
-  }
+  const c = s.connection;
+  const pill = $('[data-conn]');
+  const demo = s.mode === 'demo';
+  const cls = c.status === 'ok' ? (demo ? 'demo' : 'ok') : c.status === 'checking' ? 'checking' : 'lost';
+  pill.className = `conn-pill ${cls}`;
+  $('[data-conn-text]').textContent = c.status === 'ok' ? (demo ? 'Simulated data' : `JACE connected · ${time(s.lastPollAt)}`)
+    : c.status === 'checking' ? 'Connecting…' : c.status === 'not-configured' ? 'JACE not connected' : 'JACE connection lost';
+  pill.title = c.message || '';
+  $('[data-user-name]').textContent = s.user.name;
+  $('[data-role]').value = s.user.role;
 
   const open = store.activeAlarms();
   const n = open.length;
   const bell = $('[data-bell-count]');
   bell.textContent = n > 99 ? '99+' : String(n);
   bell.classList.toggle('zero', n === 0);
-  $('[data-bell]').setAttribute('aria-label', `Alarm Register — ${n} active alarm${n === 1 ? '' : 's'}${s.mode === 'demo' ? ' (demonstration data)' : ''}`);
+  $('[data-bell]').setAttribute('aria-label', `Alarm Register — ${n} active alarm${n === 1 ? '' : 's'}${demo ? ' (simulated)' : ''}`);
   const navCount = $('[data-nav-count]');
   if (navCount) { navCount.hidden = n === 0; navCount.textContent = n; }
 
-  const banner = $('#mode-banner');
-  if (s.mode === 'demo') {
-    banner.innerHTML = `<div class="mode-banner" role="note">${icon('info')}<div><strong>DEMONSTRATION MODE</strong> — All values shown are illustrative placeholders generated in this browser. They are not site telemetry and must not be used for operational or quality decisions.</div></div>`;
-  } else if (s.mode === 'offline') {
-    banner.innerHTML = `<div class="mode-banner offline" role="status">${icon('alarm')}<div><strong>OFFLINE</strong> — No live site data. ${esc(s.gateway.message)} All readings are shown as Unknown.</div></div>`;
-  } else if (s.mode === 'connected') {
-    banner.innerHTML = `<div class="mode-banner connected" role="status">${icon('check')}<div><strong>CONNECTED</strong> — Gateway health check succeeded at ${esc(dateTime(s.gateway.checkedAt))}. Points: ${esc(POINT_MAP_STATUS.note)}</div></div>`;
-  } else {
-    banner.innerHTML = `<div class="mode-banner offline" role="status">${icon('refresh')}<div><strong>STARTING</strong> — ${esc(s.gateway.message || 'Initialising data source…')}</div></div>`;
-  }
+  // Banners: SIMULATED DATA is permanent in demo; connection loss is red and explicit.
+  const banners = [];
+  if (demo) banners.push(`<div class="banner sim" role="note">${icon('info')}<span><strong>SIMULATED DATA</strong> — every value on this page is generated in the browser for demonstration. It is not from the JACE and must not be used for operational or quality decisions.${s.scenario && s.scenario !== 'normal' ? ` Scenario: ${esc(s.scenario)}.` : ''}</span></div>`);
+  if (c.status === 'lost') banners.push(`<div class="banner lost" role="alert">${icon('alarm')}<span><strong>JACE connection lost: readings are not live.</strong> Every value is STALE${c.lastOkAt ? `; last good read at ${esc(timeSec(c.lastOkAt))}` : ''}. ${esc(c.message || '')}</span></div>`);
+  if (c.status === 'not-configured') banners.push(`<div class="banner lost" role="alert">${icon('alarm')}<span><strong>Not connected to the JACE: readings are not live.</strong> No gateway URL is configured (Settings → Data source).</span></div>`);
+  $('#mode-banner').innerHTML = banners.join('');
 }
 
 /* ---- wall display ----------------------------------------------------------- */
-const WALL_PAGES = ['overview', 'model', 'hvac', 'alarms'];
+const WALL_PAGES = ['controls', 'overview', 'model', 'alarms'];
 const WALL_SECONDS = 30;
 let wallTimer = null, wallIdx = 0, wallCountdown = null;
 
@@ -149,14 +153,15 @@ function stopWall() {
 
 /* ---- router ---------------------------------------------------------------- */
 function parseHash() {
-  const [path, query = ''] = (location.hash.replace(/^#\/?/, '') || 'overview').split('?');
+  const [path, query = ''] = (location.hash.replace(/^#\/?/, '') || 'controls').split('?');
   return { id: path, params: new URLSearchParams(query) };
 }
 
 function route() {
   const { id, params } = parseHash();
+  if (id === 'live-readings') return; // in-page anchor on the Controls page
   const entry = PAGES.find((p) => p.id === id);
-  if (!entry) { location.replace('#/overview'); return; }
+  if (!entry) { location.replace('#/controls'); return; } // includes the old #/hvac page, merged into Controls
   closeDrawer();
   setNavOpen(false);
   document.querySelectorAll('#nav a').forEach((a) => (a.dataset.page === id ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
@@ -179,7 +184,7 @@ function boot() {
   $('#scrim').addEventListener('click', () => setNavOpen(false));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setNavOpen(false); if (document.body.classList.contains('wall')) stopWall(); } });
   tickClock();
-  setInterval(tickClock, 1000);
+  setInterval(() => { tickClock(); tickAges(); }, 1000);
   store.subscribe((s) => {
     renderStatus(s);
     current?.instance.update?.(s);

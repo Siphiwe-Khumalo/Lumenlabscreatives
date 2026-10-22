@@ -6,12 +6,11 @@ import { getThresholds } from '../config/settings-store.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, dateTime, day, time } from '../util/format.js';
 import { stateBox, toast, openDrawer, DEMO_TAG } from '../ui/components.js';
-import { RANGES } from '../ui/charts.js';
 import { mountTrendCard } from '../ui/trend-card.js';
-import { getProvider, state as storeState } from '../data/store.js';
+import { state as storeState, RANGES, getRunSegments } from '../data/store.js';
 
 const MODE_TEXT = {
-  demo: 'DEMO — illustrative data generated in the browser; not site telemetry',
+  demo: 'SIMULATED DATA — generated in the browser; not from the JACE',
   connected: 'CONNECTED — site gateway',
   offline: 'OFFLINE — no site data',
   starting: 'STARTING',
@@ -20,12 +19,12 @@ const isoSast = (ts) => `${dateTime(ts).replace(' ', 'T')}+02:00`;
 
 export default {
   mount(root) {
-    const ui = { zone: 'all', range: '24h' };
+    const ui = { zone: 'all', range: '1h' };
     root.innerHTML = `<div class="page-head">
         <div class="titles"><h1>Trends &amp; Reports</h1><p>Environmental history, equipment operating state and exportable reports</p></div>
         <div class="toolbar">
           <label class="field"><span>Zone</span><select class="select" data-zone><option value="all">All zones</option>${ZONES.map((z) => `<option value="${z.id}">${esc(z.name)}</option>`).join('')}</select></label>
-          <div class="field"><span>Range</span><div class="seg" role="group" aria-label="Time range">${Object.entries(RANGES).map(([k, r]) => `<button type="button" data-range="${k}" aria-pressed="${k === ui.range}">${r.label}</button>`).join('')}</div></div>
+          <div class="field"><span>Range</span><div class="seg" role="group" aria-label="Time range">${['1h', '24h', '7d', '30d'].map((k) => `<button type="button" data-range="${k}" aria-pressed="${k === ui.range}">${RANGES[k].label}</button>`).join('')}</div></div>
           <div class="field"><span>&nbsp;</span><div class="toolbar">
             <button class="btn" type="button" data-print>${icon('print')}Print report</button>
             <button class="btn" type="button" data-csv>${icon('download')}Export CSV</button></div></div>
@@ -86,7 +85,7 @@ export default {
         if (!data) continue;
         for (const s of data.series) {
           const l = getThresholds(s.zoneId)[metric];
-          for (const x of excursions(s.points, l.alertLow, l.alertHigh, RANGES[ui.range].step)) rows.push({ ...x, zone: s.label, metric, unit, l });
+          for (const x of excursions(s.points, l.alertLow, l.alertHigh, RANGES[ui.range].stepMs)) rows.push({ ...x, zone: s.label, metric, unit, l });
         }
       }
       if (!t && !h) { el.innerHTML = stateBox('empty', 'No history available'); return; }
@@ -104,30 +103,27 @@ export default {
     }
 
     async function hvacHistory() {
-      const p = getProvider();
       const el = $('[data-hvac]');
       $('[data-hvac-tag]').innerHTML = storeState.mode === 'demo' ? DEMO_TAG : '';
-      if (!p?.capabilities.hvacHistory) { el.innerHTML = stateBox('empty', 'Historian not configured', 'Operating-state history is available only when a historian service is supplied.'); return; }
-      el.innerHTML = stateBox('loading', 'Loading operating-state history…');
-      const now = Date.now(), from = now - RANGES[ui.range].ms;
+      el.innerHTML = stateBox('loading', 'Loading run-state history…');
+      const eqs = (ui.zone === 'all' ? EQUIPMENT : EQUIPMENT.filter((e) => e.zoneId === ui.zone)).slice().sort((a, b) => a.type.localeCompare(b.type) || a.id.localeCompare(b.id));
       try {
-        const data = await p.hvacHistory({ from, to: now });
-        const span = now - from;
-        const eqs = (ui.zone === 'all' ? EQUIPMENT : EQUIPMENT.filter((e) => e.zoneId === ui.zone)).slice().sort((a, b) => a.type.localeCompare(b.type) || a.id.localeCompare(b.id));
+        const runs = await Promise.all(eqs.map((eq) => getRunSegments(eq.id, ui.range)));
+        const from = runs[0]?.from ?? Date.now() - RANGES[ui.range].ms, to = runs[0]?.to ?? Date.now();
+        const span = to - from;
         let lastType = null;
-        const rows = eqs.map((eq) => {
+        const rows = eqs.map((eq, i) => {
           const head = eq.type !== lastType ? `<div class="tl-group">${esc(EQUIPMENT_TYPES[eq.type].label)}</div>` : '';
           lastType = eq.type;
-          const d = data.find((x) => x.equipmentId === eq.id);
-          const segs = (d?.segments || []).map((s) => `<div class="tl-seg ${s.state}" style="left:${((s.from - from) / span) * 100}%;width:${((s.to - s.from) / span) * 100}%" title="${s.state} · ${esc(dateTime(s.from))} – ${esc(dateTime(s.to))}"></div>`).join('');
-          return `${head}<div class="tl-row"><span><strong class="mono">${esc(eq.id)}</strong> <span class="muted">${esc(ZONES.find((z) => z.id === eq.zoneId).name)}</span></span><div class="tl-bar" role="img" aria-label="Operating state history for ${esc(eq.id)}">${segs}</div></div>`;
+          const segs = runs[i].segments.map((sg) => `<div class="tl-seg rs-seg ${sg.state}" style="left:${((sg.from - from) / span) * 100}%;width:${((sg.to - sg.from) / span) * 100}%" title="${esc(`${eq.name} (${eq.id}) ${sg.state} ${dateTime(sg.from).slice(11, 16)} to ${dateTime(sg.to).slice(11, 16)}`)}"></div>`).join('');
+          return `${head}<div class="tl-row"><span><strong class="mono">${esc(eq.id)}</strong> <span class="muted">${esc(ZONES.find((z) => z.id === eq.zoneId).name)}</span></span><div class="tl-bar" role="img" aria-label="Run state history for ${esc(eq.id)}">${segs}</div></div>`;
         }).join('');
         const long = span > 36 * 3600e3;
         const axis = [0, 0.25, 0.5, 0.75, 1].map((f) => `<span>${esc(long ? day(from + f * span) : time(from + f * span))}</span>`).join('');
         el.innerHTML = `<div class="timeline">${rows}<div class="tl-axis">${axis}</div></div>
-          <div class="tl-legend"><span><i style="background:#2F7D59"></i>Running</span><span><i style="background:#CFE0D7"></i>Standby</span><span><i style="background:#B42332"></i>Stopped (expected running)</span><span><i class="tl-seg unknown" style="position:static;display:inline-block"></i>Unknown / no data</span></div>`;
+          <div class="tl-legend"><span><i class="rs-seg running" style="position:static;display:inline-block"></i>Running</span><span><i class="rs-seg stopped" style="position:static;display:inline-block"></i>Stopped</span><span><i class="rs-seg fault" style="position:static;display:inline-block"></i>Fault</span><span><i class="rs-seg unknown" style="position:static;display:inline-block"></i>Unknown / no data</span></div>`;
       } catch (err) {
-        el.innerHTML = err.notConfigured ? stateBox('empty', 'Historian not configured') : stateBox('error', 'Could not load operating-state history', err.message);
+        el.innerHTML = err.connectionLost ? stateBox('error', 'JACE connection lost') : stateBox('error', 'Could not load run-state history', err.message);
       }
     }
 
@@ -157,8 +153,8 @@ export default {
       ];
       for (const data of [t, h]) {
         if (!data) continue;
-        for (const s of data.series) for (const [ts, v] of s.points) {
-          lines.push([isoSast(ts), `"${s.label}"`, data.metric, v == null ? '' : v.toFixed(2), data.unit, v == null ? 'missing' : storeState.mode === 'demo' ? 'illustrative' : 'good'].join(','));
+        for (const s of data.series) for (const [ts, v, q] of s.points) {
+          lines.push([isoSast(ts), `"${s.label}"`, data.measure, v == null ? '' : v.toFixed(2), data.unit, `${String(q || 'live').toUpperCase()}${storeState.mode === 'demo' ? ' (SIMULATED)' : ''}`].join(','));
         }
       }
       const csv = lines.join('\r\n') + '\r\n';

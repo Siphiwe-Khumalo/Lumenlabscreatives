@@ -10,7 +10,7 @@ import { isGood, STATUS_LABEL } from '../data/quality.js';
 import { readJSON, writeJSON } from '../util/storage.js';
 
 const VIEW_KEY = 'mbms.modelView.v1';
-const UNIT_STATE_LABEL = { running: 'Running', standby: 'Standby', stopped: 'Stopped', unknown: 'Unknown' };
+const UNIT_STATE_LABEL = { running: 'Running', stopped: 'Stopped', fault: 'Fault', unknown: 'Unknown' };
 const val = (r, d = 1) => (isGood(r) ? num(r.value, d) : '—');
 
 export default {
@@ -35,7 +35,7 @@ export default {
           <span><i class="lz st-normal"></i>Normal</span><span><i class="lz st-warning"></i>Warning</span><span><i class="lz st-critical"></i>Critical</span><span><i class="lz st-unknown"></i>Unknown</span>
           <span class="sep"></span>
           <span><i class="lu hybrid running"></i>Hybrid unit (floor level)</span><span><i class="lu rooftop running"></i>Rooftop unit (on roof)</span>
-          <span><i class="lu hybrid running"></i>Running</span><span><i class="lu hybrid standby"></i>Standby</span><span><i class="lu hybrid stopped"></i>Stopped</span><span><i class="lu hybrid unknown"></i>Unknown</span>
+          <span><i class="lu hybrid running"></i>Running</span><span><i class="lu hybrid stopped"></i>Stopped</span><span><i class="lu hybrid fault"></i>Fault</span><span><i class="lu hybrid unknown"></i>Unknown</span>
         </div>
       </section>`;
     const $ = (s) => root.querySelector(s);
@@ -57,8 +57,8 @@ export default {
     function unitMarker(e) {
       const p = UNIT_POS[e.id];
       if (!p) return '';
-      return `<button type="button" class="mu ${e.type} ${e.opState}${e.openAlarms ? ' has-alarm' : ''}" data-unit="${e.id}" style="left:${p.x}%;top:${p.y}%"
-          aria-label="${esc(e.id)} ${EQUIPMENT_TYPES[e.type].short}: ${UNIT_STATE_LABEL[e.opState]}${e.openAlarms ? `, ${e.openAlarms} open alarm` : ''}">
+      return `<button type="button" class="mu ${e.type} ${e.runState}${e.openAlarms ? ' has-alarm' : ''}" data-unit="${e.id}" style="left:${p.x}%;top:${p.y}%"
+          aria-label="${esc(e.id)} ${EQUIPMENT_TYPES[e.type].short}: ${UNIT_STATE_LABEL[e.runState]}${e.openAlarms ? `, ${e.openAlarms} open alarm` : ''}">
         <span class="mu-body"></span><span class="mu-lbl">${esc(e.id)}</span>
       </button>`;
     }
@@ -91,7 +91,7 @@ export default {
         title: `${e.id} · ${e.name}`,
         subtitle: `${esc(EQUIPMENT_TYPES[e.type].short)} unit · serves ${esc(e.zoneName || '')}${last.mode === 'demo' ? ' · Demonstration data' : ''}`,
         body: `<dl class="kv">
-            <dt>State</dt><dd>${esc(UNIT_STATE_LABEL[e.opState])}</dd>
+            <dt>State</dt><dd>${esc(UNIT_STATE_LABEL[e.runState])}</dd>
             <dt>Space temperature</dt><dd>${readingHTML(r.temperature)}</dd>
             <dt>Setpoint</dt><dd>${readingHTML(r.temperatureSetpoint)}</dd>
             ${e.type === 'rooftop' ? `<dt>Humidity</dt><dd>${readingHTML(r.humidity)}</dd>` : `<dt>Airflow</dt><dd>${readingHTML(r.airflow, { digits: 0 })}</dd>`}

@@ -16,10 +16,14 @@ const copies = [
   ['leaflet/LICENSE', 'leaflet/LICENSE'],
   ['chart.js/dist/chart.umd.js', 'chartjs/chart.umd.js'],
   ['chart.js/LICENSE.md', 'chartjs/LICENSE.md'],
-  ['@fontsource/inter/LICENSE', 'inter/LICENSE'],
+  ['@fontsource/plus-jakarta-sans/LICENSE', 'fonts/plus-jakarta-sans-LICENSE'],
+  ['@fontsource/jetbrains-mono/LICENSE', 'fonts/jetbrains-mono-LICENSE'],
 ];
 for (const w of [400, 500, 600, 700]) {
-  copies.push([`@fontsource/inter/files/inter-latin-${w}-normal.woff2`, `inter/inter-latin-${w}-normal.woff2`]);
+  copies.push([`@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-${w}-normal.woff2`, `fonts/plus-jakarta-sans-latin-${w}-normal.woff2`]);
+}
+for (const w of [400, 500, 600]) {
+  copies.push([`@fontsource/jetbrains-mono/files/jetbrains-mono-latin-${w}-normal.woff2`, `fonts/jetbrains-mono-latin-${w}-normal.woff2`]);
 }
 
 for (const [from, to] of copies) {

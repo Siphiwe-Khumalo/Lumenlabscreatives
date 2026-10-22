@@ -44,22 +44,28 @@ export const CONTROLLER_NAME = Object.freeze({
  * a fixed name (string). A type without an entry does not have that reading.
  *   kind: number | boolean | enum | text
  *   alarm: true -> the point is a fault/alarm flag (true = active, ASSUMED)
- *   writable: false everywhere until controls are approved.
+ *   controllable: true -> the point is written by a dashboard control. Writes are only sent when
+ *                 APP_CONFIG.controls.enabled is true (locked until approved).
+ *
+ * Controls (as specified by the project team):
+ *   Rooftop: Unit enable (toggle), Start command (on/off), Setpoint (slider)
+ *   Hybrid:  BMS switch (toggle) and Cool / Heat / Fan-only mode. Everything else is read-only.
  */
 export const ROLE_POINTS = Object.freeze({
   // --- temperatures / humidity --------------------------------------------------
   temperature: { label: 'Space temperature', unit: '°C', kind: 'number',
     points: { rooftop: (n) => `SPACE_TEMP${n}`, hybrid: 'ROOM_TEMP_AVERAGE' } },
-  temperatureSetpoint: { label: 'Temperature setpoint', unit: '°C', kind: 'number',
+  temperatureSetpoint: { label: 'Temperature setpoint', unit: '°C', kind: 'number', controllable: true, controlTypes: ['rooftop'],
+    // Hybrid setpoint is read-only (only BMS switch and mode are controlled on hybrids).
     points: { rooftop: (n) => `Unit${n}Setpoint`, hybrid: 'ROOM_TEMP_SETPOINT' } },
   humidity: { label: 'Relative humidity', unit: '%RH', kind: 'number', monitoringOnly: true,
     points: { rooftop: (n) => `R_Humidity${n}` } },
 
   // --- run / enable / mode -------------------------------------------------------
-  enable: { label: 'Unit enable', kind: 'boolean',
-    // The on/off toggle writes here once controls are approved (to be confirmed: Enable vs StartCmd / BMSControl).
+  enable: { label: 'Unit enable', kind: 'boolean', controllable: true, controlTypes: ['hybrid'], // rooftop enable is an output (status only)
+    // Rooftop: "Unit enable" toggle. Hybrid: "BMS switch" toggle (BMS_Enable assumed; BMSControl is the alternative).
     points: { rooftop: (n) => `Unit${n}Enable`, hybrid: 'BMS_Enable' } },
-  startCommand: { label: 'Start command', kind: 'boolean', points: { rooftop: (n) => `Uni${n}StartCmd` } },
+  startCommand: { label: 'Start command', kind: 'boolean', controllable: true, points: { rooftop: (n) => `Uni${n}StartCmd` } },
   bmsControl: { label: 'BMS control', kind: 'boolean', points: { hybrid: 'BMSControl' } },
   remoteStatus: { label: 'Remote status', kind: 'boolean', points: { hybrid: 'REMOTE_STATUS' } },
   fanStatus: { label: 'Supply air fan', kind: 'boolean',
@@ -68,9 +74,9 @@ export const ROLE_POINTS = Object.freeze({
     // Rooftop mode is a single point. Map its numeric states here once known, e.g. { 1: 'cooling', 2: 'heating' }.
     enumMap: {},
     points: { rooftop: (n) => `Unit${n}Mode` } },
-  coolMode: { label: 'Cool mode', kind: 'boolean', points: { hybrid: 'COOL_MODE' } },
-  heatMode: { label: 'Heat mode', kind: 'boolean', points: { hybrid: 'HEAT_MODE' } },
-  fanOnlyMode: { label: 'Fan-only mode', kind: 'boolean', points: { hybrid: 'FAN_ONLY_MODE' } },
+  coolMode: { label: 'Cool mode', kind: 'boolean', controllable: true, points: { hybrid: 'COOL_MODE' } },
+  heatMode: { label: 'Heat mode', kind: 'boolean', controllable: true, points: { hybrid: 'HEAT_MODE' } },
+  fanOnlyMode: { label: 'Fan-only mode', kind: 'boolean', controllable: true, points: { hybrid: 'FAN_ONLY_MODE' } },
 
   // --- air side (hybrid) ---------------------------------------------------------
   fanSpeed: { label: 'Fan speed', unit: '%', unitConfirmed: false, kind: 'number', points: { hybrid: 'FAN_SPEED' } },
@@ -145,7 +151,7 @@ export function mappingRows() {
       rows.push({
         kind: u.type === 'hybrid' ? 'Hybrid' : 'Rooftop', id, controller: controllerName(id), role,
         label: ROLE_POINTS[role].label, path: slotPath(id, role), ord: ORD_PREFIX + slotPath(id, role),
-        mapped: true, derived: u.n !== 1, writable: false,
+        mapped: true, derived: u.n !== 1, writable: !!ROLE_POINTS[role].controllable && (!ROLE_POINTS[role].controlTypes || ROLE_POINTS[role].controlTypes.includes(u.type)),
       });
     }
   }

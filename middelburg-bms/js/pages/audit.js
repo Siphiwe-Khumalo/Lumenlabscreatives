@@ -11,6 +11,7 @@ const TYPES = {
   communication: 'Communication',
   service: 'Service',
   control: 'Unit control',
+  session: 'User / role',
   commissioning: 'Commissioning',
   maintenance: 'Maintenance',
 };
@@ -43,8 +44,9 @@ export default {
         { key: 'ts', label: 'Timestamp', render: (e) => `<span class="nowrap">${esc(dateTime(e.ts))}</span>` },
         { key: 'type', label: 'Type', sort: (e) => TYPES[e.type] || e.type, render: (e) => `<span class="tag">${esc(TYPES[e.type] || e.type)}</span>` },
         { key: 'source', label: 'Source', render: (e) => esc(e.source) },
-        { key: 'actor', label: 'Actor', render: (e) => esc(e.actor) },
-        { key: 'description', label: 'Description', render: (e) => esc(e.description) },
+        { key: 'actor', label: 'Who', render: (e) => `${esc(e.actor)}${e.role ? `<span class="sub">${esc(e.role)}</span>` : ''}` },
+        { key: 'description', label: 'What', render: (e) => `${esc(e.description)}${e.point ? `<span class="sub mono">${esc(e.point)}</span>` : ''}` },
+        { key: 'result', label: 'Result', render: (e) => (e.result ? `<span class="status-chip ${/^CONFIRMED/.test(e.result) ? 'st-normal' : /NOT CONFIRMED|FAILED/.test(e.result) ? 'st-critical' : 'st-info'}">${esc(e.result)}</span>` : '') },
         { key: 'origin', label: 'Record', sort: originOf, render: (e) => (e.demo ? '<span class="tag demo">Demonstration record</span>' : '<span class="tag">This browser only</span>') },
       ],
     });

@@ -5,21 +5,20 @@ import { icon } from '../ui/icons.js';
 import { esc, num, timeSec, dateTime, ago } from '../util/format.js';
 import { statusChip, severityChip, ackChip, readingHTML, tsHTML, createTable, DEMO_TAG } from '../ui/components.js';
 import { isGood, worst, rangeText, STATUS_RANK } from '../data/quality.js';
-import { getProvider, state as storeState } from '../data/store.js';
+import { state as storeState, getZoneSeries, RANGES } from '../data/store.js';
 import { mountTrendCard } from '../ui/trend-card.js';
-import { RANGES } from '../ui/charts.js';
 import { mountFacilityMap } from '../ui/map.js';
 
 const zoneOptions = (sel) => `<option value="all" ${sel === 'all' ? 'selected' : ''}>All zones</option>` +
   ZONES.map((z) => `<option value="${z.id}" ${sel === z.id ? 'selected' : ''}>${esc(z.name)}</option>`).join('');
 
 function rangeSeg(sel) {
-  return `<div class="seg" role="group" aria-label="Trend time range">${Object.entries(RANGES).map(([k, r]) => `<button type="button" data-range="${k}" aria-pressed="${k === sel}">${r.label}</button>`).join('')}</div>`;
+  return `<div class="seg" role="group" aria-label="Trend time range">${['1h', '24h', '7d'].map((k) => [k, RANGES[k]]).map(([k, r]) => `<button type="button" data-range="${k}" aria-pressed="${k === sel}">${r.label}</button>`).join('')}</div>`;
 }
 
 export default {
   mount(root, { params }) {
-    const ui = { zone: params.get('zone') && ZONES.some((z) => z.id === params.get('zone')) ? params.get('zone') : 'all', range: 'live' };
+    const ui = { zone: params.get('zone') && ZONES.some((z) => z.id === params.get('zone')) ? params.get('zone') : 'all', range: '1h' };
     const deltas = {}; // `${zone}:${metric}` -> { value, at }
 
     root.innerHTML = `
@@ -96,15 +95,15 @@ export default {
       await Promise.all([trendT.load({ zoneId: ui.zone, range: ui.range }), trendH.load({ zoneId: ui.zone, range: ui.range })]);
     }
 
+    /** 1-hour change: only when the sample one hour ago AND the current reading are LIVE. */
     async function loadDeltas() {
-      const p = getProvider();
-      if (!p?.capabilities.history || ui.zone === 'all') return;
-      const now = Date.now();
+      if (ui.zone === 'all') return;
       try {
         for (const metric of ['temperature', 'humidity']) {
-          const [d] = await p.history({ metric, zoneIds: [ui.zone], from: now - 65 * 60e3, to: now - 55 * 60e3, stepMs: 5 * 60e3 });
-          const pt = d.points.find((x) => x[1] != null);
-          deltas[`${ui.zone}:${metric}`] = pt ? { value: pt[1], at: pt[0] } : null;
+          const { points } = await getZoneSeries(ui.zone, metric, '1h');
+          const target = Date.now() - 60 * 60e3;
+          const pt = points.find((x) => x[0] >= target - 5 * 60e3 && x[0] <= target + 5 * 60e3);
+          deltas[`${ui.zone}:${metric}`] = pt && pt[2] === 'live' && pt[1] != null ? { value: pt[1], at: pt[0] } : null;
         }
         update(storeState);
       } catch { /* deltas are optional */ }
@@ -134,7 +133,7 @@ export default {
         return metricCard({ ico, title, unit, status,
           valueHTML: `<span class="v">${num(lo)}–${num(hi)}</span>`,
           meta: [`<span>Range across ${good.length} of ${zones.length} reporting zones (not an average)</span>`,
-            unknownCount ? `<span><span class="q-flag">${unknownCount} Unknown</span></span>` : '',
+            unknownCount ? `<span><span class="q-label">${unknownCount} Unknown</span></span>` : '',
             `<span>Updated ${esc(timeSec(latest))}</span>`] });
       }
       const r = good[0].readings[metric];
@@ -170,17 +169,17 @@ export default {
 
       // Metric cards
       const eqs = ui.zone === 'all' ? s.equipment : s.equipment.filter((e) => e.zoneId === ui.zone);
-      const running = eqs.filter((e) => e.opState === 'running').length;
-      const stopped = eqs.filter((e) => e.opState === 'stopped').length;
-      const standby = eqs.filter((e) => e.opState === 'standby').length;
-      const unknown = eqs.filter((e) => e.opState === 'unknown').length;
+      const running = eqs.filter((e) => e.runState === 'running').length;
+      const stopped = eqs.filter((e) => e.runState === 'fault').length;
+      const standby = eqs.filter((e) => e.runState === 'stopped').length;
+      const unknown = eqs.filter((e) => e.runState === 'unknown').length;
       const hvacStatus = stopped ? 'critical' : unknown ? 'unknown' : 'normal';
       const eqTs = eqs.map((e) => e.lastUpdate).filter(Boolean);
-      const grp = (t) => { const g = eqs.filter((e) => e.type === t); return g.length ? `<span><b>${EQUIPMENT_TYPES[t].short}</b> ${g.filter((e) => e.opState === 'running').length}/${g.length}</span>` : ''; };
+      const grp = (t) => { const g = eqs.filter((e) => e.type === t); return g.length ? `<span><b>${EQUIPMENT_TYPES[t].short}</b> ${g.filter((e) => e.runState === 'running').length}/${g.length}</span>` : ''; };
       const hvacCard = metricCard({ ico: 'hvac', title: 'HVAC Availability', status: hvacStatus, unit: 'running',
         valueHTML: `<span class="v">${running} / ${eqs.length}</span>`,
-        meta: [grp('hybrid'), grp('rooftop'), standby ? `<span>${standby} standby</span>` : '', stopped ? `<span>${stopped} stopped (expected running)</span>` : '',
-          unknown ? `<span class="q-flag">${unknown} Unknown</span>` : '', eqTs.length ? `<span>Updated ${esc(timeSec(Math.max(...eqTs)))}</span>` : ''] });
+        meta: [grp('hybrid'), grp('rooftop'), standby ? `<span>${standby} stopped</span>` : '', stopped ? `<span>${stopped} FAULT</span>` : '',
+          unknown ? `<span class="q-label">${unknown} Unknown</span>` : '', eqTs.length ? `<span>Updated ${esc(timeSec(Math.max(...eqTs)))}</span>` : ''] });
       const alarmStatus = crit ? 'critical' : warn ? 'warning' : 'normal';
       const alarmCard = `<article class="card metric">
         <div class="metric-top">${icon('alarm')}<span>Active Alarms</span>${statusChip(alarmStatus, open.length ? undefined : 'None active')}</div>

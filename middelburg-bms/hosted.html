@@ -3,8 +3,8 @@
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="css/app.css">
-<!-- Hosted build of index.html for claude.ai Artifacts (no print, no downloads, external map services blocked). -->
-<script>window.MBMS_HOSTED = true;</script>
+<!-- Hosted build of index.html for claude.ai Artifacts (no print, no downloads, external map services blocked; DEMO flag on). -->
+<script>window.MBMS_HOSTED = true; window.MBMS_DEMO = true; /* hosted copy cannot reach a JACE: explicit DEMO flag */</script>
 <script src="vendor/leaflet/leaflet.js" defer></script>
 <script src="vendor/chartjs/chart.umd.js" defer></script>
 <script type="module" src="js/main.js"></script>
@@ -12,7 +12,7 @@
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Primary">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-mark" aria-hidden="true">M</span>
       <div class="brand-text"><strong>Middelburg</strong><span>Pharmaceutical Facility</span></div>
     </div>
     <nav class="nav" id="nav"></nav>

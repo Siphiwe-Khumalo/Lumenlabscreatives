@@ -2,24 +2,32 @@
  * behind it). The gateway holds all credentials server-side; this file must
  * never contain credentials or tokens.
  *
- * Gateway contract — PROPOSED, NOT IMPLEMENTED (see README):
- *   GET  {gateway}/health                         -> 200 { "status": "ok", ... }
- *   GET  {gateway}/query/readPoint/<slot path>    -> 200 { "value": <number|bool|string>, "timestamp"?: <ISO|ms>, "status"?: "ok"|"fault"|"stale"|"down" }
- *   PUT  {gateway}/query/writePoint/<slot path>?value=&priority=   (unit enable only, and only when
- *                                                                   APP_CONFIG.controls.enabled is true)
- *   GET  {gateway}/query/history/<slot path>?from=&to=             -> 200 { "points": [[ts, value], ...] }
- *                                                                   (only when APP_CONFIG.services.history is true)
+ * Gateway contract (proposed; see README):
+ *   GET  {gateway}/health                       -> 200 { "status": "ok" }
+ *   GET  {gateway}/query/readPoint/<slot path>  -> 200 {
+ *          "value": <number|bool|string>,
+ *          "status"?: Niagara status, e.g. "{ok}", "{fault}", "{down}", "{disabled}", "{stale}", "{overridden}",
+ *          "timestamp"?: <ISO|ms>  (source time; otherwise the read time is used),
+ *          "activeLevel"?: <1..17> (priority currently driving a writable point),
+ *          "overrideSource"?: <text> (who is driving it, if known) }
+ *        404 -> point not found (NOT MAPPED)
+ *   PUT  {gateway}/query/writePoint/<slot path>?value=&priority=
+ *   GET  {gateway}/query/history/<slot path>?from=&to=   -> 200 { "points": [[ts, value, status], ...] }
+ *        (only when APP_CONFIG.services.history is true; status per sample keeps outages visible)
  *
- * Rules carried over from ARC:
- *   - one FIFO queue, one request in flight, per-request timeout
- *   - a failed read NEVER falls back to mock data: it becomes a 'bad' or
- *     'missing' reading and the UI shows Unknown. */
+ * Rules:
+ *   - one FIFO queue, one request in flight, per-request timeout (the JACE cannot take concurrent requests)
+ *   - a failed read NEVER falls back to other data: it becomes OFFLINE / NOT MAPPED and is not displayed
+ *   - if every read in a cycle fails at network level, the cycle throws ConnectionLostError */
 import { APP_CONFIG } from '../config/app-config.js';
 import { EQUIPMENT } from '../config/site.js';
-import { ROLE_POINTS, ZONE_SOURCES, slotPath, rolesForType } from '../config/points.js';
+import { ROLE_POINTS, slotPath, rolesForType } from '../config/points.js';
 import { RequestQueue } from './request-queue.js';
-import { missing } from './quality.js';
+import { notMapped, QUALITY } from './quality.js';
 
+export class ConnectionLostError extends Error {
+  constructor(msg) { super(msg); this.connectionLost = true; }
+}
 export class NotConfiguredError extends Error {
   constructor(what) { super(`${what} not configured`); this.notConfigured = true; }
 }
@@ -65,25 +73,42 @@ export function createConnectedProvider(gatewayUrl) {
   const base = gatewayUrl.replace(/\/+$/, '');
   const paths = APP_CONFIG.gatewayPaths;
 
+  const offline = (error, comms = false) => ({ value: null, unit: null, ts: null, quality: QUALITY.OFFLINE, error, comms });
+
+  /** Maps a Niagara status string to a quality. */
+  function qualityOf(status) {
+    const s = String(status ?? 'ok').toLowerCase();
+    if (/fault|down|disabled|null|unackedalarm.*fault/.test(s)) return QUALITY.OFFLINE;
+    if (/stale/.test(s)) return QUALITY.STALE;
+    return QUALITY.LIVE; // ok, overridden, alarm (value is still valid)
+  }
+
   async function readPoint(role, path) {
     let res;
     try {
       res = await queue.fetch(base + paths.readPoint + encodePath(path), { method: 'GET', headers: { Accept: 'application/json' } });
     } catch (err) {
-      return { value: null, unit: null, ts: null, quality: 'bad', error: `Read failed: ${err.message}` };
+      return offline(`Read failed: ${err.message}`, true);
     }
-    if (res.status === 404) return missing('Point not found at gateway');
-    if (!res.ok) return { value: null, unit: null, ts: null, quality: 'bad', error: `Gateway returned HTTP ${res.status}` };
+    if (res.status === 404) return notMapped('Point not found on the JACE');
+    if (!res.ok) return offline(`Gateway returned HTTP ${res.status}`, res.status >= 502);
     let body;
-    try { body = await res.json(); } catch { return { value: null, unit: null, ts: null, quality: 'bad', error: 'Unreadable response' }; }
+    try { body = await res.json(); } catch { return offline('Unreadable response from gateway'); }
     const raw = body && typeof body === 'object' ? (body.value ?? body.out?.value ?? null) : body;
+    const status = body && typeof body === 'object' ? body.status : undefined;
+    const quality = qualityOf(status);
+    if (quality !== QUALITY.LIVE) return { value: null, unit: ROLE_POINTS[role].unit, ts: null, quality, error: `JACE reports status ${status}` };
     const value = coerce(role, raw);
-    if (value == null) return missing('No usable value in response');
-    const status = String(body?.status ?? 'ok').toLowerCase();
-    const quality = ['ok', 'good', '{ok}'].includes(status) ? 'good' : status.includes('stale') ? 'stale' : 'bad';
-    // Without a source timestamp the receive time is used; staleness then reflects gateway freshness only.
+    if (value == null) return offline('No usable value in response');
+    // Read time unless the gateway supplies the source timestamp.
     const ts = parseTimestamp(body?.timestamp) ?? Date.now();
-    return { value, unit: ROLE_POINTS[role].unit, ts, quality, error: quality === 'good' ? undefined : `Point status: ${status}` };
+    // Override: the point is driven by another source or a higher priority than ours.
+    let override = null;
+    const lvl = Number(body?.activeLevel);
+    const ours = ROLE_POINTS[role]?.writePriority ?? APP_CONFIG.controls.writePriority;
+    if (/overrid/.test(String(status).toLowerCase())) override = { source: body?.overrideSource || 'operator override on the JACE' };
+    else if (ROLE_POINTS[role]?.controllable && isFinite(lvl) && ours != null && lvl < ours) override = { source: body?.overrideSource || `priority ${lvl}` };
+    return { value, unit: ROLE_POINTS[role].unit, ts, quality: QUALITY.LIVE, override };
   }
 
   const unitPath = (unitId, role) => slotPath(unitId, role);
@@ -94,14 +119,19 @@ export function createConnectedProvider(gatewayUrl) {
     const res = await queue.fetch(`${base}${paths.history}${encodePath(path)}?from=${from}&to=${to}`, { method: 'GET', headers: { Accept: 'application/json' } });
     if (!res.ok) throw new Error(`History request returned HTTP ${res.status}`);
     const body = await res.json();
-    return (body.points || []).map(([t, v]) => [parseTimestamp(t), typeof v === 'number' ? v : parseFloat(v)]).filter(([t]) => t != null);
+    // Each sample keeps its status, so past outages are shown, never bridged.
+    return (body.points || []).map(([t, v, st]) => {
+      const ts = parseTimestamp(t);
+      const q = qualityOf(st);
+      const n = typeof v === 'number' ? v : typeof v === 'boolean' ? (v ? 1 : 0) : parseFloat(v);
+      return [ts, q === QUALITY.LIVE && isFinite(n) ? n : null, q === QUALITY.LIVE && !isFinite(n) ? QUALITY.OFFLINE : q];
+    }).filter(([t]) => t != null);
   }
 
   return {
     id: 'connected',
     capabilities: {
-      acknowledge: false, history: !!APP_CONFIG.services.history, hvacHistory: false, unitHistory: !!APP_CONFIG.services.history,
-      audit: false, notifications: false, control: true,
+      acknowledge: false, history: !!APP_CONFIG.services.history, audit: false, notifications: false, control: true,
     },
 
     async health() {
@@ -121,7 +151,7 @@ export function createConnectedProvider(gatewayUrl) {
       // De-duplicate: zone and equipment may share a point (e.g. space temperature).
       const cache = new Map();
       const read = (role, path) => {
-        if (!path) return Promise.resolve(missing('Role not mapped'));
+        if (!path) return Promise.resolve(notMapped('No point for this reading'));
         if (!cache.has(path)) cache.set(path, readPoint(role, path));
         return cache.get(path);
       };
@@ -131,25 +161,25 @@ export function createConnectedProvider(gatewayUrl) {
         equipment[e.id] = {};
         for (const role of rolesForType(e.type)) equipment[e.id][role] = await read(role, slotPath(e.id, role));
       }
+      const all = [...cache.values()];
+      const results = await Promise.all(all);
+      if (results.length && results.every((r) => r.comms)) throw new ConnectionLostError('No response from the gateway for any point');
       return { ts: Date.now(), equipment, alarms: [], audit: [] };
     },
 
-    async history({ metric, zoneIds, from, to }) {
-      const out = [];
-      for (const zoneId of zoneIds) out.push({ zoneId, points: await readHistory(slotPath(ZONE_SOURCES[zoneId], metric), from, to) });
-      return out;
-    },
-    async unitHistory({ unitId, role, from, to }) { return readHistory(unitPath(unitId, role), from, to); },
-    async hvacHistory() { throw new NotConfiguredError('Historian'); },
+    /** History for one unit role: [[ts, value|null, quality], ...] */
+    async series({ unitId, role, from, to }) { return readHistory(unitPath(unitId, role), from, to); },
     async acknowledge() { throw new NotConfiguredError('Acknowledgement service'); },
 
-    /** Unit command (enable on/off). Refused unless controls are enabled AND the role is marked writable. */
+    /** Unit command. Refused unless controls are enabled AND the role is controllable for this unit type. */
     async command(unitId, role, value) {
       const c = APP_CONFIG.controls;
-      if (!c.enabled || !ROLE_POINTS[role]?.writable) throw new NotConfiguredError('Unit control');
+      const def = ROLE_POINTS[role];
+      const type = EQUIPMENT.find((e) => e.id === unitId)?.type;
+      if (!c.enabled || !def?.controllable || (def.controlTypes && !def.controlTypes.includes(type))) throw new NotConfiguredError('Unit control');
       const path = unitPath(unitId, role);
       if (!path) throw new Error('Control point not mapped');
-      const priority = ROLE_POINTS[role].writePriority ?? c.writePriority;
+      const priority = def.writePriority ?? c.writePriority;
       if (priority == null) throw new Error('Write priority not configured');
       const res = await queue.fetch(`${base}${paths.writePoint}${encodePath(path)}?value=${encodeURIComponent(value)}&priority=${priority}`, { method: 'PUT' });
       if (!res.ok) throw new Error(`Gateway refused the command (HTTP ${res.status})`);

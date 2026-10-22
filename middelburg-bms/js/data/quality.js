@@ -1,33 +1,57 @@
 /* Reading quality and status evaluation.
- * A reading is { value, unit, ts, quality: 'good'|'stale'|'bad'|'missing', error? }.
- * Anything other than a fresh, good reading evaluates to UNKNOWN — never Normal. */
+ *
+ * A reading is { value, unit, ts, quality, error?, lastGood?, override? }.
+ * Quality states (shown the same way everywhere):
+ *   live          a current, good value — the ONLY state whose value is displayed
+ *   stale         no update within the stale period, or the JACE connection is lost
+ *   offline       sensor / comms down, or the JACE reports fault / down / disabled
+ *   not-mapped    not connected to a real controller point (no point, or point not found)
+ *   out-of-range  the reported value is outside the sensor's plausible range
+ * Anything other than LIVE evaluates to UNKNOWN status — never Normal. */
 import { APP_CONFIG } from '../config/app-config.js';
 
-export const QUALITY_LABEL = { good: 'Good', stale: 'Stale', bad: 'Bad', missing: 'Missing' };
+export const QUALITY = Object.freeze({ LIVE: 'live', STALE: 'stale', OFFLINE: 'offline', NOT_MAPPED: 'not-mapped', OUT_OF_RANGE: 'out-of-range' });
+export const QUALITY_LABEL = { live: 'LIVE', stale: 'STALE', offline: 'OFFLINE', 'not-mapped': 'NOT MAPPED', 'out-of-range': 'OUT OF RANGE' };
+/** One-letter codes used when storing history compactly. */
+export const QUALITY_CODE = { live: 'L', stale: 'S', offline: 'O', 'not-mapped': 'N', 'out-of-range': 'R' };
+export const QUALITY_FROM_CODE = Object.fromEntries(Object.entries(QUALITY_CODE).map(([k, v]) => [v, k]));
+
 export const STATUS_LABEL = { normal: 'Normal', warning: 'Warning', critical: 'Critical', unknown: 'Unknown' };
 export const STATUS_RANK = { normal: 0, unknown: 1, warning: 2, critical: 3 };
 
-export function missing(error = 'No data') {
-  return { value: null, unit: null, ts: null, quality: 'missing', error };
+export function notMapped(error = 'Not connected to a controller point') {
+  return { value: null, unit: null, ts: null, quality: QUALITY.NOT_MAPPED, error };
 }
 
-/** Applies the stale-after rule to a reading (provider-agnostic). */
-export function normalise(reading, now = Date.now()) {
-  if (!reading) return missing();
+/**
+ * Applies the stale and plausibility rules to a reading.
+ * @param role   logical role (for plausible range)
+ * @param staleMs stale period in ms
+ */
+export function normalise(reading, role, staleMs, now = Date.now()) {
+  if (!reading) return notMapped();
   const r = { ...reading };
-  if (r.quality === 'good') {
-    if (r.value == null || (typeof r.value === 'number' && !isFinite(r.value))) { r.quality = 'missing'; r.error = r.error || 'No value'; }
-    else if (r.ts == null) { r.quality = 'stale'; r.error = 'No timestamp'; }
-    else if (now - r.ts > APP_CONFIG.staleAfterMs) { r.quality = 'stale'; r.error = `No update for more than ${Math.round(APP_CONFIG.staleAfterMs / 60000)} min`; }
+  if (r.quality === QUALITY.LIVE) {
+    const range = APP_CONFIG.plausibleRanges[role];
+    if (r.value == null || (typeof r.value === 'number' && !isFinite(r.value))) {
+      r.quality = QUALITY.OFFLINE; r.error = r.error || 'No value reported';
+    } else if (range && typeof r.value === 'number' && (r.value < range[0] || r.value > range[1])) {
+      r.quality = QUALITY.OUT_OF_RANGE; r.error = `Reported ${r.value} is outside the plausible range ${range[0]} to ${range[1]}`; r.value = null;
+    } else if (r.ts == null) {
+      r.quality = QUALITY.STALE; r.error = 'No timestamp';
+    } else if (now - r.ts > staleMs) {
+      r.quality = QUALITY.STALE; r.error = `No update for ${Math.round((now - r.ts) / 1000)} s (limit ${Math.round(staleMs / 1000)} s)`;
+    }
   }
+  if (r.quality !== QUALITY.LIVE) r.value = null; // a non-live reading never carries a displayable value
   return r;
 }
 
-export const isGood = (r) => !!r && r.quality === 'good' && r.value != null;
+export const isGood = (r) => !!r && r.quality === QUALITY.LIVE && r.value != null;
 
 /** Evaluates a numeric reading against { actionLow, alertLow, alertHigh, actionHigh }. */
 export function evaluate(reading, limits) {
-  if (!isGood(reading)) return { status: 'unknown', reason: reading?.error || 'No current reading' };
+  if (!isGood(reading)) return { status: 'unknown', reason: reading ? `${QUALITY_LABEL[reading.quality]}${reading.error ? ' — ' + reading.error : ''}` : 'No reading' };
   if (!limits) return { status: 'unknown', reason: 'No limits configured' };
   const v = reading.value;
   const { actionLow, alertLow, alertHigh, actionHigh } = limits;

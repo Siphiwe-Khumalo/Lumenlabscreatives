@@ -6,7 +6,7 @@ import { APP_CONFIG } from '../config/app-config.js';
 import { THRESHOLDS_LABEL, DEFAULT_THRESHOLDS } from '../config/thresholds.js';
 import { POINT_MAP_STATUS, mappingRows, BASE_PATHS, ZONE_SOURCES, ORD_PREFIX } from '../config/points.js';
 import {
-  getMode, getGatewayUrl, validateGatewayUrl, saveConnection,
+  getMode, getGatewayUrl, validateGatewayUrl, saveConnection, getDemoScenario, saveDemoScenario, DEMO_SCENARIOS,
   getThresholds, saveThresholdOverride, clearThresholdOverride, hasThresholdOverride, appendLocalAudit,
 } from '../config/settings-store.js';
 import { icon } from '../ui/icons.js';
@@ -58,15 +58,28 @@ export default {
         <div class="card-head"><h2 id="ds-h">Data source</h2><span class="tag">This browser only</span></div>
         <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
           <div class="form-row">
-            <label class="field"><span>Mode</span><select class="select" data-mode>
-              <option value="demo">Demonstration (illustrative data)</option>
-              <option value="connected">Connected (BMS gateway)</option></select></label>
-            <label class="field" style="flex:1 1 260px"><span>Gateway URL (same origin, e.g. /bms-gateway)</span><input class="input" data-gw placeholder="Not configured" autocomplete="off" spellcheck="false"></label>
+            <label class="field"><span>Data source</span><select class="select" data-mode id="set-mode">
+              <option value="connected">JACE via gateway (live)</option>
+              <option value="demo">DEMO — simulated data</option></select></label>
+            <label class="field" style="flex:1 1 260px"><span>Gateway URL (same origin, e.g. /bms-gateway)</span><input class="input" id="set-gw" data-gw placeholder="Not configured" autocomplete="off" spellcheck="false"></label>
+            <label class="field" data-scn-wrap><span>Demo scenario</span><select class="select" id="set-scn" data-scn>${Object.entries(DEMO_SCENARIOS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></label>
             <button class="btn primary" type="button" data-apply>${icon('refresh')}Save and reconnect</button>
           </div>
+          <p class="small muted" data-admin-note></p>
           <span class="error-text" data-gw-err role="alert"></span>
           <dl class="kv" data-ds-status></dl>
-          <div class="notice">${icon('lock')}<span>No credentials are stored or entered here. Connected mode calls a same-origin gateway that holds credentials server-side. "Connected" is shown only after a successful gateway health check; otherwise the dashboard is Offline and readings are Unknown.</span></div>
+          <div class="notice">${icon('lock')}<span>No credentials are stored or entered here. The dashboard calls a same-origin gateway that holds the JACE credentials server-side. DEMO is off by default; when on, every page shows a permanent "SIMULATED DATA" banner.</span></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="usr-h">
+        <div class="card-head"><h2 id="usr-h">User</h2><span class="tag">This browser only</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="form-row">
+            <label class="field"><span>Your name (recorded in the audit log)</span><input class="input" id="set-user" data-user maxlength="60"></label>
+            <button class="btn" type="button" data-user-save>Save name</button>
+          </div>
+          <div class="notice warn">${icon('alarm')}<span><strong>No authentication backend yet.</strong> The role selector in the top bar (Viewer / Operator / Admin) controls what this browser allows, but it is not security. Real sign-in must be enforced by the gateway before site use.</span></div>
         </div>
       </section>
 
@@ -79,15 +92,14 @@ export default {
 
       <section class="grid cols-2">
         <section class="card" aria-labelledby="ctl-h">
-          <div class="card-head"><h2 id="ctl-h">Unit controls</h2><span class="status-chip ${APP_CONFIG.controls.enabled ? 'st-warning' : 'st-neutral'}">${icon('lock')}${APP_CONFIG.controls.enabled ? 'Enabled' : 'Locked'}</span></div>
+          <div class="card-head"><h2 id="ctl-h">Unit controls</h2><span class="status-chip ${APP_CONFIG.controls.enabled ? 'st-normal' : 'st-neutral'}">${APP_CONFIG.controls.enabled ? 'Enabled' : 'Disabled'}</span></div>
           <div class="card-body"><dl class="kv">
-            <dt>On/off toggles</dt><dd>${APP_CONFIG.controls.enabled ? 'Enabled' : esc(APP_CONFIG.controls.lockedReason)}</dd>
-            <dt>Write priority</dt><dd>${APP_CONFIG.controls.writePriority ?? 'Not set — to be confirmed'}</dd>
-            <dt>Return to auto</dt><dd>${APP_CONFIG.controls.releaseSupported ? 'Supported' : 'Not configured'}</dd>
-            <dt>Confirmation</dt><dd>Read-back within ${APP_CONFIG.controls.confirmTimeoutMs / 1000} s, otherwise reported as not confirmed</dd>
-            <dt>Who may operate</dt><dd>To be agreed — no user logins exist yet</dd>
-          </dl>
-          <p class="small muted" style="margin-top:10px">Enabled in js/config/app-config.js (controls.enabled) once the points, priority and approval are confirmed. Every switch asks for confirmation and is recorded in the Audit Trail.</p></div>
+            <dt>Who may operate</dt><dd>Operator and Admin roles (Viewer is read-only)</dd>
+            <dt>Write priority</dt><dd>${APP_CONFIG.controls.writePriority ?? 'Not set'} <span class="tag demo">TODO: confirm with Aina</span></dd>
+            <dt>Confirmation</dt><dd>PENDING until the feedback point reads back the command; NOT CONFIRMED after ${APP_CONFIG.controls.confirmTimeoutMs / 1000} s</dd>
+            <dt>Setpoint limits</dt><dd>Per zone ("Setpoint min / max" below); values outside are rejected</dd>
+            <dt>Feedback points</dt><dd>See js/config/controls.js — items marked TODO need confirmation</dd>
+          </dl></div>
         </section>
         <section class="card" aria-labelledby="nt-h">
           <div class="card-head"><h2 id="nt-h">WhatsApp and email alerts</h2><span class="tag demo">${esc(NOTIFICATIONS_LABEL)}</span></div>
@@ -108,11 +120,11 @@ export default {
         <section class="card" aria-labelledby="mp-h">
           <div class="card-head"><h2 id="mp-h">Monitoring parameters</h2><span class="sub">js/config/app-config.js</span></div>
           <div class="card-body"><dl class="kv">
-            <dt>Stale after</dt><dd>${APP_CONFIG.staleAfterMs / 60000} min without update → Unknown</dd>
+            <dt>STALE after</dt><dd>${APP_CONFIG.stale.factor} × the effective poll period (poll interval + read-cycle time)</dd>
             <dt>Poll interval</dt><dd>${APP_CONFIG.pollIntervalMs.connected / 1000} s connected · ${APP_CONFIG.pollIntervalMs.demo / 1000} s demo</dd>
             <dt>Gateway health check</dt><dd>every ${APP_CONFIG.healthIntervalMs / 1000} s</dd>
             <dt>Request timeout</dt><dd>${APP_CONFIG.requestTimeoutMs / 1000} s, one request in flight (FIFO)</dd>
-            <dt>Setpoint writes</dt><dd>${APP_CONFIG.setpointWriteEnabled ? 'Enabled' : 'Disabled — point and permission not confirmed'}</dd>
+            <dt>Out of range</dt><dd>Values outside the plausible sensor range are not displayed (js/config/app-config.js)</dd>
             <dt>Time zone</dt><dd>Africa/Johannesburg (SAST, UTC+02:00)</dd>
           </dl></div>
         </section>
@@ -171,6 +183,7 @@ export default {
       if (!tr) return;
       const zoneId = tr.dataset.zone;
       const zone = ZONES.find((z) => z.id === zoneId);
+      if ((e.target.closest('[data-save]') || e.target.closest('[data-reset]')) && !store.isAdmin()) { toast('Admin role required to change limits', 'err'); return; }
       if (e.target.closest('[data-save]')) {
         const before = getThresholds(zoneId);
         const next = { temperature: { ...before.temperature }, humidity: { ...before.humidity } };
@@ -183,19 +196,33 @@ export default {
         const diff = { temperature: {}, humidity: {} };
         for (const [g, k] of FIELDS) if (def[g][k] !== next[g][k]) diff[g][k] = next[g][k];
         if (!saveThresholdOverride(zoneId, diff)) { toast('Could not save — browser storage unavailable', 'err'); return; }
-        appendLocalAudit({ type: 'configuration', source: `Thresholds · ${zone.name}`, actor: 'This browser', description: `Threshold override saved (this browser only): ${changes.join('; ')}` });
+        appendLocalAudit({ type: 'configuration', source: `Thresholds · ${zone.name}`, actor: store.state.user.name, description: `Threshold override saved (this browser only): ${changes.join('; ')}` });
         toast(`Thresholds saved for ${zone.name} (this browser only)`);
         renderThresholds(); store.refresh();
       } else if (e.target.closest('[data-reset]')) {
         clearThresholdOverride(zoneId);
-        appendLocalAudit({ type: 'configuration', source: `Thresholds · ${zone.name}`, actor: 'This browser', description: 'Threshold override removed; illustrative defaults restored (this browser only)' });
+        appendLocalAudit({ type: 'configuration', source: `Thresholds · ${zone.name}`, actor: store.state.user.name, description: 'Threshold override removed; illustrative defaults restored (this browser only)' });
         toast(`Defaults restored for ${zone.name}`);
         renderThresholds(); store.refresh();
       }
     });
 
+    $('[data-scn]').value = getDemoScenario();
+    $('[data-user]').value = store.state.user.name;
+    const syncScn = () => { $('[data-scn-wrap]').hidden = $('[data-mode]').value !== 'demo'; };
+    $('[data-mode]').addEventListener('change', syncScn);
+    syncScn();
+    $('[data-user-save]').addEventListener('click', () => {
+      const name = $('[data-user]').value.trim();
+      if (!name) { toast('Enter a name', 'err'); return; }
+      store.setUser({ name, role: store.state.user.role });
+      toast(`Name saved: ${name}`);
+    });
+
     $('[data-apply]').addEventListener('click', () => {
+      if (!store.isAdmin()) { toast('Admin role required to change the data source', 'err'); return; }
       const mode = $('[data-mode]').value;
+      saveDemoScenario($('[data-scn]').value);
       const v = validateGatewayUrl($('[data-gw]').value);
       $('[data-gw-err]').textContent = v.ok ? '' : v.error;
       if (!v.ok) return;
@@ -203,20 +230,23 @@ export default {
       if (!saveConnection({ mode, gatewayUrl: v.url })) { toast('Could not save — browser storage unavailable', 'err'); return; }
       $('[data-gw]').value = v.url;
       if (prev.mode !== mode || prev.url !== v.url) {
-        appendLocalAudit({ type: 'configuration', source: 'Data source', actor: 'This browser', description: `Data source changed (this browser only): ${prev.mode}${prev.url ? ' ' + prev.url : ''} → ${mode}${v.url ? ' ' + v.url : ''}` });
+        appendLocalAudit({ type: 'configuration', source: 'Data source', actor: store.state.user.name, description: `Data source changed (this browser only): ${prev.mode}${prev.url ? ' ' + prev.url : ''} → ${mode}${v.url ? ' ' + v.url : ''}` });
       }
-      toast(mode === 'demo' ? 'Switched to demonstration mode' : 'Connecting to gateway…');
+      toast(mode === 'demo' ? 'DEMO on — simulated data' : 'Connecting to the JACE gateway…');
       store.start();
     });
 
     $('[data-geo]').addEventListener('click', () => { clearGeocodeCache(); toast('Cached location cleared; the map will geocode again on the Overview'); });
 
     function update(s) {
-      const g = s.gateway;
+      const c = s.connection;
       $('[data-ds-status]').innerHTML = `
-        <dt>Current mode</dt><dd>${esc(s.mode.toUpperCase())}${s.mode === 'demo' ? ' — illustrative data' : ''}</dd>
-        <dt>Gateway</dt><dd>${esc(g.status)}${g.message ? ` — ${esc(g.message)}` : ''}</dd>
-        <dt>Last health check</dt><dd>${g.checkedAt ? esc(dateTime(g.checkedAt)) : '—'}</dd>`;
+        <dt>Data source</dt><dd>${s.mode === 'demo' ? `<strong>DEMO — SIMULATED DATA</strong> (scenario: ${esc(s.scenario)})` : 'JACE via gateway'}</dd>
+        <dt>Connection</dt><dd>${esc(c.status === 'ok' ? 'Connected' : c.status === 'not-configured' ? 'Not configured' : c.status === 'checking' ? 'Connecting' : 'LOST')}${c.message ? ` — ${esc(c.message)}` : ''}</dd>
+        <dt>Last good read</dt><dd>${c.lastOkAt ? esc(dateTime(c.lastOkAt)) : '—'}</dd>
+        <dt>Current stale period</dt><dd>${Math.round(s.staleMs / 1000)} s</dd>`;
+      $('[data-admin-note]').textContent = store.isAdmin() ? '' : 'Changing the data source and the limits below requires the Admin role (top bar).';
+      root.querySelectorAll('[data-apply], [data-save], [data-reset]').forEach((b) => { if (!store.isAdmin()) b.setAttribute('title', 'Admin role required'); else b.removeAttribute('title'); });
     }
     return { update };
   },

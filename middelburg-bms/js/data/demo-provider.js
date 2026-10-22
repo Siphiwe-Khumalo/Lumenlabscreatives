@@ -1,45 +1,49 @@
-/* DEMO PROVIDER — the ONLY place demonstration data exists.
- * Every value produced here is an illustrative placeholder generated in the
- * browser. Nothing here is site telemetry.
+/* DEMO PROVIDER — used ONLY when the DEMO flag is on.
+ * Every value here is SIMULATED in the browser and is not site telemetry.
+ * The UI shows a permanent "SIMULATED DATA" banner whenever this provider runs.
  *
- * Signals are a deterministic function of time, so current values, 1-hour
- * deltas, history, live graphs and alarm records stay consistent. */
+ * Scenarios (Settings, or ?scenario= for testing):
+ *   normal      RTU-01 space-temperature sensor offline for 50 min in the history,
+ *               RTU-04 communication lost 47 min ago (all its points OFFLINE),
+ *               HYB-03 switched off at the BMS 35 min ago (fan stopped),
+ *               RTU-02 setpoint overridden at priority 5 (commands will not take effect)
+ *   all-live    every point live, every unit running
+ *   comms-lost  the JACE connection is lost (every read fails)
+ *   no-confirm  commands are accepted but the controller never changes (feedback never confirms)
+ */
 import { ZONES, EQUIPMENT, zoneById, equipmentById } from '../config/site.js';
 import { getThresholds } from '../config/settings-store.js';
 import { APP_CONFIG } from '../config/app-config.js';
+import { ROLE_POINTS, ZONE_SOURCES, rolesForType } from '../config/points.js';
+import { QUALITY } from './quality.js';
+import { ConnectionLostError } from './connected-provider.js';
 
 const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
-const T0 = Date.now(); // demo scenario is anchored to page load
+const T0 = Date.now(); // scenario anchored to page load
 
-/* ---- signal model --------------------------------------------------------- */
+/* ---- signal model ---------------------------------------------------------- */
 const PROFILE = {
   'main-store': { temperature: [20.8, 1.1, 0.0], humidity: [47, 4, 1.3], setpoint: 21 },
   'dispatch':   { temperature: [22.2, 1.3, 0.4], humidity: [56.5, 2.5, 1.0], setpoint: 21 },
   'storage-b':  { temperature: [19.6, 0.9, 0.9], humidity: [45, 3, 2.0], setpoint: 20 },
   'receiving':  { temperature: [23.0, 1.6, 0.2], humidity: [52, 4, 0.6], setpoint: 22 },
 };
-
-// Scenario events (relative to page load) — all illustrative.
 const EVENTS = [
   { zone: 'dispatch',   metric: 'humidity',    at: T0 - 2.5 * HOUR, rise: 70 * MIN, target: 62.2, hold: true },
   { zone: 'main-store', metric: 'temperature', at: T0 - 41 * HOUR,  width: 50 * MIN, amp: 4.3 },
   { zone: 'storage-b',  metric: 'humidity',    at: T0 - 5 * DAY - 3 * HOUR, width: 70 * MIN, amp: 16 },
   { zone: 'receiving',  metric: 'temperature', at: T0 - 9 * DAY,  width: 60 * MIN, amp: -9.2 },
 ];
-
-// RTU-04 (the Receiving zone's sensor) stops reporting 47 minutes before load.
-const COMMS_LOST_AT = T0 - 47 * MIN;
-const COMMS_LOST = new Set(['receiving', 'RTU-04']);
+const COMMS_LOST_AT = T0 - 47 * MIN;                         // RTU-04
+const SENSOR_OUTAGE = [T0 - 5 * HOUR, T0 - 4 * HOUR - 10 * MIN]; // RTU-01 space temperature
+const HYB03_OFF_AT = T0 - 35 * MIN;                          // HYB-03 BMS switch off
 const RTU03_STOP = [T0 - 3 * DAY - 5 * HOUR, T0 - 3 * DAY - 3 * HOUR];
 
-// Per-unit illustrative characteristics.
 const UNIT = {
-  'HYB-01': { flow: 4200, hours: 18240, duty: 0.92 }, 'HYB-02': { flow: 3800, hours: 17110, duty: 0.95 },
-  'HYB-03': { flow: 2600, hours: 9620,  duty: 0.45 }, 'HYB-04': { flow: 3100, hours: 16380, duty: 0.9 },
-  'HYB-05': { flow: 4100, hours: 18900, duty: 0.94 }, 'HYB-06': { flow: 2500, hours: 8110,  duty: 0.4 },
-  'RTU-01': { flow: 6200, hours: 21450, duty: 0.97 }, 'RTU-02': { flow: 6100, hours: 22980, duty: 0.97 },
-  'RTU-03': { flow: 5400, hours: 14020, duty: 0.85 }, 'RTU-04': { flow: 5200, hours: 15560, duty: 0.88 },
-  'RTU-05': { flow: 4800, hours: 7240,  duty: 0.5 },
+  'HYB-01': { flow: 4200, duty: 1 }, 'HYB-02': { flow: 3800, duty: 1 }, 'HYB-03': { flow: 2600, duty: 1 },
+  'HYB-04': { flow: 3100, duty: 1 }, 'HYB-05': { flow: 4100, duty: 1 }, 'HYB-06': { flow: 2500, duty: 0.55 },
+  'RTU-01': { flow: 6200, duty: 1 }, 'RTU-02': { flow: 6100, duty: 1 }, 'RTU-03': { flow: 5400, duty: 1 },
+  'RTU-04': { flow: 5200, duty: 1 }, 'RTU-05': { flow: 4800, duty: 0.5 },
 };
 
 function hash(a, b) {
@@ -59,68 +63,101 @@ function seedOf(id, metric) {
   for (const c of id + metric) h = Math.imul(h ^ c.charCodeAt(0), 31);
   return h >>> 0;
 }
-
 function signal(zoneId, metric, t) {
   const [base, amp, phase] = PROFILE[zoneId][metric];
-  const hourOfDay = ((t / HOUR) + 2) % 24; // SAST
+  const hourOfDay = ((t / HOUR) + 2) % 24;
   const diurnal = Math.sin(((hourOfDay - 9) / 24) * 2 * Math.PI + phase);
-  const sign = metric === 'humidity' ? -1 : 1; // RH falls as temperature rises
-  let v = base + amp * diurnal * sign + noise(seedOf(zoneId, metric), t) * (metric === 'humidity' ? 0.8 : 0.25);
+  let v = base + amp * diurnal * (metric === 'humidity' ? -1 : 1) + noise(seedOf(zoneId, metric), t) * (metric === 'humidity' ? 0.8 : 0.25);
   for (const e of EVENTS) {
     if (e.zone !== zoneId || e.metric !== metric) continue;
     if (e.hold) {
-      // Ramp towards a held level (keeps the active demo alarm consistent at any time of day).
       const x = Math.min(1, Math.max(0, (t - e.at) / e.rise));
       const s = x * x * (3 - 2 * x);
       v = v * (1 - s) + (e.target + noise(seedOf(zoneId, 'hold'), t) * 0.5) * s;
-    } else {
-      v += e.amp * Math.exp(-(((t - e.at) / e.width) ** 2));
-    }
+    } else v += e.amp * Math.exp(-(((t - e.at) / e.width) ** 2));
   }
   return v;
 }
-
 const round = (v, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
-const lastSample = (key, now) => (COMMS_LOST.has(key) && now > COMMS_LOST_AT ? COMMS_LOST_AT : Math.floor(now / 30e3) * 30e3);
-const good = (value, unit, ts) => ({ value, unit, ts, quality: 'good' });
+const isZoneSource = (id) => Object.values(ZONE_SOURCES).includes(id);
 
-/* ---- equipment model ------------------------------------------------------ */
-const overrides = new Map(); // unitId -> enable value written in demo (only when controls are enabled)
-const spOverrides = new Map(); // unitId -> { value, at } setpoint written in demo
+/* ---- scenario state ----------------------------------------------------------- */
+let scenario = 'normal';
+const written = new Map(); // `${unit}|${role}` -> { value, at }  (applied by the simulated controller)
+const wv = (unit, role, t) => { const w = written.get(`${unit}|${role}`); return w && t >= w.at ? w.value : undefined; };
 
-function equipmentState(eq, t) {
-  if (overrides.has(eq.id) && t >= overrides.get(eq.id).at) return overrides.get(eq.id).value ? 'running' : 'standby';
-  if (eq.id === 'RTU-04' && t > COMMS_LOST_AT) return 'unknown';
-  if (eq.id === 'RTU-03' && t > RTU03_STOP[0] && t < RTU03_STOP[1]) return 'stopped';
-  const duty = UNIT[eq.id].duty;
-  if (duty < 0.9) {
-    // Duty-cycled units: on for `duty` share of each 2-hour block, offset per unit.
-    const off = (seedOf(eq.id, 'cyc') % 120);
-    const cyc = ((t / MIN) + off) % 120;
-    return cyc < duty * 120 ? 'running' : 'standby';
+/** Point is offline at time t (comms loss or sensor fault). */
+function pointOffline(unitId, role, t) {
+  if (scenario === 'all-live') return false;
+  if (unitId === 'RTU-04' && t >= COMMS_LOST_AT) return true;
+  if (unitId === 'RTU-01' && role === 'temperature' && t >= SENSOR_OUTAGE[0] && t < SENSOR_OUTAGE[1]) return true;
+  return false;
+}
+
+/** Commanded state of the unit's start/enable at time t. */
+function commandedOn(eq, t) {
+  const role = eq.type === 'rooftop' ? 'startCommand' : 'enable';
+  const w = wv(eq.id, role, t);
+  if (w !== undefined) return w;
+  if (scenario !== 'all-live' && eq.id === 'HYB-03' && t >= HYB03_OFF_AT) return false;
+  return true;
+}
+
+/** 'running' | 'stopped' | 'fault' at time t (fan follows the command ~5 s later). */
+function runState(eq, t) {
+  if (scenario !== 'all-live' && eq.id === 'RTU-03' && t > RTU03_STOP[0] && t < RTU03_STOP[1]) return 'fault';
+  if (!commandedOn(eq, t - 5000)) return 'stopped';
+  const duty = scenario === 'all-live' ? 1 : UNIT[eq.id].duty;
+  if (duty < 1) {
+    const cyc = ((t / MIN) + (seedOf(eq.id, 'cyc') % 120)) % 120;
+    if (cyc >= duty * 120) return 'stopped';
   }
   return 'running';
 }
 
-function modeFor(eq, zoneTemp) {
-  const sp = PROFILE[eq.zoneId].setpoint;
-  return zoneTemp < sp - 1.5 ? 'heating' : 'cooling';
+function setpointAt(eq, t) {
+  const w = wv(eq.id, 'temperatureSetpoint', t);
+  return w !== undefined ? w : PROFILE[eq.zoneId].setpoint;
+}
+function modeAt(eq, t) {
+  const flags = { cooling: wv(eq.id, 'coolMode', t), heating: wv(eq.id, 'heatMode', t), 'fan only': wv(eq.id, 'fanOnlyMode', t) };
+  if (Object.values(flags).some((v) => v !== undefined)) return Object.keys(flags).find((k) => flags[k]) || 'standby';
+  const zt = signal(eq.zoneId, 'temperature', t);
+  return zt < PROFILE[eq.zoneId].setpoint - 1.5 ? 'heating' : 'cooling';
 }
 
-/** Unit-level numeric signals. A unit's space temperature follows its zone with a small per-unit offset. */
-function unitSignal(eq, role, t) {
-  const off = ((seedOf(eq.id, 'off') % 9) - 4) / 10; // -0.4 .. +0.4 °C
-  if (role === 'temperature') return signal(eq.zoneId, 'temperature', t) + off + noise(seedOf(eq.id, 'tn'), t) * 0.1;
-  if (role === 'humidity') return signal(eq.zoneId, 'humidity', t);
-  if (role === 'temperatureSetpoint') return PROFILE[eq.zoneId].setpoint;
-  return null;
+/** Numeric/boolean value of a role at time t (no quality applied). */
+function valueAt(eq, role, t) {
+  const state = runState(eq, t);
+  const on = state === 'running';
+  const n = noise(seedOf(eq.id, role), t);
+  switch (role) {
+    case 'temperature': {
+      const zt = signal(eq.zoneId, 'temperature', t);
+      return round(isZoneSource(eq.id) ? zt : zt + ((seedOf(eq.id, 'off') % 9) - 4) / 10 + n * 0.1);
+    }
+    case 'humidity': return round(signal(eq.zoneId, 'humidity', t));
+    case 'temperatureSetpoint': return setpointAt(eq, t);
+    case 'startCommand': case 'enable': return eq.type === 'rooftop' && role === 'enable' ? true : commandedOn(eq, t);
+    case 'fanStatus': return on;
+    case 'operatingMode': return on ? modeAt(eq, t) : 'standby';
+    case 'unitAlarm': return state === 'fault';
+    case 'bmsControl': case 'remoteStatus': return true;
+    case 'coolMode': return modeAt(eq, t) === 'cooling';
+    case 'heatMode': return modeAt(eq, t) === 'heating';
+    case 'fanOnlyMode': return modeAt(eq, t) === 'fan only';
+    case 'fanSpeed': return on ? Math.round(62 + n * 8) : 0;
+    case 'airflow': return on ? Math.round(UNIT[eq.id].flow + n * 120) : 0;
+    case 'staticPressure': return on ? Math.round(250 + n * 12) : 0;
+    case 'staticPressureSetpoint': return 250;
+    case 'staticPressureStatus': return on;
+    case 'dirtyFilter': return scenario !== 'all-live' && eq.id === 'HYB-05';
+    default: return ROLE_POINTS[role]?.alarm ? false : null;
+  }
 }
-/** Zone source units read the zone signal exactly, so zone readings and alarms agree. */
-const ZONE_SOURCE_UNITS = new Set(['RTU-01', 'RTU-03', 'RTU-05', 'RTU-04']);
 
-/* ---- alarm / audit scenario ----------------------------------------------- */
+/* ---- alarm / audit scenario ----------------------------------------------------- */
 const demoNotice = (channel, recipient, status, at) => ({ channel, recipient, status, at, demo: true });
-
 function buildAlarms() {
   const z = (id) => ({ type: 'zone', id, name: zoneById(id).name });
   const e = (id) => ({ type: 'equipment', id, name: `${id} · ${equipmentById(id).name}` });
@@ -157,6 +194,16 @@ function buildAlarms() {
       ackAt: COMMS_LOST_AT + 18 * MIN, ackBy: 'Demo Operator', ackNote: 'Technician informed (demonstration record).',
       details: 'Readings from RTU-04, which provides the Receiving zone temperature and humidity, have not updated. Values are shown as Unknown until communication is restored.',
       notifications: [demoNotice('WhatsApp', 'Duty technician (demo contact)', 'Delivered', COMMS_LOST_AT + 11 * MIN)],
+    },
+    {
+      id: 'DEMO-1044', severity: 'warning', status: 'cleared', category: 'communication',
+      source: e('RTU-01'), zoneId: 'main-store', role: 'temperature',
+      description: 'Sensor offline — RTU-01 space temperature',
+      raisedAt: SENSOR_OUTAGE[0], clearedAt: SENSOR_OUTAGE[1], valueAtRaise: null,
+      threshold: { label: 'Expected', text: 'Live reading' },
+      ackAt: SENSOR_OUTAGE[0] + 9 * MIN, ackBy: 'Demo Operator', ackNote: 'Sensor cable reseated (demonstration record).',
+      details: 'The space temperature sensor on RTU-01 reported a fault. Trend shows the gap; no values were invented.',
+      notifications: [],
     },
     {
       id: 'DEMO-1041', severity: 'warning', status: 'cleared', category: 'threshold',
@@ -242,132 +289,97 @@ function buildAudit(alarms) {
   return out;
 }
 
-/* ---- provider ------------------------------------------------------------- */
-export function createDemoProvider() {
-  const alarms = buildAlarms();
+
+/* ---- provider -------------------------------------------------------------------- */
+export function createDemoProvider(initialScenario = 'normal') {
+  scenario = initialScenario;
+  written.clear();
+  const alarms = buildAlarms().filter((a) => scenario !== 'all-live' || a.status === 'cleared');
   const audit = buildAudit(alarms);
 
-  function equipmentReadings(eq, now) {
-    const ts = lastSample(eq.id, now);
-    const state = equipmentState(eq, ts);
-    const running = state === 'running';
-    const enabled = overrides.has(eq.id) ? overrides.get(eq.id).value : true;
-    const temp = round(ZONE_SOURCE_UNITS.has(eq.id) ? signal(eq.zoneId, 'temperature', ts) : unitSignal(eq, 'temperature', ts));
-    const spo = spOverrides.get(eq.id);
-    const sp = spo && ts >= spo.at ? spo.value : PROFILE[eq.zoneId].setpoint;
-    const mode = running ? modeFor(eq, temp) : 'standby';
-    const u = UNIT[eq.id];
-    if (eq.type === 'rooftop') {
-      return {
-        temperature: good(temp, '°C', ts),
-        temperatureSetpoint: good(sp, '°C', ts),
-        humidity: good(round(signal(eq.zoneId, 'humidity', ts)), '%RH', ts),
-        enable: good(enabled, null, ts),
-        startCommand: good(enabled && (state !== 'standby'), null, ts),
-        fanStatus: good(running, null, ts),
-        operatingMode: good(mode, null, ts),
-        unitAlarm: good(state === 'stopped', null, ts),
-      };
+  function reading(eq, role, now) {
+    if (pointOffline(eq.id, role, now)) {
+      // Last good value is the value just before the outage started.
+      const since = eq.id === 'RTU-04' ? COMMS_LOST_AT : SENSOR_OUTAGE[0];
+      const lg = valueAt(eq, role, since - 1000);
+      return { value: null, unit: ROLE_POINTS[role].unit, ts: null, quality: QUALITY.OFFLINE,
+        error: eq.id === 'RTU-04' ? 'No response from controller' : 'Sensor fault reported by the JACE',
+        lastGood: lg == null ? null : { value: lg, ts: since - 1000 } };
     }
-    const flow = running ? Math.round(u.flow + noise(seedOf(eq.id, 'af'), ts) * 120) : 0;
-    return {
-      temperature: good(temp, '°C', ts),
-      temperatureSetpoint: good(sp, '°C', ts),
-      enable: good(enabled, null, ts),
-      bmsControl: good(true, null, ts),
-      remoteStatus: good(true, null, ts),
-      fanStatus: good(running, null, ts),
-      coolMode: good(running && mode === 'cooling', null, ts),
-      heatMode: good(running && mode === 'heating', null, ts),
-      fanOnlyMode: good(false, null, ts),
-      fanSpeed: good(running ? Math.round(62 + noise(seedOf(eq.id, 'fs'), ts) * 8) : 0, '%', ts),
-      airflow: good(flow, 'm³/h', ts),
-      staticPressure: good(running ? Math.round(250 + noise(seedOf(eq.id, 'sp'), ts) * 12) : 0, 'Pa', ts),
-      staticPressureSetpoint: good(250, 'Pa', ts),
-      staticPressureStatus: good(running, null, ts),
-      staticPressureFailure: good(false, null, ts),
-      noAirflow: good(false, null, ts),
-      fanTrip: good(false, null, ts),
-      roomTemp1Failure: good(false, null, ts),
-      roomTemp2Failure: good(false, null, ts),
-      oncoilTempFailure: good(false, null, ts),
-      dirtyFilter: good(eq.id === 'HYB-05', null, ts),
-    };
+    const r = { value: valueAt(eq, role, now), unit: ROLE_POINTS[role].unit, ts: now, quality: QUALITY.LIVE };
+    if (scenario === 'normal' && eq.id === 'RTU-02' && role === 'temperatureSetpoint') r.override = { source: 'priority 5 (local schedule on the JACE)' };
+    return r;
   }
 
   return {
     id: 'demo',
-    capabilities: { acknowledge: true, history: true, hvacHistory: true, unitHistory: true, audit: true, notifications: true, control: true },
+    capabilities: { acknowledge: true, history: true, audit: true, notifications: true, control: true },
+    get scenario() { return scenario; },
 
-    async health() { return { ok: true, message: 'Demonstration data generated in this browser', checkedAt: Date.now() }; },
+    async health() {
+      if (scenario === 'comms-lost') return { ok: false, message: 'JACE not responding (simulated)', checkedAt: Date.now() };
+      return { ok: true, message: 'Simulated data generated in this browser', checkedAt: Date.now() };
+    },
 
     async snapshot() {
+      if (scenario === 'comms-lost') throw new ConnectionLostError('JACE not responding (simulated)');
       const now = Date.now();
       const equipment = {};
-      for (const e of EQUIPMENT) equipment[e.id] = equipmentReadings(e, now);
+      for (const e of EQUIPMENT) {
+        equipment[e.id] = {};
+        for (const role of rolesForType(e.type)) equipment[e.id][role] = reading(e, role, now);
+      }
       return { ts: now, equipment, alarms: alarms.map((a) => ({ ...a })), audit: audit.slice() };
     },
 
-    /** Returns [{ zoneId, points: [[ts, value|null], ...] }] */
-    async history({ metric, zoneIds, from, to, stepMs }) {
-      await new Promise((r) => setTimeout(r, 200)); // simulate latency so loading states are visible
-      const now = Date.now();
-      return zoneIds.map((zoneId) => {
-        const points = [];
-        for (let t = Math.ceil(from / stepMs) * stepMs; t <= Math.min(to, now); t += stepMs) {
-          const lost = COMMS_LOST.has(zoneId) && t > COMMS_LOST_AT;
-          points.push([t, lost ? null : round(signal(zoneId, metric, t), 2)]);
-        }
-        return { zoneId, points };
-      });
-    },
-
-    /** Unit-level numeric history (space temperature, setpoint). */
-    async unitHistory({ unitId, role, from, to, stepMs }) {
+    /** History for one unit role: [[ts, value|null, quality], ...] — outages stay as gaps. */
+    async series({ unitId, role, from, to, stepMs }) {
+      await new Promise((r) => setTimeout(r, 120));
+      if (scenario === 'comms-lost') throw new ConnectionLostError('JACE not responding (simulated)');
       const eq = equipmentById(unitId);
-      const now = Date.now();
-      const points = [];
-      for (let t = Math.ceil(from / stepMs) * stepMs; t <= Math.min(to, now); t += stepMs) {
-        const lost = COMMS_LOST.has(unitId) && t > COMMS_LOST_AT;
-        points.push([t, lost ? null : round(unitSignal(eq, role, t), 2)]);
+      const end = Math.min(to, Date.now());
+      const out = [];
+      for (let t = Math.ceil(from / stepMs) * stepMs; t <= end; t += stepMs) {
+        if (pointOffline(unitId, role, t)) { out.push([t, null, QUALITY.OFFLINE]); continue; }
+        const v = valueAt(eq, role, t);
+        out.push([t, typeof v === 'boolean' ? (v ? 1 : 0) : v, QUALITY.LIVE]);
       }
-      return points;
+      return out;
     },
 
-    /** Returns [{ equipmentId, segments: [{ from, to, state }] }] */
-    async hvacHistory({ from, to }) {
-      const step = 10 * MIN;
-      return EQUIPMENT.map((eq) => {
-        const segments = [];
-        for (let t = from; t < to; t += step) {
-          const state = equipmentState(eq, t);
-          const last = segments[segments.length - 1];
-          if (last && last.state === state) last.to = Math.min(t + step, to);
-          else segments.push({ from: t, to: Math.min(t + step, to), state });
-        }
-        return { equipmentId: eq.id, segments };
-      });
+    /** Run-state segments [{ from, to, state }] with state running | stopped | fault | unknown. */
+    async runSegments({ unitId, from, to }) {
+      if (scenario === 'comms-lost') throw new ConnectionLostError('JACE not responding (simulated)');
+      const eq = equipmentById(unitId);
+      const step = Math.max(MIN, Math.round((to - from) / 600));
+      const segs = [];
+      for (let t = from; t < to; t += step) {
+        const st = pointOffline(unitId, 'fanStatus', t) ? 'unknown' : runState(eq, t);
+        const last = segs[segs.length - 1];
+        if (last && last.state === st) last.to = Math.min(t + step, to);
+        else segs.push({ from: t, to: Math.min(t + step, to), state: st });
+      }
+      return segs;
     },
 
     async acknowledge(alarmId, { actor, note }) {
       const a = alarms.find((x) => x.id === alarmId);
       if (!a) throw new Error('Alarm not found');
       if (a.status !== 'active') throw new Error('Alarm is not awaiting acknowledgement');
-      a.status = 'acknowledged';
-      a.ackAt = Date.now();
-      a.ackBy = actor;
-      a.ackNote = note || '';
-      audit.push({ id: `DA-${audit.length + 1}`, ts: a.ackAt, type: 'acknowledgement', source: `${a.id} · ${a.source.name}`, actor, description: `Alarm acknowledged (demo mode): ${a.description}${note ? '. Note: ' + note : ''}`, demo: true });
+      Object.assign(a, { status: 'acknowledged', ackAt: Date.now(), ackBy: actor, ackNote: note || '' });
+      audit.push({ id: `DA-${audit.length + 1}`, ts: a.ackAt, type: 'acknowledgement', source: `${a.id} · ${a.source.name}`, actor, description: `Alarm acknowledged (simulated): ${a.description}${note ? '. Note: ' + note : ''}`, demo: true });
       return { ...a };
     },
 
-    /** Demo command: only reachable when APP_CONFIG.controls.enabled is true. Takes effect after a short delay. */
+    /** Simulated controller: applies a write ~3 s later, unless overridden, offline or in 'no-confirm'. */
     async command(unitId, role, value) {
-      if (role === 'temperatureSetpoint') { spOverrides.set(unitId, { value, at: Date.now() + 4000 }); return { accepted: true }; }
-      if (role !== 'enable') throw new Error('Unsupported control');
-      overrides.set(unitId, { value, at: Date.now() + 4000 });
+      if (scenario === 'comms-lost') throw new ConnectionLostError('JACE not responding (simulated)');
+      if (pointOffline(unitId, role, Date.now())) throw new Error('Controller not responding');
+      if (scenario === 'no-confirm') return { accepted: true };
+      if (scenario === 'normal' && unitId === 'RTU-02' && role === 'temperatureSetpoint') return { accepted: true }; // overridden: no effect
+      written.set(`${unitId}|${role}`, { value, at: Date.now() + 3000 });
       return { accepted: true };
     },
-    async release(unitId) { overrides.delete(unitId); spOverrides.delete(unitId); return { accepted: true }; },
+    dispose() {},
   };
 }

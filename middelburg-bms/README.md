@@ -1,169 +1,121 @@
-# Middelburg Pharmaceutical Facility — Facility Environmental Monitoring
+# Middelburg Pharmaceutical Facility — BMS dashboard
 
-Frontend for the Spartcon Technologies BMS at a pharmaceutical warehouse linked to a
-Department of Health project in Middelburg, Mpumalanga, South Africa.
+Frontend for the Spartcon Technologies BMS at the Middelburg pharmaceutical warehouse
+(Tridium JACE / Niagara N4). Plain HTML, CSS and JavaScript (ES modules), no build step.
+Libraries and fonts are vendored in `vendor/` (works on a closed network).
 
-Plain HTML, CSS and JavaScript (ES modules). No framework, no build step. Libraries are
-vendored in `vendor/`, so at runtime the only external requests are OpenStreetMap map tiles
-and the Nominatim geocoder.
-
-> **Status:** demonstration build. The point map, zone names, equipment names and
-> thresholds are **placeholders**. No value in demo mode is site telemetry.
+See **AUDIT.md** for the data audit: where every number comes from and what was fixed.
 
 ## Run
 
-No `npm install` is needed to run the app; the libraries are already in `vendor/`.
-
-```bash
+```powershell
 git clone https://github.com/Siphiwe-Khumalo/Lumenlabscreatives.git
 cd Lumenlabscreatives
 git checkout claude/gifted-sagan-4ugtao
 cd middelburg-bms
-npm start                        # Node static server (any OS)
-# or: python -m http.server 8080   (Windows: py -m http.server 8080; macOS/Linux: python3 ...)
-# open http://localhost:8080/
+npm run dev          # http://localhost:8080
 ```
 
-Opening `index.html` directly from disk (file://) will not work: ES modules need a server.
+No `npm install` is needed to run it. `npm install && npm run vendor` only refreshes `vendor/`.
 
-To refresh the vendored libraries (only needed when you change versions):
+## Data honesty rules (enforced in `js/data/quality.js` and `js/data/store.js`)
 
-```bash
-npm install && npm run vendor
-```
-
-Testing hook: `http://localhost:8080/?geocode=fail#/overview` forces the map's
-geocoding-failure fallback.
-
-## What's in it
-
-| Page | Contents |
-|---|---|
-| Overview | Zone ranges, HVAC availability (hybrid and rooftop separately), alarm summary, **live** temperature and humidity graphs (default), zone table, recent events, location map |
-| Facility Model | Graphical warehouse model: 3D view and plan view of the same layout. Zones coloured by status with live readings; hybrid units at floor level, rooftop units on the roof |
-| Environmental Conditions | Measured vs setpoint, limits, humidity (monitoring only), 30-day mean kinetic temperature, sensor calibration dates |
-| HVAC Systems | **6 hybrid units and 5 rooftop units in separate groups**, unit cards with on/off toggles (locked), live detail panel (space temperature and setpoint), unit faults |
-| Alarm Register | Filters, search, detail panel, demo acknowledgement, escalation policy |
-| Trends & Reports | Live 1 h / 24 h / 7 d / 30 d, period summary with MKT, excursion report, HVAC state history, print, CSV |
-| Audit Trail | Acknowledgements, configuration, unit control, commissioning, maintenance, notifications, communication, service |
-| Commissioning | Every point with its live value, "verified" tick, verifier, date and note; export |
-| Settings | Data source, point mapping (placeholder / not mapped), unit controls status, WhatsApp and email escalation policy, thresholds |
-
-The monitor icon in the header starts **wall display** mode: full screen, no sidebar, rotating
-Overview, Facility Model, HVAC and Alarms every 30 s (Esc to exit).
-
-## Unit controls (locked)
-
-The on/off toggles are built but **locked** (`controls.enabled: false` in `js/config/app-config.js`).
-To enable them once Aina confirms the points and approval:
-
-1. Confirm which point the toggle writes (`enable` role) and set `writable: true` on it in `js/config/points.js`.
-2. Set `controls.writePriority` (Niagara priority level) and, if supported, `controls.releaseSupported`.
-3. Set `controls.enabled: true`.
-
-Every switch asks for confirmation with an optional reason, shows "Pending confirmation" until the
-unit reports the new run state (timeout `confirmTimeoutMs`), and is recorded in the Audit Trail.
-
-## Live data
-
-Live graphs use readings collected on every poll (`live.windowMs`, default 1 hour). In demo mode the
-last hour is pre-filled with illustrative values. Longer ranges (24 h / 7 d / 30 d) need the
-gateway history endpoint (`services.history`).
-
-**The claude.ai hosted copy is demo-only:** its frame blocks connections to other servers, so it can
-never reach the BMS. Live data needs the dashboard served on a machine that can reach the gateway.
-
-## Modes
-
-| Mode | When | What you see |
+| State | Meaning | Display |
 |---|---|---|
-| **DEMO** (default) | `defaultMode: 'demo'` or chosen in Settings | A persistent banner says all values are illustrative. Data comes only from `js/data/demo-provider.js`. |
-| **CONNECTED** | Connected mode is chosen **and** a real gateway health check succeeds | Live reads through the gateway. Readings carry timestamps and quality. |
-| **OFFLINE** | Connected mode is chosen but the gateway is not configured or is unreachable | Every reading is **Unknown**. Last-known values are never shown as current. |
+| **LIVE** | current good value | the value, with "Updated n s ago" |
+| **STALE** | no update within 2 × the effective poll period, or JACE connection lost | — + STALE + small "last good: 5.2 °C at 14:32" |
+| **OFFLINE** | sensor / comms down, or the JACE reports fault / down / disabled | — + OFFLINE + last good |
+| **NOT MAPPED** | no controller point (or the JACE says the point does not exist) | — + NOT MAPPED |
+| **OUT OF RANGE** | value outside the plausible sensor range | — + OUT OF RANGE |
 
-Readings older than `staleAfterMs` (10 min), or with bad or missing quality, are shown as
-**Unknown** and never count as Normal.
+- Only LIVE readings carry a value. A last good value is never shown large.
+- Trends: non-live samples break the line (no smoothing, no bridging) and the period is
+  hatched grey with "Sensor offline from 09:12". History is stored with its quality.
+- A thin run-state strip (RUNNING / STOPPED / FAULT / UNKNOWN) sits under every
+  temperature/humidity trend for the units of that zone; hover shows e.g.
+  "Hybrid unit 3 (HYB-03) fan stopped 09:12 to 09:47". Fan-off periods are shaded on the chart
+  and the unit card shows a FAN OFF badge.
+- JACE connection lost → red banner "JACE connection lost: readings are not live", every value
+  STALE, all controls disabled.
+- DEMO is an explicit flag (default **off**): Settings → Data source → "DEMO — simulated data",
+  or `window.MBMS_DEMO = true` (the hosted copy). A permanent "SIMULATED DATA" banner shows on
+  every page while it is on.
+
+## Controls page (landing page)
+
+- Summary strip: units running, active alarms, sensors offline, comms status.
+- One card per unit — 6 hybrid (blue), 5 rooftop (violet). Each control shows
+  **COMMANDED** vs **ACTUAL** side by side.
+- No optimistic UI: after a command the control shows **PENDING** until the feedback point
+  confirms it; after `controls.confirmTimeoutMs` (60 s) it shows **NOT CONFIRMED** in red with
+  the actual value. "Overridden by <source>" is shown when the JACE reports another source or a
+  higher priority is driving the point.
+- Every command has a confirm step (old → new); setpoints outside the zone's setpoint limits
+  are rejected. Controls are disabled (reason on hover) when the point is NOT MAPPED / not LIVE,
+  comms are lost, or the user is a Viewer.
+- Roles (top bar): **Viewer** (no controls), **Operator** (controls), **Admin** (controls +
+  settings). Every command is logged in the Audit Trail: who, role, when, what, point, old → new,
+  result (SENT / CONFIRMED / NOT CONFIRMED / FAILED).
+- Scroll down: **Live readings** per zone with temperature, humidity, the units serving the zone,
+  and 1 h / 24 h / 7 d trends with limit lines, alarm markers and run strips.
+
+| Unit | Control | Writes | Confirmed by | Actual shown |
+|---|---|---|---|---|
+| Rooftop | Start / stop | `UninStartCmd` | read-back of `UninStartCmd` — **TODO** | `UnitnSAF` (supply fan) |
+| Rooftop | Unit enable | — (output, status only) | — | `UnitnEnable` |
+| Rooftop | Temperature setpoint (slider) | `UnitnSetpoint` | read-back of `UnitnSetpoint` | space temperature |
+| Hybrid | BMS switch | `BMS_Enable` — **TODO vs BMSControl** | read-back — **TODO** | `SUPPLY_AIR_FAN` |
+| Hybrid | Mode Cool / Heat / Fan only | `COOL_MODE`, `HEAT_MODE`, `FAN_ONLY_MODE` (chosen ON, others OFF) | read-back of all three | `SUPPLY_AIR_FAN` |
+| Hybrid | Temperature setpoint, fan speed | read-only | — | — |
+| Both | Auto / manual, schedule | **NOT MAPPED** (no point supplied) | — | — |
+| Both | Humidity setpoint | not shown (no unit supplies one) | — | — |
+
+## Site points
+
+`js/config/points.js` is the only file with point names. Unit 1 of each type was supplied; units
+2–n follow the same pattern (`RUT_1…RUT_5`, `HYBRID_1…HYBRID_6`) — 166 points. Names are kept
+exactly as supplied (including `Uni1StartCmd` and `STATIC_PESSURE_SETPOINT`). The app sends the slot
+path (`Drivers/...`); the gateway adds `station:|slot:/`. Verify each derived point on the
+Commissioning page.
+
+## Gateway contract (proposed — the gateway is not part of this repo)
+
+```
+GET  {gateway}/health                       -> 200 { "status": "ok" }
+GET  {gateway}/query/readPoint/<slot path>  -> 200 { "value": 21.4, "status": "{ok}",
+                                                     "timestamp"?: "<ISO>", "activeLevel"?: 8,
+                                                     "overrideSource"?: "..." }
+                                               404 when the point does not exist (NOT MAPPED)
+PUT  {gateway}/query/writePoint/<slot path>?value=<v>&priority=<n>
+GET  {gateway}/query/history/<slot path>?from=&to=  -> 200 { "points": [[ts, value, status], ...] }
+```
+
+The gateway holds the JACE credentials, serialises requests to the JACE (one in flight), must
+enforce real sign-in and roles, and should log commands centrally. Until the history endpoint
+exists, 24 h / 7 d trends show "Historian not configured" in live mode; the 1 h trend uses
+readings recorded by the dashboard on every poll (kept for 2 h in this browser).
+
+## To confirm with Aina (all marked TODO in code)
+
+1. Feedback point for rooftop start/stop (`UnitnSAF` or `UnitnEnable`?).
+2. Hybrid BMS switch: `BMS_Enable` or `BMSControl`? Is `BMSControl` the Auto/Manual point?
+3. Write priority for dashboard commands (set to 8, `js/config/app-config.js`).
+4. Rooftop run rule: is a started unit with its fan off cycling (STOPPED) or a FAULT?
+5. Alarm point polarity (true = alarm), `UnitnMode` numeric values, units for fan speed / airflow / pressure.
+6. Which unit's sensors represent each zone (`ZONE_SOURCES`), and the real limits.
+7. Schedule and Auto/Manual points, if they exist.
 
 ## Structure
 
 ```
-index.html               shell (sidebar, header, banner)
-css/app.css, print.css   styles; print.css drives the printable report
-js/config/
-  points.js              ONLY place with point names / slot paths (placeholder, from ARC)
-  site.js                facility identity, address, zones, equipment (illustrative)
-  thresholds.js          per-zone limits (illustrative)
-  app-config.js          mode, gateway URL, polling, stale-after, controls (locked), live window, service flags
-  layout.js              warehouse model layout (illustrative)
-  calibration.js         sensor calibration register (illustrative)
-  notifications.js       WhatsApp / email escalation policy (illustrative)
-  settings-store.js      browser-only overrides (localStorage)
-js/data/
-  demo-provider.js       all demonstration data
-  connected-provider.js  gateway client (FIFO queue, quality, no mock fallback)
-  request-queue.js       one request in flight, with timeouts
-  quality.js             quality + status evaluation
-  analytics.js           mean kinetic temperature, excursions
-  store.js               polling, mode resolution, derived status, subscribers
-js/ui/                   icons, tables, drawer, charts, trend card, map
-js/pages/                overview, model, environment, hvac, alarms, trends, audit, commissioning, settings
-vendor/                  leaflet 1.9.4, chart.js 4.4.9, Inter (@fontsource/inter 5.2.5)
+js/config/   points.js (point names), controls.js (controls & feedback), app-config.js,
+             site.js, thresholds.js, settings-store.js (user/role, demo flag), layout.js, ...
+js/data/     store.js, quality.js, connected-provider.js, demo-provider.js (DEMO only), ...
+js/ui/       components.js, charts.js, trend-card.js, map.js, icons.js
+js/pages/    controls (landing), overview, model, environment, alarms, trends, audit,
+             commissioning, settings
 ```
 
-## Site points
-
-`js/config/points.js` holds the site points supplied for **RUT_1** (rooftop, BACnet) and
-**HYBRID_1** (hybrid, Modbus). Units 2–n follow the same pattern with the number changed:
-
-| Type | Folder | Points |
-|---|---|---|
-| Rooftop | `Drivers/BcpBacnetNetwork/OFFICES/points/RUT_n/` | `SPACE_TEMPn`, `R_Humidityn`, `UnitnAlarm`, `UnitnSAF`, `UnitnMode`, `UninStartCmd`, `UnitnEnable`, `UnitnSetpoint` |
-| Hybrid | `Drivers/ModbusAsyncNetwork/HYBRID_n/points/` | `BMS_Enable`, `BMSControl`, `REMOTE_STATUS`, `COOL_MODE`, `HEAT_MODE`, `FAN_ONLY_MODE`, `SUPPLY_AIR_FAN`, `FAN_SPEED`, `STATIC_PRESSURE_STATUS`, `STATIC_PESSURE_SETPOINT`, `CALCULATED_AIRFLOW`, `STATIC_AIR_PRESSURE`, `STATIC_PRESSURE_FAILURE`, `NO_AIRFLOW`, `SUPPLY_AIR_FAN_TRIP`, `ROOM_TEMP_AVERAGE`, `ROOM_TEMP_SETPOINT`, `ROOM_TEMP1_FAILURE`, `ROOM_TEMP2_FAILURE`, `ONCOIL_TEMP_FAILURE`, `DIRTY_FILTER` |
-
-Names are kept exactly as supplied (including `Uni1StartCmd` and `STATIC_PESSURE_SETPOINT`).
-The supplied ORD form is `station:|slot:/Drivers/...`; the app sends the slot path
-(`Drivers/...`) to the gateway, which adds the ORD prefix. 5 rooftop × 8 + 6 hybrid × 21 = **166 points**.
-
-**To confirm on site** (all shown as assumptions in the UI):
-- Units 2–n really follow the unit 1 pattern (Commissioning page lists every derived point).
-- Which unit's sensors represent each zone (`ZONE_SOURCES`); humidity exists only on rooftop units.
-- Running = supply air fan on; "stopped" = rooftop enabled + start command on but fan off, or hybrid fan trip / no airflow.
-- Alarm points: true = alarm.
-- Rooftop `UnitnMode` values (numeric states shown as "Mode 2" until mapped in `enumMap`).
-- Units for fan speed (%), airflow (m³/h) and static pressure (Pa).
-- Which point the on/off toggle writes: `UnitnEnable` or `UninStartCmd`; `BMS_Enable` or `BMSControl`.
-
-## Proposed gateway contract (proposed, not implemented)
-
-The browser calls a **same-origin** gateway (`gatewayUrl`, empty by default). The gateway
-holds all credentials (OAuth client, JACE user) server-side. **No credentials, client
-secrets or messaging tokens may be placed in this frontend.**
-
-```
-GET  {gateway}/health                        -> 200 { "status": "ok" }
-GET  {gateway}/query/readPoint/<slot path>   -> 200 { "value": 21.4, "timestamp": "<ISO>", "status": "ok"|"fault"|"stale"|"down" }
-                                                404 when the point does not exist
-PUT  {gateway}/query/writePoint/<slot path>?value=&priority=   (NOT used; writes disabled)
-```
-
-The gateway should serialise requests to the JACE, which could not handle concurrent
-requests on one token. The browser also sends one request at a time. It should also
-allow-list readable points, and should later add history, alarm and acknowledgement
-endpoints.
-
-## Not configured (shown as such in the UI)
-
-Alarm acknowledgement service (demo-only acknowledgement), historian, WhatsApp/email
-notifications, central audit log, setpoint writes (`writable: false`,
-`setpointWriteEnabled: false`), equipment control.
-
-## Facility location
-
-The supplied address is a **Department of Health office, not a confirmed warehouse**. It is
-geocoded at runtime with Nominatim (`countrycodes=za`, `addressdetails=1`). Matches must be
-in Mpumalanga, because other towns are also called Middelburg. Queries get progressively
-broader, the result is cached in localStorage for 30 days, and the precision (address,
-street or town) is displayed. If geocoding fails, a fallback panel shows the address, a
-Retry button and Google Maps links. No coordinates are hardcoded.
-
-No regulatory compliance, certification or endorsement is claimed by this interface.
+The former HVAC Systems page was merged into Controls (unit cards, unit detail panel); `#/hvac`
+redirects there. The unit fault grid was replaced by fault chips on each unit card and the unit
+detail panel's point table.

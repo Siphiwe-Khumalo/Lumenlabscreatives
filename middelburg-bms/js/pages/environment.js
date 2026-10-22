@@ -7,11 +7,11 @@ import { APP_CONFIG } from '../config/app-config.js';
 import { hasThresholdOverride } from '../config/settings-store.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, dateTime, ago } from '../util/format.js';
-import { statusChip, stateBox } from '../ui/components.js';
+import { statusChip, stateBox, bigReadingHTML } from '../ui/components.js';
 import { isGood, QUALITY_LABEL } from '../data/quality.js';
 import { calibrationStatus, CALIBRATION_LABEL } from '../config/calibration.js';
 import { meanKineticTemperature } from '../data/analytics.js';
-import { getProvider } from '../data/store.js';
+import { getZoneSeries } from '../data/store.js';
 
 const mktCache = {}; // zoneId -> { value, samples, from, to } | { error }
 
@@ -62,16 +62,11 @@ function rangeBar({ limits, unit, reading, setpoint, digits = 1 }) {
 }
 
 function valueBlock(label, r, unit) {
-  if (!isGood(r)) return `<div><span class="lbl">${label}</span><span class="val v-unknown">Unknown</span><span class="small muted">${esc(QUALITY_LABEL[r?.quality] || 'Missing')} — ${esc(r?.error || 'no reading')}</span></div>`;
-  return `<div><span class="lbl">${label}</span><span class="val">${num(r.value)} <small>${unit}</small></span><span class="small muted" title="${esc(dateTime(r.ts))}">at ${esc(dateTime(r.ts).slice(11))} (${esc(ago(r.ts))})</span></div>`;
+  return bigReadingHTML(r, { label, unit, cls: unit === '%RH' ? 'hum' : 'temp' });
 }
 
 function zonePanel(z, mode) {
   const t = z.limits.temperature, h = z.limits.humidity;
-  const writable = APP_CONFIG.setpointWriteEnabled && ROLE_POINTS.temperatureSetpoint.writable && mode === 'connected';
-  const reason = mode === 'demo'
-    ? 'Demonstration only — setpoint writes are disabled.'
-    : 'Not configured — setpoint write point and permission not confirmed (writable: false).';
   const override = hasThresholdOverride(z.id);
   return `<section class="card zone-panel" id="zone-${z.id}" aria-labelledby="zh-${z.id}">
     <div class="card-head">
@@ -92,10 +87,8 @@ function zonePanel(z, mode) {
           <dt>Sensor calibration</dt><dd>${calibrationHTML(z.id, 'temperature')}</dd>
         </dl>
         <div class="control-row">
-          <label class="sr-only" for="sp-${z.id}">New setpoint for ${esc(z.name)}</label>
-          <input class="input num" id="sp-${z.id}" type="number" step="0.5" min="${t.setpointMin}" max="${t.setpointMax}" value="${isGood(z.readings.temperatureSetpoint) ? z.readings.temperatureSetpoint.value : ''}" ${writable ? '' : 'disabled'} aria-describedby="spr-${z.id}">
-          <button class="btn sm" type="button" ${writable ? '' : 'disabled'}>Apply setpoint</button>
-          <span class="reason" id="spr-${z.id}">${icon('lock')}${esc(reason)}</span>
+          <a class="btn sm" href="#/controls">${icon('hvac')}Change setpoints on the Controls page</a>
+          <span class="reason">Rooftop setpoints are set per unit; hybrid setpoints are read-only.</span>
         </div>
       </div>
       <div class="reading-block">
@@ -140,16 +133,14 @@ export default {
       if (last) render(last);
     });
     async function loadMkt() {
-      const p = getProvider();
-      const now = Date.now();
       for (const z of ZONES) {
-        if (!p?.capabilities.history) { mktCache[z.id] = { error: 'Needs history — historian not configured' }; continue; }
         try {
-          const [d] = await p.history({ metric: 'temperature', zoneIds: [z.id], from: now - 30 * 864e5, to: now, stepMs: 3600e3 });
-          const vals = d.points.map((x) => x[1]).filter((v) => v != null);
+          const { points } = await getZoneSeries(z.id, 'temperature', '30d');
+          // LIVE samples only; outages are excluded, never filled.
+          const vals = points.filter((x) => x[2] === 'live' && x[1] != null).map((x) => x[1]);
           const v = meanKineticTemperature(vals);
           mktCache[z.id] = v == null ? { error: 'Not enough data' } : { value: v, samples: vals.length };
-        } catch (err) { mktCache[z.id] = { error: err.notConfigured ? 'Needs history — historian not configured' : err.message }; }
+        } catch (err) { mktCache[z.id] = { error: err.notConfigured ? 'Needs 30 days of history — historian not configured' : err.message }; }
       }
       if (last) render(last);
     }

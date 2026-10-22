@@ -22,15 +22,75 @@ export function ackChip(status) {
   return `<span class="status-chip ${cls}">${esc(ACK_LABEL[status] || status)}</span>`;
 }
 
-/** Value + unit, or 'Unknown' with the quality reason. Never presents a non-good reading as a value. */
-export function readingHTML(r, { digits = 1, unit } = {}) {
-  if (r?.error === 'Role not mapped') return '<span class="muted" title="No point supplied for this reading yet">Not mapped</span>';
+const fmtValue = (v, digits) => (typeof v === 'number' ? num(v, digits) : typeof v === 'boolean' ? (v ? 'On' : 'Off') : esc(v));
+
+/** Quality chip (grey for anything not LIVE). */
+export function qualityChip(q) {
+  return `<span class="q-chip q-${esc(q || 'not-mapped')}">${q === 'live' ? '<i class="q-dot"></i>' : ''}${esc(QUALITY_LABEL[q] || 'NOT MAPPED')}</span>`;
+}
+
+/** "last good: 5.2 °C at 14:32" (small) — only ever shown next to a non-live state. */
+export function lastGoodHTML(r, digits = 1) {
+  const lg = r?.lastGood;
+  if (!lg || lg.value == null) return '';
+  return `<span class="last-good">last good: ${fmtValue(lg.value, digits)}${r.unit ? ` ${esc(r.unit)}` : ''} at ${esc(dateTime(lg.ts).slice(11, 16))}</span>`;
+}
+
+/**
+ * Inline reading. LIVE: value + unit. Anything else: em dash + grey state label
+ * (+ small last-good when asked). A non-live value is never shown as current.
+ */
+export function readingHTML(r, { digits = 1, unit, lastGood = false } = {}) {
   if (!isGood(r)) {
-    const q = r?.quality ? QUALITY_LABEL[r.quality] : 'Missing';
-    return `<span class="v-unknown" title="${esc(r?.error || '')}">Unknown</span> <span class="q-flag">${esc(q)}</span>`;
+    const q = r?.quality || 'not-mapped';
+    return `<span class="v-none" title="${esc(r?.error || QUALITY_LABEL[q])}">—</span> <span class="q-label">${esc(QUALITY_LABEL[q] || 'NOT MAPPED')}</span>${lastGood ? ' ' + lastGoodHTML(r, digits) : ''}`;
   }
-  const v = typeof r.value === 'number' ? num(r.value, digits) : typeof r.value === 'boolean' ? (r.value ? 'On' : 'Off') : esc(r.value);
-  return `${v}${unit ?? r.unit ? ` <span class="muted">${esc(unit ?? r.unit)}</span>` : ''}`;
+  const u = unit ?? r.unit;
+  return `<span class="v-live">${fmtValue(r.value, digits)}</span>${u ? ` <span class="v-unit">${esc(u)}</span>` : ''}`;
+}
+
+/**
+ * Large reading for cards: 32–40 px mono value with small muted unit when LIVE;
+ * otherwise an em dash, the grey state label and the small last-good line.
+ */
+export function bigReadingHTML(r, { label, digits = 1, unit, cls = '' } = {}) {
+  const u = unit ?? r?.unit;
+  const head = label ? `<span class="label-caps">${esc(label)}</span>` : '';
+  if (!isGood(r)) {
+    const q = r?.quality || 'not-mapped';
+    return `<div class="big-reading ${cls} is-${esc(q)}">${head}<div class="big-v"><span class="v-none">—</span></div>
+      <div class="big-meta">${qualityChip(q)}${lastGoodHTML(r, digits)}</div></div>`;
+  }
+  return `<div class="big-reading ${cls}">${head}<div class="big-v"><span class="v-live">${fmtValue(r.value, digits)}</span>${u ? `<span class="v-unit">${esc(u)}</span>` : ''}</div>
+    <div class="big-meta">${ageHTML(r.ts)}${r.override ? ` <span class="ovr">${icon('alarm')}Overridden by ${esc(r.override.source)}</span>` : ''}</div></div>`;
+}
+
+/** "Updated 3 s ago" — kept live by the shell ticker (data-age). */
+export function ageHTML(ts, prefix = 'Updated') {
+  if (ts == null) return '<span class="age muted">No update yet</span>';
+  return `<span class="age" data-age="${ts}" data-prefix="${esc(prefix)}" title="${esc(dateTime(ts))} SAST">${esc(prefix)} ${esc(ago(ts))}</span>`;
+}
+
+export const RUN_LABEL = { running: 'RUNNING', stopped: 'STOPPED', fault: 'FAULT', unknown: 'UNKNOWN' };
+const RUN_ICON = { running: 'check', stopped: 'dot', fault: 'alarm', unknown: 'info' };
+export function runChip(state) {
+  const s = RUN_LABEL[state] ? state : 'unknown';
+  return `<span class="run-chip run-${s}">${icon(RUN_ICON[s])}${RUN_LABEL[s]}</span>`;
+}
+
+/**
+ * Fan animation: spins only when the fan point is LIVE and ON. Air colour follows the mode
+ * (cooling blue, heating orange, fan-only grey). Still when off; greyed when unknown.
+ */
+export function fanHTML(e) {
+  const fan = e.readings.fanStatus;
+  const known = isGood(fan);
+  const on = known && fan.value === true;
+  const mode = e.mode === 'cooling' ? 'cool' : e.mode === 'heating' ? 'heat' : 'fan';
+  const label = !known ? 'Fan state unknown' : on ? `Fan running${e.mode !== 'unknown' ? ', ' + e.mode : ''}` : 'Fan off';
+  return `<span class="fan ${on ? `on ${mode}` : known ? 'off' : 'unknown'}" role="img" aria-label="${esc(label)}" title="${esc(label)}">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><g class="blades"><path d="M20 20c0-6 2-11 6-11s4 5-6 11Z"/><path d="M20 20c6 0 11 2 11 6s-5 4-11-6Z"/><path d="M20 20c0 6-2 11-6 11s-4-5 6-11Z"/><path d="M20 20c-6 0-11-2-11-6s5-4 11 6Z"/></g><circle cx="20" cy="20" r="2.6"/></svg>
+    <span class="air"><i></i><i></i><i></i></span></span>`;
 }
 
 export function tsHTML(ts) {
