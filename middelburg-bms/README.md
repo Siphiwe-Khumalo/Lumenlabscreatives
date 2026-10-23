@@ -32,8 +32,11 @@ forwards point reads/writes, one request at a time. The credentials stay on the 
    shape of the first reply (no values) so the format can be confirmed.
 
 `.env` is in `.gitignore` and the server refuses to serve it (only `index.html`, `css/`, `js/`,
-`vendor/` and `assets/` are served). If the token request fails, check `OSS_TOKEN_PATH` and
-`OSS_AUTH_STYLE` (same as ARC's api.js).
+`vendor/` and `assets/` are served). Paths match ARC's api.js: token
+`POST /ossRestApiServer/token` (Basic client credentials, `scope=read write`), reads
+`GET /ossRestApiServer/query/readPoint/<slot path>`. `npm run check` tests the connection and saves
+the working settings in `.env`. The JACE invalidates the previous token whenever a new one is
+minted, so the gateway keeps one token, allows one refresh at a time and one request in flight.
 
 ## Data honesty rules (enforced in `js/data/quality.js` and `js/data/store.js`)
 

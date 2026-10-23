@@ -20,10 +20,12 @@ export function createGateway(env) {
     // Alternative to OAuth: a Niagara station user with the HTTP Basic authentication scheme.
     user: env.JACE_USER || '',
     password: env.JACE_PASSWORD || '',
-    tokenPath: env.OSS_TOKEN_PATH || '/oauth/token',          // TODO(confirm): token endpoint used by ARC
+    // Paths as used by ARC's api.js: the API is served under /ossRestApiServer on the JACE.
+    tokenPath: env.OSS_TOKEN_PATH || '/ossRestApiServer/token',
+    scope: env.OSS_SCOPE ?? 'read write',
     authStyle: (env.OSS_AUTH_STYLE || 'basic').toLowerCase(), // basic | basic-encoded | body | json (scripts/oss-auth.mjs)
-    readPath: env.OSS_READ_PATH || '/query/readPoint/',
-    writePath: env.OSS_WRITE_PATH || '/query/writePoint/',
+    readPath: env.OSS_READ_PATH || '/ossRestApiServer/query/readPoint/',
+    writePath: env.OSS_WRITE_PATH || '/ossRestApiServer/query/writePoint/', // TODO(confirm) against ARC
     writeMethod: (env.OSS_WRITE_METHOD || 'PUT').toUpperCase(),
     ordPrefix: env.OSS_ORD_PREFIX ?? '',                      // e.g. 'station:|slot:/' if the API wants full ORDs
     timeoutMs: Number(env.OSS_TIMEOUT_MS || 8000),
@@ -55,24 +57,35 @@ export function createGateway(env) {
   let chain = Promise.resolve();
   const serial = (fn) => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
 
-  /* ---- OAuth client-credentials token ---- */
-  let token = null, tokenExp = 0;
-  async function getToken(force = false) {
-    if (!force && token && Date.now() < tokenExp - 30e3) return token;
-    const { headers, body } = tokenRequest(cfg.authStyle, cfg.clientId, cfg.clientSecret);
-    const res = await request(cfg.jaceUrl + cfg.tokenPath, { method: 'POST', headers, body });
-    if (res.status !== 200) throw new Error(`Token request refused (HTTP ${res.status}) — check OSS_CLIENT_ID / OSS_CLIENT_SECRET / OSS_TOKEN_PATH`);
-    let j; try { j = JSON.parse(res.text); } catch { throw new Error('Token response was not JSON — check OSS_TOKEN_PATH'); }
-    if (!j.access_token) throw new Error('Token response had no access_token');
-    token = j.access_token;
-    tokenExp = Date.now() + (Number(j.expires_in) || 300) * 1000;
-    return token;
+  /* ---- OAuth client-credentials token ----
+   * The JACE's OAuth issuer invalidates the previous token as soon as a new one is minted (seen on
+   * ARC). So: one token for everything, at most one refresh in flight (callers share its promise),
+   * and a 401 only refreshes if the token that failed is still the current one. */
+  let token = null, tokenExp = 0, inflight = null;
+  function getToken(force = false) {
+    if (!force && token && Date.now() < tokenExp - 30e3) return Promise.resolve(token);
+    if (inflight) return inflight;
+    inflight = (async () => {
+      const { headers, body } = tokenRequest(cfg.authStyle, cfg.clientId, cfg.clientSecret, cfg.scope);
+      const res = await request(cfg.jaceUrl + cfg.tokenPath, { method: 'POST', headers, body });
+      if (res.status !== 200) throw new Error(`Token request refused (HTTP ${res.status}) — check OSS_CLIENT_ID / OSS_CLIENT_SECRET / OSS_TOKEN_PATH`);
+      let j; try { j = JSON.parse(res.text); } catch { throw new Error('Token response was not JSON — check OSS_TOKEN_PATH'); }
+      if (!j.access_token) throw new Error('Token response had no access_token');
+      token = j.access_token;
+      tokenExp = Date.now() + (Number(j.expires_in) || 300) * 1000;
+      return token;
+    })().finally(() => { inflight = null; });
+    return inflight;
   }
 
   async function jace(method, path, attempt = 0) {
-    const auth = useUser ? 'Basic ' + Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64') : `Bearer ${await getToken()}`;
+    const used = useUser ? null : await getToken();
+    const auth = useUser ? 'Basic ' + Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64') : `Bearer ${used}`;
     const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json, text/plain' } });
-    if (res.status === 401 && attempt === 0 && !useUser) { token = null; await getToken(true); return jace(method, path, 1); }
+    if (res.status === 401 && attempt === 0 && !useUser) {
+      if (token === used) await getToken(true);
+      return jace(method, path, 1);
+    }
     return res;
   }
 

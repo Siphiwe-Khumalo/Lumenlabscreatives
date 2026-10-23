@@ -7,14 +7,15 @@
 //   json          JSON body { grant_type, client_id, client_secret }
 export const AUTH_STYLES = ['basic', 'basic-encoded', 'body', 'json'];
 
-export function tokenRequest(style, id, secret) {
+export function tokenRequest(style, id, secret, scope = 'read write') {
   const headers = { Accept: 'application/json' };
   if (style === 'json') {
     headers['Content-Type'] = 'application/json';
-    return { headers, body: JSON.stringify({ grant_type: 'client_credentials', client_id: id, client_secret: secret }) };
+    return { headers, body: JSON.stringify({ grant_type: 'client_credentials', scope, client_id: id, client_secret: secret }) };
   }
   headers['Content-Type'] = 'application/x-www-form-urlencoded';
   const form = new URLSearchParams({ grant_type: 'client_credentials' });
+  if (scope) form.set('scope', scope);
   if (style === 'body') { form.set('client_id', id); form.set('client_secret', secret); }
   else {
     const enc = (s) => (style === 'basic-encoded' ? encodeURIComponent(s) : s);

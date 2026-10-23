@@ -53,11 +53,11 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
   if (!schemes.length) { console.log('\nThe JACE does not answer from this PC. Check the IP address, the network cable/VPN and the firewall.'); return; }
 
   // 2. Token
-  const paths = [env.OSS_TOKEN_PATH, '/oauth/token', '/oauth2/token', '/token', '/ossRestApi/oauth/token', '/api/oauth/token', '/ossRestApi/token', '/ossRestApi/oauth2/token', '/oauth/token/'].filter((v, i, a) => v && a.indexOf(v) === i);
+  const paths = ['/ossRestApiServer/token', env.OSS_TOKEN_PATH, '/oauth/token', '/oauth2/token', '/token', '/ossRestApi/oauth/token', '/api/oauth/token', '/ossRestApi/token', '/ossRestApi/oauth2/token', '/oauth/token/'].filter((v, i, a) => v && a.indexOf(v) === i);
   let found = null;
   console.log('\n2. Token requests (client credentials):');
   outer: for (const s of schemes) for (const p of paths) for (const style of AUTH_STYLES) {
-    const { headers, body } = tokenRequest(style, id, secret);
+    const { headers, body } = tokenRequest(style, id, secret, env.OSS_SCOPE ?? 'read write');
     const r = await req(`${s}://${host}${p}`, { method: 'POST', headers, body });
     let token = null; try { token = JSON.parse(r.text).access_token; } catch { /* not JSON */ }
     const detail = r.location ? `  -> redirects to ${r.location}` : '  ' + r.text.replace(/\s+/g, ' ').slice(0, 90);
@@ -66,14 +66,15 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
   }
   if (!found) { console.log('\nNo token. Send this report. (Likely: wrong token path, or the client ID/secret is not exactly as on the JACE.)'); return; }
 
-  // 3. Read one point
+  // 3. Read one point. The API lives under the token's apiBase path (e.g. /ossRestApiServer/token -> /ossRestApiServer).
+  const apiBase = found.p.replace(/\/(oauth2?\/)?token\/?$/, '');
   console.log(`\n3. Reading ${POINT}:`);
   for (const prefix of ['', 'station:|slot:/', 'slot:/']) {
-    const path = '/query/readPoint/' + (prefix + POINT).split('/').map(encodeURIComponent).join('/');
+    const path = apiBase + '/query/readPoint/' + (prefix + POINT).split('/').map(encodeURIComponent).join('/');
     const r = await req(`${found.s}://${host}${path}`, { headers: { Authorization: `Bearer ${found.token}`, Accept: 'application/json, text/plain' } });
     console.log(`   prefix "${prefix}" -> ${r.status ? 'HTTP ' + r.status : r.text}  ${r.text.replace(/\s+/g, ' ').slice(0, 160)}`);
     if (r.status === 200) {
-      const set = { JACE_URL: `${found.s}://${host}`, OSS_TOKEN_PATH: found.p, OSS_AUTH_STYLE: found.style, OSS_ORD_PREFIX: prefix };
+      const set = { JACE_URL: `${found.s}://${host}`, OSS_TOKEN_PATH: found.p, OSS_AUTH_STYLE: found.style, OSS_ORD_PREFIX: prefix, OSS_READ_PATH: apiBase + '/query/readPoint/', OSS_WRITE_PATH: apiBase + '/query/writePoint/' };
       let text = readFileSync(join(root, '.env'), 'utf8');
       for (const [k, v] of Object.entries(set)) {
         const re = new RegExp(`^${k}=.*$`, 'm');
@@ -92,7 +93,7 @@ async function checkUser() {
   console.log(`Address: ${host} · station user: ${env.JACE_USER} (HTTP Basic, no token)\n`);
   const auth = 'Basic ' + Buffer.from(`${env.JACE_USER}:${env.JACE_PASSWORD}`).toString('base64');
   for (const s of ['https', 'http']) for (const prefix of ['', 'station:|slot:/', 'slot:/']) {
-    const path = '/query/readPoint/' + (prefix + POINT).split('/').map(encodeURIComponent).join('/');
+    const path = '/ossRestApiServer/query/readPoint/' + (prefix + POINT).split('/').map(encodeURIComponent).join('/');
     const r = await req(`${s}://${host}${path}`, { headers: { Authorization: auth, Accept: 'application/json, text/plain' } });
     console.log(`   ${s} prefix "${prefix}" -> ${r.status ? 'HTTP ' + r.status : r.text}  ${r.location ? 'redirects to ' + r.location : r.text.replace(/\s+/g, ' ').slice(0, 160)}`);
     if (r.status === 200) {
