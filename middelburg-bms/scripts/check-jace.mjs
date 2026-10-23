@@ -6,7 +6,7 @@ import https from 'node:https';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AUTH_STYLES, tokenRequest } from './oss-auth.mjs';
+import { AUTH_STYLES, tokenRequest, PATH_ENCODINGS, pointSuffix, pointPath } from './oss-auth.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const env = {};
@@ -69,19 +69,19 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
   // 3. Read one point. The API lives under the token's apiBase path (e.g. /ossRestApiServer/token -> /ossRestApiServer).
   const apiBase = found.p.replace(/\/(oauth2?\/)?token\/?$/, '');
   console.log(`\n3. Reading ${POINT}:`);
-  for (const prefix of ['', 'station:|slot:/', 'slot:/']) {
-    const path = apiBase + '/query/readPoint/' + (prefix + POINT).split('/').map(encodeURIComponent).join('/');
+  for (const encoding of PATH_ENCODINGS) for (const prefix of ['', '/', 'station:|slot:/', 'slot:/']) {
+    const path = pointPath(apiBase + '/query/readPoint/', pointSuffix(POINT, prefix, encoding));
     const r = await req(`${found.s}://${host}${path}`, { headers: { Authorization: `Bearer ${found.token}`, Accept: 'application/json, text/plain' } });
-    console.log(`   prefix "${prefix}" -> ${r.status ? 'HTTP ' + r.status : r.text}  ${r.text.replace(/\s+/g, ' ').slice(0, 160)}`);
+    console.log(`   ${encoding} "${prefix}" -> ${r.status ? 'HTTP ' + r.status : r.text}  ${r.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140)}`);
     if (r.status === 200) {
-      const set = { JACE_URL: `${found.s}://${host}`, OSS_TOKEN_PATH: found.p, OSS_AUTH_STYLE: found.style, OSS_ORD_PREFIX: prefix, OSS_READ_PATH: apiBase + '/query/readPoint/', OSS_WRITE_PATH: apiBase + '/query/writePoint/' };
+      const set = { JACE_URL: `${found.s}://${host}`, OSS_TOKEN_PATH: found.p, OSS_AUTH_STYLE: found.style, OSS_ORD_PREFIX: prefix, OSS_PATH_ENCODING: encoding, OSS_READ_PATH: apiBase + '/query/readPoint/', OSS_WRITE_PATH: apiBase + '/query/writePoint/' };
       let text = readFileSync(join(root, '.env'), 'utf8');
       for (const [k, v] of Object.entries(set)) {
         const re = new RegExp(`^${k}=.*$`, 'm');
         text = re.test(text) ? text.replace(re, () => `${k}=${v}`) : `${text.replace(/\n?$/, '\n')}${k}=${v}\n`;
       }
       writeFileSync(join(root, '.env'), text);
-      console.log(`\nWORKS. Saved the working settings in .env (${set.JACE_URL}, token ${found.p}, ${found.style}${prefix ? ', prefix ' + prefix : ''}).\nNow run: npm run dev`);
+      console.log(`\nWORKS. Saved the working settings in .env (${set.JACE_URL}, token ${found.p}, path format ${encoding}${prefix ? ', prefix ' + prefix : ''}).\nNow run: npm run dev`);
       return;
     }
   }

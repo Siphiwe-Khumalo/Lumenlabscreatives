@@ -23,3 +23,25 @@ export function tokenRequest(style, id, secret, scope = 'read write') {
   }
   return { headers, body: form.toString() };
 }
+
+// How the point's slot path is put in the URL (OSS_PATH_ENCODING). npm run check finds the one the JACE accepts.
+//   segments  readPoint/Drivers/Bcp.../SPACE_TEMP1 (each segment URL-encoded)
+//   raw       readPoint/<prefix + path> unencoded (e.g. station:|slot:/Drivers/...)
+//   full      readPoint/<whole path URL-encoded, slashes as %2F>
+//   query:<n> readPoint?<n>=<URL-encoded path>
+export const PATH_ENCODINGS = ['segments', 'raw', 'full', 'query:ord', 'query:path', 'query:point', 'query:slotPath'];
+
+export function pointSuffix(slot, prefix = '', encoding = 'segments') {
+  const p = prefix + slot;
+  if (encoding.startsWith('query:')) return `?${encoding.slice(6)}=${encodeURIComponent(p)}`;
+  if (encoding === 'raw') return p.replace(/ /g, '%20');
+  if (encoding === 'full') return encodeURIComponent(p);
+  return p.split('/').map(encodeURIComponent).join('/');
+}
+
+/** Joins a read/write base path and a point suffix; extra query (e.g. ?value=) is merged. */
+export function pointPath(base, suffix, query = '') {
+  const b = suffix.startsWith('?') ? base.replace(/\/+$/, '') : base;
+  const sep = (suffix.includes('?') && query.startsWith('?')) ? '&' + query.slice(1) : query;
+  return b + suffix + sep;
+}

@@ -10,7 +10,7 @@
 // returned as an error so the dashboard shows OFFLINE.
 import http from 'node:http';
 import https from 'node:https';
-import { tokenRequest } from './oss-auth.mjs';
+import { tokenRequest, pointSuffix, pointPath } from './oss-auth.mjs';
 
 export function createGateway(env) {
   const cfg = {
@@ -28,6 +28,7 @@ export function createGateway(env) {
     writePath: env.OSS_WRITE_PATH || '/ossRestApiServer/query/writePoint/', // TODO(confirm) against ARC
     writeMethod: (env.OSS_WRITE_METHOD || 'PUT').toUpperCase(),
     ordPrefix: env.OSS_ORD_PREFIX ?? '',                      // e.g. 'station:|slot:/' if the API wants full ORDs
+    pathEncoding: env.OSS_PATH_ENCODING || 'segments',        // see scripts/oss-auth.mjs
     timeoutMs: Number(env.OSS_TIMEOUT_MS || 8000),
     // JACEs usually have a self-signed certificate. Only for the JACE address, only on the site LAN.
     allowSelfSigned: /^(1|true|yes)$/i.test(env.JACE_ALLOW_SELF_SIGNED || ''),
@@ -89,7 +90,7 @@ export function createGateway(env) {
     return res;
   }
 
-  const encodeSlot = (p) => (cfg.ordPrefix + p).split('/').map(encodeURIComponent).join('/');
+  const pointUrl = (base, slot, query = '') => pointPath(base, pointSuffix(slot, cfg.ordPrefix, cfg.pathEncoding), query);
 
   /** Normalises a readPoint reply. Supports JSON ({value,status}) and Niagara text ("21.40 °C {ok} @ def"). */
   const seenShapes = new Set();
@@ -134,7 +135,7 @@ export function createGateway(env) {
       }
       if (sub.startsWith('/query/readPoint/') && req.method === 'GET') {
         const slot = decodeURIComponent(sub.slice('/query/readPoint/'.length));
-        const r = await serial(() => jace('GET', cfg.readPath + encodeSlot(slot)));
+        const r = await serial(() => jace('GET', pointUrl(cfg.readPath, slot)));
         if (r.status === 404) { send(res, 404, { status: 'error', message: 'Point not found on the JACE' }); return true; }
         if (r.status !== 200) { send(res, 502, { status: 'error', message: `JACE returned HTTP ${r.status}` }); return true; }
         const n = normalise(r.text, slot);
@@ -148,7 +149,7 @@ export function createGateway(env) {
         const priority = url.searchParams.get('priority');
         if (value == null || priority == null) { send(res, 400, { status: 'error', message: 'value and priority are required' }); return true; }
         const q = `?value=${encodeURIComponent(value)}&priority=${encodeURIComponent(priority)}`;
-        const r = await serial(() => jace(cfg.writeMethod, cfg.writePath + encodeSlot(slot) + q));
+        const r = await serial(() => jace(cfg.writeMethod, pointUrl(cfg.writePath, slot, q)));
         console.log(`[gateway] write ${slot} = ${value} @ priority ${priority} -> HTTP ${r.status}`);
         send(res, r.status >= 200 && r.status < 300 ? 200 : 502, r.status >= 200 && r.status < 300 ? { status: 'ok' } : { status: 'error', message: `JACE returned HTTP ${r.status}` });
         return true;
