@@ -52,19 +52,27 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
   }
   if (!schemes.length) { console.log('\nThe JACE does not answer from this PC. Check the IP address, the network cable/VPN and the firewall.'); return; }
 
-  // 2. Token
-  const paths = ['/ossRestApiServer/token', env.OSS_TOKEN_PATH, '/oauth/token', '/oauth2/token', '/token', '/ossRestApi/oauth/token', '/api/oauth/token', '/ossRestApi/token', '/ossRestApi/oauth2/token', '/oauth/token/'].filter((v, i, a) => v && a.indexOf(v) === i);
+  // 2. Token. The endpoint is known (ARC's api.js): POST /ossRestApiServer/token, Basic client credentials.
+  // No guessing other paths any more: repeated failed logins can make the JACE refuse the client for a while.
+  const tokenPath = '/ossRestApiServer/token', style = env.OSS_AUTH_STYLE && env.OSS_AUTH_STYLE !== 'basic' ? env.OSS_AUTH_STYLE : 'basic';
+  const s = schemes.includes('https') ? 'https' : schemes[0];
   let found = null;
-  console.log('\n2. Token requests (client credentials):');
-  outer: for (const s of schemes) for (const p of paths) for (const style of AUTH_STYLES) {
+  console.log(`\n2. Token: POST ${s}://${host}${tokenPath} (${style})`);
+  for (let attempt = 1; attempt <= 3 && !found; attempt++) {
     const { headers, body } = tokenRequest(style, id, secret, env.OSS_SCOPE ?? 'read write');
-    const r = await req(`${s}://${host}${p}`, { method: 'POST', headers, body });
+    const r = await req(`${s}://${host}${tokenPath}`, { method: 'POST', headers, body });
     let token = null; try { token = JSON.parse(r.text).access_token; } catch { /* not JSON */ }
-    const detail = r.location ? `  -> redirects to ${r.location}` : '  ' + r.text.replace(/\s+/g, ' ').slice(0, 90);
-    console.log(`   ${s} ${p} (${style}) -> ${r.status ? 'HTTP ' + r.status : r.text}${token ? '  TOKEN OK' : r.status ? detail : ''}`);
-    if (token) { found = { s, p, style, token }; break outer; }
+    console.log(`   attempt ${attempt} -> ${r.status ? 'HTTP ' + r.status : r.text}${token ? '  TOKEN OK' : '  ' + r.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)}`);
+    if (token) found = { s, p: tokenPath, style, token };
+    else if (attempt < 3) { console.log('   waiting 30 s before trying again...'); await new Promise((ok) => setTimeout(ok, 30000)); }
   }
-  if (!found) { console.log('\nNo token. Send this report. (Likely: wrong token path, or the client ID/secret is not exactly as on the JACE.)'); return; }
+  if (!found) {
+    console.log(`\nNo token. The same request worked before, so the JACE is refusing this client right now. Check:
+  - Is the dashboard (npm run dev) or ARC running with the SAME client ID? Stop it, wait 2 minutes, run npm run check again.
+  - In Workbench, the ossRestApiServer client may be locked out after failed attempts: check its status / unlock it.`);
+    return;
+  }
+  saveEnv({ JACE_URL: `${s}://${host}`, OSS_TOKEN_PATH: tokenPath, OSS_AUTH_STYLE: style, OSS_READ_PATH: '/ossRestApiServer/query/readPoint/', OSS_WRITE_PATH: '/ossRestApiServer/query/writePoint/' });
 
   // 3. Read one point. The API lives under the token's apiBase path (e.g. /ossRestApiServer/token -> /ossRestApiServer).
   const apiBase = found.p.replace(/\/(oauth2?\/)?token\/?$/, '');
@@ -75,18 +83,22 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
     console.log(`   ${encoding} "${prefix}" -> ${r.status ? 'HTTP ' + r.status : r.text}  ${r.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140)}`);
     if (r.status === 200) {
       const set = { JACE_URL: `${found.s}://${host}`, OSS_TOKEN_PATH: found.p, OSS_AUTH_STYLE: found.style, OSS_ORD_PREFIX: prefix, OSS_PATH_ENCODING: encoding, OSS_READ_PATH: apiBase + '/query/readPoint/', OSS_WRITE_PATH: apiBase + '/query/writePoint/' };
-      let text = readFileSync(join(root, '.env'), 'utf8');
-      for (const [k, v] of Object.entries(set)) {
-        const re = new RegExp(`^${k}=.*$`, 'm');
-        text = re.test(text) ? text.replace(re, () => `${k}=${v}`) : `${text.replace(/\n?$/, '\n')}${k}=${v}\n`;
-      }
-      writeFileSync(join(root, '.env'), text);
+      saveEnv(set);
       console.log(`\nWORKS. Saved the working settings in .env (${set.JACE_URL}, token ${found.p}, path format ${encoding}${prefix ? ', prefix ' + prefix : ''}).\nNow run: npm run dev`);
       return;
     }
   }
   console.log('\nToken OK but the point could not be read. Send this report.');
 })();
+
+function saveEnv(set) {
+  let text = readFileSync(join(root, '.env'), 'utf8');
+  for (const [k, v] of Object.entries(set)) {
+    const re = new RegExp(`^${k}=.*$`, 'm');
+    text = re.test(text) ? text.replace(re, () => `${k}=${v}`) : `${text.replace(/\n?$/, '\n')}${k}=${v}\n`;
+  }
+  writeFileSync(join(root, '.env'), text);
+}
 
 // Station user with HTTP Basic (JACE_USER / JACE_PASSWORD in .env) instead of OAuth.
 async function checkUser() {
