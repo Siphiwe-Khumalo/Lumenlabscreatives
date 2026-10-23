@@ -148,9 +148,14 @@ export function createGateway(env) {
         const priority = url.searchParams.get('priority');
         if (value == null || priority == null) { send(res, 400, { status: 'error', message: 'value and priority are required' }); return true; }
         const q = `?value=${encodeURIComponent(value)}&priority=${encodeURIComponent(priority)}`;
-        const r = await serial(() => jace(cfg.writeMethod, pointUrl(cfg.writePath, slot, q)));
-        console.log(`[gateway] write ${slot} = ${value} @ priority ${priority} -> HTTP ${r.status}`);
-        send(res, r.status >= 200 && r.status < 300 ? 200 : 502, r.status >= 200 && r.status < 300 ? { status: 'ok' } : { status: 'error', message: `JACE returned HTTP ${r.status}` });
+        let method = cfg.writeMethod;
+        let r = await serial(() => jace(method, pointUrl(cfg.writePath, slot, q)));
+        // 405 = this method is not accepted, so nothing was written: try the other one once.
+        if (r.status === 405) { method = method === 'PUT' ? 'POST' : 'PUT'; r = await serial(() => jace(method, pointUrl(cfg.writePath, slot, q))); }
+        const ok = r.status >= 200 && r.status < 300;
+        const why = String(r.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+        console.log(`[gateway] write ${method} ${slot} = ${value} @ priority ${priority} -> HTTP ${r.status}${why ? '  ' + why : ''}`);
+        send(res, ok ? 200 : 502, ok ? { status: 'ok' } : { status: 'error', message: `JACE returned HTTP ${r.status}${why ? ': ' + why : ''}` });
         return true;
       }
       send(res, 404, { status: 'error', message: 'Unknown gateway route' });
