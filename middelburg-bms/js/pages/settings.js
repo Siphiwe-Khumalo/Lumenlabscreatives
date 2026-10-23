@@ -95,7 +95,7 @@ export default {
           <div class="card-head"><h2 id="ctl-h">Unit controls</h2><span class="status-chip ${APP_CONFIG.controls.enabled ? 'st-normal' : 'st-neutral'}">${APP_CONFIG.controls.enabled ? 'Enabled' : 'Disabled'}</span></div>
           <div class="card-body"><dl class="kv">
             <dt>Who may operate</dt><dd>Operator and Admin roles (Viewer is read-only)</dd>
-            <dt>Write priority</dt><dd>${APP_CONFIG.controls.writePriority ?? 'Not set'} <span class="tag demo">TODO: confirm with Aina</span></dd>
+            <dt>Write priority</dt><dd>${APP_CONFIG.controls.writePriority ?? 'Not set'}</dd>
             <dt>Confirmation</dt><dd>PENDING until the feedback point reads back the command; NOT CONFIRMED after ${APP_CONFIG.controls.confirmTimeoutMs / 1000} s</dd>
             <dt>Setpoint limits</dt><dd>Per zone ("Setpoint min / max" below); values outside are rejected</dd>
             <dt>Feedback points</dt><dd>See js/config/controls.js — items marked TODO need confirmation</dd>
