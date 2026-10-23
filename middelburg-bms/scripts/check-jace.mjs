@@ -39,6 +39,7 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
 
 (async () => {
   console.log('JACE connection check\n');
+  if (env.JACE_USER && env.JACE_PASSWORD && host) return checkUser();
   if (!id || !secret || !host) { console.log('Missing in .env: ' + ['JACE_URL', 'OSS_CLIENT_ID', 'OSS_CLIENT_SECRET'].filter((k) => !env[k]).join(', ') + '\nRun: npm run setup'); return; }
   console.log(`Address: ${host} · client ID: ${id.slice(0, 4)}… · secret: ${secret.length} characters\n`);
 
@@ -85,3 +86,25 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
   }
   console.log('\nToken OK but the point could not be read. Send this report.');
 })();
+
+// Station user with HTTP Basic (JACE_USER / JACE_PASSWORD in .env) instead of OAuth.
+async function checkUser() {
+  console.log(`Address: ${host} · station user: ${env.JACE_USER} (HTTP Basic, no token)\n`);
+  const auth = 'Basic ' + Buffer.from(`${env.JACE_USER}:${env.JACE_PASSWORD}`).toString('base64');
+  for (const s of ['https', 'http']) for (const prefix of ['', 'station:|slot:/', 'slot:/']) {
+    const path = '/query/readPoint/' + (prefix + POINT).split('/').map(encodeURIComponent).join('/');
+    const r = await req(`${s}://${host}${path}`, { headers: { Authorization: auth, Accept: 'application/json, text/plain' } });
+    console.log(`   ${s} prefix "${prefix}" -> ${r.status ? 'HTTP ' + r.status : r.text}  ${r.location ? 'redirects to ' + r.location : r.text.replace(/\s+/g, ' ').slice(0, 160)}`);
+    if (r.status === 200) {
+      let text = readFileSync(join(root, '.env'), 'utf8');
+      for (const [k, v] of Object.entries({ JACE_URL: `${s}://${host}`, OSS_ORD_PREFIX: prefix })) {
+        const re = new RegExp(`^${k}=.*$`, 'm');
+        text = re.test(text) ? text.replace(re, () => `${k}=${v}`) : `${text.replace(/\n?$/, '\n')}${k}=${v}\n`;
+      }
+      writeFileSync(join(root, '.env'), text);
+      console.log('\nWORKS with the station user. Saved in .env. Now run: npm run dev');
+      return;
+    }
+  }
+  console.log('\nThe station user could not read the point. Send this report.');
+}

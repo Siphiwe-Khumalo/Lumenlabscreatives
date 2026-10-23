@@ -17,6 +17,9 @@ export function createGateway(env) {
     jaceUrl: (env.JACE_URL || '').replace(/\/+$/, ''),
     clientId: env.OSS_CLIENT_ID || '',
     clientSecret: env.OSS_CLIENT_SECRET || '',
+    // Alternative to OAuth: a Niagara station user with the HTTP Basic authentication scheme.
+    user: env.JACE_USER || '',
+    password: env.JACE_PASSWORD || '',
     tokenPath: env.OSS_TOKEN_PATH || '/oauth/token',          // TODO(confirm): token endpoint used by ARC
     authStyle: (env.OSS_AUTH_STYLE || 'basic').toLowerCase(), // basic | basic-encoded | body | json (scripts/oss-auth.mjs)
     readPath: env.OSS_READ_PATH || '/query/readPoint/',
@@ -27,7 +30,8 @@ export function createGateway(env) {
     // JACEs usually have a self-signed certificate. Only for the JACE address, only on the site LAN.
     allowSelfSigned: /^(1|true|yes)$/i.test(env.JACE_ALLOW_SELF_SIGNED || ''),
   };
-  const configured = !!(cfg.jaceUrl && cfg.clientId && cfg.clientSecret);
+  const useUser = !!(cfg.user && cfg.password);
+  const configured = !!(cfg.jaceUrl && (useUser || (cfg.clientId && cfg.clientSecret)));
   const missing = ['JACE_URL', 'OSS_CLIENT_ID', 'OSS_CLIENT_SECRET'].filter((k) => !env[k]);
 
   /* ---- HTTP to the JACE (no dependencies) ---- */
@@ -66,9 +70,9 @@ export function createGateway(env) {
   }
 
   async function jace(method, path, attempt = 0) {
-    const t = await getToken();
-    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: `Bearer ${t}`, Accept: 'application/json, text/plain' } });
-    if (res.status === 401 && attempt === 0) { token = null; await getToken(true); return jace(method, path, 1); }
+    const auth = useUser ? 'Basic ' + Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64') : `Bearer ${await getToken()}`;
+    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json, text/plain' } });
+    if (res.status === 401 && attempt === 0 && !useUser) { token = null; await getToken(true); return jace(method, path, 1); }
     return res;
   }
 
@@ -143,5 +147,5 @@ export function createGateway(env) {
     return true;
   }
 
-  return { handle, configured, missing, cfg: { jaceUrl: cfg.jaceUrl, tokenPath: cfg.tokenPath, allowSelfSigned: cfg.allowSelfSigned } };
+  return { handle, configured, missing, cfg: { jaceUrl: cfg.jaceUrl, tokenPath: useUser ? `none (station user ${cfg.user})` : cfg.tokenPath, allowSelfSigned: cfg.allowSelfSigned } };
 }
