@@ -28,7 +28,7 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
     const lib = u.protocol === 'https:' ? https : http;
     const r = lib.request(u, { method, headers, rejectUnauthorized: false, timeout: 6000 }, (res) => {
       const c = []; res.on('data', (d) => c.push(d));
-      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(c).toString('utf8').slice(0, 300), type: res.headers['content-type'] || '', location: res.headers.location || '' }));
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(c).toString('utf8').slice(0, 300), type: res.headers['content-type'] || '', location: res.headers.location || '', headers: res.headers }));
     });
     r.on('timeout', () => r.destroy(new Error('timeout')));
     r.on('error', (e) => resolve({ status: 0, text: e.code || e.message }));
@@ -64,6 +64,10 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
     let token = null; try { token = JSON.parse(r.text).access_token; } catch { /* not JSON */ }
     console.log(`   attempt ${attempt} -> ${r.status ? 'HTTP ' + r.status : r.text}${token ? '  TOKEN OK' : '  ' + r.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)}`);
     if (token) found = { s, p: tokenPath, style, token };
+    else if (attempt === 1 && r.headers) {
+      const skip = ['date', 'content-length', 'content-type', 'connection', 'cache-control', 'pragma', 'expires', 'set-cookie'];
+      for (const [k, v] of Object.entries(r.headers)) if (!skip.includes(k)) console.log(`     header ${k}: ${String(v).slice(0, 160)}`);
+    }
     else if (attempt < 3) { console.log('   waiting 30 s before trying again...'); await new Promise((ok) => setTimeout(ok, 30000)); }
   }
   if (!found) {
