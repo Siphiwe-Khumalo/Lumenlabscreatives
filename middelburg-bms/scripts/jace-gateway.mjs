@@ -81,7 +81,7 @@ export function createGateway(env) {
   async function jace(method, path, attempt = 0, extra = {}) {
     const used = useUser ? null : await getToken();
     const auth = useUser ? 'Basic ' + Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64') : `Bearer ${used}`;
-    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json, text/plain', ...(extra.headers || {}) }, body: extra.body });
+    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json', ...(extra.headers || {}) }, body: extra.body });
     if (res.status === 401 && attempt === 0 && !useUser) {
       if (token === used) await getToken(true);
       return jace(method, path, 1, extra);
@@ -89,7 +89,8 @@ export function createGateway(env) {
     return res;
   }
 
-  let writeStyle = env.OSS_WRITE_STYLE || null;
+  // ARC's api.js (confirmed on site): PUT <base>/query/writePoint/<path>?value=&priority=. No format search.
+  let writeStyle = env.OSS_WRITE_STYLE || 'put-query';
   const pointUrl = (base, slot, query = '') => pointPath(base, pointSuffix(slot, cfg.ordPrefix, cfg.pathEncoding), query);
 
   /** Normalises a readPoint reply. Supports JSON ({value,status}) and Niagara text ("21.40 °C {ok} @ def"). */

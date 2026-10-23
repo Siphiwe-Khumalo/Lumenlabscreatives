@@ -3,7 +3,7 @@
 //   Base:   <JACE_URL>/ossRestApiServer
 //   Token:  POST <base>/token, Basic client credentials, grant_type=client_credentials&scope=read write
 //   Read:   GET  <base>/query/readPoint/<slot path>   (no station:/slot: prefix)
-//   Write:  PUT  <base>/query/writePoint/<slot path>?value=&priority=   (TODO confirm against ARC)
+//   Write:  PUT  <base>/query/writePoint/<slot path>?value=&priority=   (as ARC's api.js)
 export const OSS_BASE_PATH = '/ossRestApiServer';
 // Old .env keys from before the path was known. They are ignored (and npm run check removes them).
 export const LEGACY_ENV_KEYS = ['OSS_TOKEN_PATH', 'OSS_READ_PATH', 'OSS_WRITE_PATH'];
@@ -85,8 +85,7 @@ export function pointPath(base, suffix, query = '') {
   return b + suffix + sep;
 }
 
-// How a write is sent (OSS_WRITE_STYLE). Until it is known, the gateway tries these in order and keeps
-// the first one the JACE accepts (a 4xx reply means nothing was written).
+// How a write is sent (OSS_WRITE_STYLE). Default put-query, as ARC. The others are kept only for diagnosis.
 export const WRITE_STYLES = ['put-query', 'put-json', 'post-json', 'post-query', 'post-form', 'put-query-value', 'put-json-value'];
 
 /** -> { method, query, headers, body } for writing `value` at `priority`. */
