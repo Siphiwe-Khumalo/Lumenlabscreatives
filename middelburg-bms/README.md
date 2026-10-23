@@ -35,7 +35,8 @@ forwards point reads/writes, one request at a time. The credentials stay on the 
 `vendor/` and `assets/` are served). Paths match ARC's api.js: token
 `POST /ossRestApiServer/token` (Basic client credentials, `scope=read write`), reads
 `GET /ossRestApiServer/query/readPoint/<slot path>`. `npm run check` tests the connection and saves
-the working settings in `.env`. The JACE invalidates the previous token whenever a new one is
+the working settings in `.env`. All of this lives in one module, `scripts/oss-auth.mjs`, used by both
+the gateway and the check; after a refused login the gateway waits 5 minutes before trying again. The JACE invalidates the previous token whenever a new one is
 minted, so the gateway keeps one token, allows one refresh at a time and one request in flight.
 
 ## Data honesty rules (enforced in `js/data/quality.js` and `js/data/store.js`)

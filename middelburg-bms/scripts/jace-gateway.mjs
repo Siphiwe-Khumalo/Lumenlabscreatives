@@ -10,25 +10,17 @@
 // returned as an error so the dashboard shows OFFLINE.
 import http from 'node:http';
 import https from 'node:https';
-import { tokenRequest, pointSuffix, pointPath } from './oss-auth.mjs';
+import { ossConfig, fetchToken, pointSuffix, pointPath } from './oss-auth.mjs';
 
 export function createGateway(env) {
   const cfg = {
-    jaceUrl: (env.JACE_URL || '').replace(/\/+$/, ''),
+    ...ossConfig(env), // paths, scope, auth style: shared with npm run check (scripts/oss-auth.mjs)
     clientId: env.OSS_CLIENT_ID || '',
     clientSecret: env.OSS_CLIENT_SECRET || '',
     // Alternative to OAuth: a Niagara station user with the HTTP Basic authentication scheme.
     user: env.JACE_USER || '',
     password: env.JACE_PASSWORD || '',
-    // Paths as used by ARC's api.js: the API is served under /ossRestApiServer on the JACE.
-    tokenPath: env.OSS_TOKEN_PATH || '/ossRestApiServer/token',
-    scope: env.OSS_SCOPE ?? 'read write',
-    authStyle: (env.OSS_AUTH_STYLE || 'basic').toLowerCase(), // basic | basic-encoded | body | json (scripts/oss-auth.mjs)
-    readPath: env.OSS_READ_PATH || '/ossRestApiServer/query/readPoint/',
-    writePath: env.OSS_WRITE_PATH || '/ossRestApiServer/query/writePoint/', // TODO(confirm) against ARC
     writeMethod: (env.OSS_WRITE_METHOD || 'PUT').toUpperCase(),
-    ordPrefix: env.OSS_ORD_PREFIX ?? '',                      // e.g. 'station:|slot:/' if the API wants full ORDs
-    pathEncoding: env.OSS_PATH_ENCODING || 'segments',        // see scripts/oss-auth.mjs
     timeoutMs: Number(env.OSS_TIMEOUT_MS || 8000),
     // JACEs usually have a self-signed certificate. Only for the JACE address, only on the site LAN.
     allowSelfSigned: /^(1|true|yes)$/i.test(env.JACE_ALLOW_SELF_SIGNED || ''),
@@ -62,19 +54,26 @@ export function createGateway(env) {
    * The JACE's OAuth issuer invalidates the previous token as soon as a new one is minted (seen on
    * ARC). So: one token for everything, at most one refresh in flight (callers share its promise),
    * and a 401 only refreshes if the token that failed is still the current one. */
-  let token = null, tokenExp = 0, inflight = null;
+  // After a refused login the gateway waits LOGIN_COOLDOWN_MS before asking again, so a running
+  // dashboard never hammers the JACE with failed logins (which can lock the client out).
+  const LOGIN_COOLDOWN_MS = 5 * 60 * 1000;
+  let token = null, tokenExp = 0, inflight = null, refused = null; // refused: { until, message }
   function getToken(force = false) {
     if (!force && token && Date.now() < tokenExp - 30e3) return Promise.resolve(token);
     if (inflight) return inflight;
+    if (refused && Date.now() < refused.until) {
+      return Promise.reject(new Error(`${refused.message}. Not retrying until ${new Date(refused.until).toLocaleTimeString()}`));
+    }
     inflight = (async () => {
-      const { headers, body } = tokenRequest(cfg.authStyle, cfg.clientId, cfg.clientSecret, cfg.scope);
-      const res = await request(cfg.jaceUrl + cfg.tokenPath, { method: 'POST', headers, body });
-      if (res.status !== 200) throw new Error(`Token request refused (HTTP ${res.status}) — check OSS_CLIENT_ID / OSS_CLIENT_SECRET / OSS_TOKEN_PATH`);
-      let j; try { j = JSON.parse(res.text); } catch { throw new Error('Token response was not JSON — check OSS_TOKEN_PATH'); }
-      if (!j.access_token) throw new Error('Token response had no access_token');
-      token = j.access_token;
-      tokenExp = Date.now() + (Number(j.expires_in) || 300) * 1000;
-      return token;
+      try {
+        const t = await fetchToken(request, cfg, cfg.clientId, cfg.clientSecret);
+        token = t.token; tokenExp = Date.now() + t.expiresIn * 1000; refused = null;
+        return token;
+      } catch (e) {
+        token = null;
+        if (e.status) { refused = { until: Date.now() + LOGIN_COOLDOWN_MS, message: e.message }; console.log(`[gateway] ${e.message}; next login attempt in 5 min`); }
+        throw e;
+      }
     })().finally(() => { inflight = null; });
     return inflight;
   }

@@ -1,4 +1,43 @@
-// Builds the OAuth client-credentials token request. Shared by the gateway and npm run check.
+// The ONE place that knows how to talk to the JACE's OSS REST API (as ARC's api.js does).
+// Used by the gateway (npm run dev) and npm run check, so they can never disagree.
+//   Base:   <JACE_URL>/ossRestApiServer
+//   Token:  POST <base>/token, Basic client credentials, grant_type=client_credentials&scope=read write
+//   Read:   GET  <base>/query/readPoint/<slot path>   (no station:/slot: prefix)
+//   Write:  PUT  <base>/query/writePoint/<slot path>?value=&priority=   (TODO confirm against ARC)
+export const OSS_BASE_PATH = '/ossRestApiServer';
+// Old .env keys from before the path was known. They are ignored (and npm run check removes them).
+export const LEGACY_ENV_KEYS = ['OSS_TOKEN_PATH', 'OSS_READ_PATH', 'OSS_WRITE_PATH'];
+
+export function ossConfig(env) {
+  const jaceUrl = (env.JACE_URL || '').replace(/\/+$/, '');
+  const base = OSS_BASE_PATH;
+  return {
+    jaceUrl,
+    tokenPath: `${base}/token`,
+    readPath: `${base}/query/readPoint/`,
+    writePath: `${base}/query/writePoint/`,
+    scope: env.OSS_SCOPE ?? 'read write',
+    authStyle: (env.OSS_AUTH_STYLE || 'basic').toLowerCase(),
+    ordPrefix: env.OSS_ORD_PREFIX ?? '',
+    pathEncoding: env.OSS_PATH_ENCODING || 'segments',
+  };
+}
+
+/** Requests a token. `send(url, {method, headers, body})` -> {status, text}. Returns {token, expiresIn} or throws (err.status set). */
+export async function fetchToken(send, cfg, id, secret) {
+  const { headers, body } = tokenRequest(cfg.authStyle, id, secret, cfg.scope);
+  const res = await send(cfg.jaceUrl + cfg.tokenPath, { method: 'POST', headers, body });
+  let j = null; try { j = JSON.parse(res.text); } catch { /* not JSON */ }
+  if (res.status !== 200 || !j?.access_token) {
+    const why = String(res.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const err = new Error(`JACE refused the login (HTTP ${res.status}${why ? ': ' + why : ''})`);
+    err.status = res.status; err.headers = res.headers;
+    throw err;
+  }
+  return { token: j.access_token, expiresIn: Number(j.expires_in) || 300 };
+}
+
+// Builds the OAuth client-credentials token request.
 // Styles (OSS_AUTH_STYLE):
 //   basic         Authorization: Basic base64(id:secret)
 //   basic-encoded Authorization: Basic base64(urlencode(id):urlencode(secret)) (RFC 6749 2.3.1;
