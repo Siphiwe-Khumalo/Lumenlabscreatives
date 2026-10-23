@@ -42,7 +42,8 @@ export function saveUser(user) { const s = load(); s.user = { name: user.name, r
 
 export function getGatewayUrl() {
   const v = load().gatewayUrl;
-  return typeof v === 'string' ? v : APP_CONFIG.gatewayUrl;
+  // An empty saved value (from older versions) must not hide the built-in gateway.
+  return typeof v === 'string' && v.trim() ? v : APP_CONFIG.gatewayUrl;
 }
 
 /** Returns { ok, url, error }. Only same-origin gateways are accepted. */

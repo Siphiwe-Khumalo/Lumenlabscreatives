@@ -91,7 +91,10 @@ export function createConnectedProvider(gatewayUrl) {
       return offline(`Read failed: ${err.message}`, true);
     }
     if (res.status === 404) return notMapped('Point not found on the JACE');
-    if (!res.ok) return offline(`Gateway returned HTTP ${res.status}`, res.status >= 502);
+    if (!res.ok) {
+      const msg = await res.json().then((j) => j?.message).catch(() => null);
+      return offline(msg || `Gateway returned HTTP ${res.status}`, res.status >= 502);
+    }
     let body;
     try { body = await res.json(); } catch { return offline('Unreadable response from gateway'); }
     const raw = body && typeof body === 'object' ? (body.value ?? body.out?.value ?? null) : body;
@@ -163,7 +166,7 @@ export function createConnectedProvider(gatewayUrl) {
       }
       const all = [...cache.values()];
       const results = await Promise.all(all);
-      if (results.length && results.every((r) => r.comms)) throw new ConnectionLostError('No response from the gateway for any point');
+      if (results.length && results.every((r) => r.comms)) throw new ConnectionLostError(results[0].error || 'No response from the gateway for any point');
       return { ts: Date.now(), equipment, alarms: [], audit: [] };
     },
 
