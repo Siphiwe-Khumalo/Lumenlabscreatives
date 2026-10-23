@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "setup": "node scripts/setup.mjs",
+    "check": "node scripts/check-jace.mjs",
     "start": "node scripts/serve.mjs",
     "serve:python": "python -m http.server 8080",
     "vendor": "node scripts/vendor.mjs"
