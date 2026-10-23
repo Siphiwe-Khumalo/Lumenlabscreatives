@@ -58,9 +58,9 @@ export const APP_CONFIG = Object.freeze({
   /** Unit controls (Controls page). */
   controls: {
     enabled: true,
-    // TODO(confirm with Aina): Niagara priority level for dashboard writes. 8 is the conventional
-    // "manual operator" level, below life-safety (1–2) and above schedules. Change if the site differs.
-    writePriority: 8,
+    // Niagara priority level for dashboard writes. 16 (lowest, the "fallback" level) as agreed on site:
+    // any schedule, logic or manual override at a higher priority (1–15) wins over the dashboard.
+    writePriority: 16,
     confirmTimeoutMs: 60000,      // no feedback within this time -> NOT CONFIRMED (red)
     setpointStep: 0.5,            // °C slider / step size
   },
