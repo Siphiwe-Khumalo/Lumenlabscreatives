@@ -6,6 +6,7 @@ import https from 'node:https';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AUTH_STYLES, tokenRequest } from './oss-auth.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const env = {};
@@ -27,7 +28,7 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
     const lib = u.protocol === 'https:' ? https : http;
     const r = lib.request(u, { method, headers, rejectUnauthorized: false, timeout: 6000 }, (res) => {
       const c = []; res.on('data', (d) => c.push(d));
-      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(c).toString('utf8').slice(0, 300), type: res.headers['content-type'] || '' }));
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(c).toString('utf8').slice(0, 300), type: res.headers['content-type'] || '', location: res.headers.location || '' }));
     });
     r.on('timeout', () => r.destroy(new Error('timeout')));
     r.on('error', (e) => resolve({ status: 0, text: e.code || e.message }));
@@ -45,22 +46,21 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
   const schemes = [];
   for (const s of ['https', 'http']) {
     const r = await req(`${s}://${host}/`);
-    console.log(`1. ${s}://${host}/ -> ${r.status ? 'HTTP ' + r.status : 'no answer (' + r.text + ')'}`);
+    console.log(`1. ${s}://${host}/ -> ${r.status ? 'HTTP ' + r.status : 'no answer (' + r.text + ')'}${r.location ? ' -> ' + r.location : ''}`);
     if (r.status) schemes.push(s);
   }
   if (!schemes.length) { console.log('\nThe JACE does not answer from this PC. Check the IP address, the network cable/VPN and the firewall.'); return; }
 
   // 2. Token
-  const paths = [env.OSS_TOKEN_PATH, '/oauth/token', '/oauth2/token', '/token', '/ossRestApi/oauth/token', '/api/oauth/token', '/oauth/token/'].filter((v, i, a) => v && a.indexOf(v) === i);
+  const paths = [env.OSS_TOKEN_PATH, '/oauth/token', '/oauth2/token', '/token', '/ossRestApi/oauth/token', '/api/oauth/token', '/ossRestApi/token', '/ossRestApi/oauth2/token', '/oauth/token/'].filter((v, i, a) => v && a.indexOf(v) === i);
   let found = null;
   console.log('\n2. Token requests (client credentials):');
-  outer: for (const s of schemes) for (const p of paths) for (const style of ['basic', 'body']) {
-    const form = new URLSearchParams({ grant_type: 'client_credentials' });
-    const headers = { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' };
-    if (style === 'body') { form.set('client_id', id); form.set('client_secret', secret); } else headers.Authorization = 'Basic ' + Buffer.from(`${id}:${secret}`).toString('base64');
-    const r = await req(`${s}://${host}${p}`, { method: 'POST', headers, body: form.toString() });
+  outer: for (const s of schemes) for (const p of paths) for (const style of AUTH_STYLES) {
+    const { headers, body } = tokenRequest(style, id, secret);
+    const r = await req(`${s}://${host}${p}`, { method: 'POST', headers, body });
     let token = null; try { token = JSON.parse(r.text).access_token; } catch { /* not JSON */ }
-    console.log(`   ${s} ${p} (${style}) -> ${r.status ? 'HTTP ' + r.status : r.text}${token ? '  TOKEN OK' : r.status ? '  ' + r.text.replace(/\s+/g, ' ').slice(0, 90) : ''}`);
+    const detail = r.location ? `  -> redirects to ${r.location}` : '  ' + r.text.replace(/\s+/g, ' ').slice(0, 90);
+    console.log(`   ${s} ${p} (${style}) -> ${r.status ? 'HTTP ' + r.status : r.text}${token ? '  TOKEN OK' : r.status ? detail : ''}`);
     if (token) { found = { s, p, style, token }; break outer; }
   }
   if (!found) { console.log('\nNo token. Send this report. (Likely: wrong token path, or the client ID/secret is not exactly as on the JACE.)'); return; }

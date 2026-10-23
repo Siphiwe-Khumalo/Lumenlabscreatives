@@ -10,6 +10,7 @@
 // returned as an error so the dashboard shows OFFLINE.
 import http from 'node:http';
 import https from 'node:https';
+import { tokenRequest } from './oss-auth.mjs';
 
 export function createGateway(env) {
   const cfg = {
@@ -17,7 +18,7 @@ export function createGateway(env) {
     clientId: env.OSS_CLIENT_ID || '',
     clientSecret: env.OSS_CLIENT_SECRET || '',
     tokenPath: env.OSS_TOKEN_PATH || '/oauth/token',          // TODO(confirm): token endpoint used by ARC
-    authStyle: (env.OSS_AUTH_STYLE || 'basic').toLowerCase(), // 'basic' (Authorization header) or 'body'
+    authStyle: (env.OSS_AUTH_STYLE || 'basic').toLowerCase(), // basic | basic-encoded | body | json (scripts/oss-auth.mjs)
     readPath: env.OSS_READ_PATH || '/query/readPoint/',
     writePath: env.OSS_WRITE_PATH || '/query/writePoint/',
     writeMethod: (env.OSS_WRITE_METHOD || 'PUT').toUpperCase(),
@@ -54,11 +55,8 @@ export function createGateway(env) {
   let token = null, tokenExp = 0;
   async function getToken(force = false) {
     if (!force && token && Date.now() < tokenExp - 30e3) return token;
-    const form = new URLSearchParams({ grant_type: 'client_credentials' });
-    const headers = { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' };
-    if (cfg.authStyle === 'body') { form.set('client_id', cfg.clientId); form.set('client_secret', cfg.clientSecret); }
-    else headers.Authorization = 'Basic ' + Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64');
-    const res = await request(cfg.jaceUrl + cfg.tokenPath, { method: 'POST', headers, body: form.toString() });
+    const { headers, body } = tokenRequest(cfg.authStyle, cfg.clientId, cfg.clientSecret);
+    const res = await request(cfg.jaceUrl + cfg.tokenPath, { method: 'POST', headers, body });
     if (res.status !== 200) throw new Error(`Token request refused (HTTP ${res.status}) — check OSS_CLIENT_ID / OSS_CLIENT_SECRET / OSS_TOKEN_PATH`);
     let j; try { j = JSON.parse(res.text); } catch { throw new Error('Token response was not JSON — check OSS_TOKEN_PATH'); }
     if (!j.access_token) throw new Error('Token response had no access_token');
