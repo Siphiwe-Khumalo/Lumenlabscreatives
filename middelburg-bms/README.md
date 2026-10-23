@@ -18,6 +18,23 @@ npm run dev          # http://localhost:8080
 
 No `npm install` is needed to run it. `npm install && npm run vendor` only refreshes `vendor/`.
 
+## Connect to the JACE (host PC)
+
+`npm run dev` serves the dashboard **and** the JACE gateway (`scripts/jace-gateway.mjs`) on the
+same port. The gateway logs in to the JACE's ossRestApi with the OAuth client credentials and
+forwards point reads/writes, one request at a time. The credentials stay on the host PC.
+
+1. Copy `.env.example` to `.env` in the `middelburg-bms` folder.
+2. Fill in `JACE_URL` (e.g. `https://192.168.1.50`), `OSS_CLIENT_ID` and `OSS_CLIENT_SECRET`.
+   Paste the secret exactly, on one line, no quotes.
+3. Set `HOST=0.0.0.0` so phones and laptops on the VPN can open it.
+4. `npm run dev`. The console prints `JACE gateway: <address>` and, for each kind of point, the
+   shape of the first reply (no values) so the format can be confirmed.
+
+`.env` is in `.gitignore` and the server refuses to serve it (only `index.html`, `css/`, `js/`,
+`vendor/` and `assets/` are served). If the token request fails, check `OSS_TOKEN_PATH` and
+`OSS_AUTH_STYLE` (same as ARC's api.js).
+
 ## Data honesty rules (enforced in `js/data/quality.js` and `js/data/store.js`)
 
 | State | Meaning | Display |

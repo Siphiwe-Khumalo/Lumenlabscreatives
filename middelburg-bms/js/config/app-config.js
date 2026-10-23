@@ -15,8 +15,8 @@ export const APP_CONFIG = Object.freeze({
    */
   demo: false,
 
-  /** Same-origin gateway base URL, e.g. '/bms-gateway'. Empty = not configured. */
-  gatewayUrl: '',
+  /** Same-origin gateway base URL. '/gw' is served by `npm run dev` (scripts/jace-gateway.mjs). */
+  gatewayUrl: '/gw',
   gatewayPaths: {
     health: '/health',
     readPoint: '/query/readPoint/',   // + encoded slot path (GET)
