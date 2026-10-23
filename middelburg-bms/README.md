@@ -120,7 +120,7 @@ readings recorded by the dashboard on every poll (kept for 2 h in this browser).
 
 1. Feedback point for rooftop start/stop (`UnitnSAF` or `UnitnEnable`?).
 2. Hybrid BMS switch: `BMS_Enable` or `BMSControl`? Is `BMSControl` the Auto/Manual point?
-3. Write priority for dashboard commands: 16 (agreed on site; `js/config/app-config.js`). Anything at priority 1–15 overrides the dashboard.
+3. Write priority for dashboard commands: 1 (site decision, same as ARC; `js/config/app-config.js`). Nothing at 2–16 can override a dashboard command.
 4. Rooftop run rule: is a started unit with its fan off cycling (STOPPED) or a FAULT?
 5. Alarm point polarity (true = alarm), `UnitnMode` numeric values, units for fan speed / airflow / pressure.
 6. Which unit's sensors represent each zone (`ZONE_SOURCES`), and the real limits.

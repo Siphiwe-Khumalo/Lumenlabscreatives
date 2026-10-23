@@ -58,9 +58,10 @@ export const APP_CONFIG = Object.freeze({
   /** Unit controls (Controls page). */
   controls: {
     enabled: true,
-    // Niagara priority level for dashboard writes. 16 (lowest, the "fallback" level) as agreed on site:
-    // any schedule, logic or manual override at a higher priority (1–15) wins over the dashboard.
-    writePriority: 16,
+    // Niagara priority level for dashboard writes: 1 (highest), by site decision, same as ARC.
+    // Nothing else (schedules, logic, Workbench overrides at 2–16) can override a dashboard command;
+    // the value stays until the dashboard writes again.
+    writePriority: 1,
     confirmTimeoutMs: 60000,      // no feedback within this time -> NOT CONFIRMED (red)
     setpointStep: 0.5,            // °C slider / step size
   },
