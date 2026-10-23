@@ -84,3 +84,23 @@ export function pointPath(base, suffix, query = '') {
   const sep = (suffix.includes('?') && query.startsWith('?')) ? '&' + query.slice(1) : query;
   return b + suffix + sep;
 }
+
+// How a write is sent (OSS_WRITE_STYLE). Until it is known, the gateway tries these in order and keeps
+// the first one the JACE accepts (a 4xx reply means nothing was written).
+export const WRITE_STYLES = ['put-query', 'put-json', 'post-json', 'post-query', 'post-form', 'put-query-value', 'put-json-value'];
+
+/** -> { method, query, headers, body } for writing `value` at `priority`. */
+export function writeRequest(style, value, priority) {
+  const typed = value === 'true' ? true : value === 'false' ? false : (value !== '' && !Number.isNaN(Number(value)) ? Number(value) : value);
+  const q = (withPriority) => `?value=${encodeURIComponent(value)}${withPriority ? `&priority=${encodeURIComponent(priority)}` : ''}`;
+  const json = (withPriority) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(withPriority ? { value: typed, priority: Number(priority) } : { value: typed }) });
+  switch (style) {
+    case 'put-json': return { method: 'PUT', query: '', ...json(true) };
+    case 'post-json': return { method: 'POST', query: '', ...json(true) };
+    case 'post-query': return { method: 'POST', query: q(true) };
+    case 'post-form': return { method: 'POST', query: '', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: q(true).slice(1) };
+    case 'put-query-value': return { method: 'PUT', query: q(false) };
+    case 'put-json-value': return { method: 'PUT', query: '', ...json(false) };
+    default: return { method: 'PUT', query: q(true) }; // put-query
+  }
+}

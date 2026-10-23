@@ -10,7 +10,7 @@
 // returned as an error so the dashboard shows OFFLINE.
 import http from 'node:http';
 import https from 'node:https';
-import { ossConfig, fetchToken, pointSuffix, pointPath } from './oss-auth.mjs';
+import { ossConfig, fetchToken, pointSuffix, pointPath, WRITE_STYLES, writeRequest } from './oss-auth.mjs';
 
 export function createGateway(env) {
   const cfg = {
@@ -78,17 +78,18 @@ export function createGateway(env) {
     return inflight;
   }
 
-  async function jace(method, path, attempt = 0) {
+  async function jace(method, path, attempt = 0, extra = {}) {
     const used = useUser ? null : await getToken();
     const auth = useUser ? 'Basic ' + Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64') : `Bearer ${used}`;
-    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json, text/plain' } });
+    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json, text/plain', ...(extra.headers || {}) }, body: extra.body });
     if (res.status === 401 && attempt === 0 && !useUser) {
       if (token === used) await getToken(true);
-      return jace(method, path, 1);
+      return jace(method, path, 1, extra);
     }
     return res;
   }
 
+  let writeStyle = env.OSS_WRITE_STYLE || null;
   const pointUrl = (base, slot, query = '') => pointPath(base, pointSuffix(slot, cfg.ordPrefix, cfg.pathEncoding), query);
 
   /** Normalises a readPoint reply. Supports JSON ({value,status}) and Niagara text ("21.40 °C {ok} @ def"). */
@@ -147,14 +148,22 @@ export function createGateway(env) {
         const value = url.searchParams.get('value');
         const priority = url.searchParams.get('priority');
         if (value == null || priority == null) { send(res, 400, { status: 'error', message: 'value and priority are required' }); return true; }
-        const q = `?value=${encodeURIComponent(value)}&priority=${encodeURIComponent(priority)}`;
-        let method = cfg.writeMethod;
-        let r = await serial(() => jace(method, pointUrl(cfg.writePath, slot, q)));
-        // 405 = this method is not accepted, so nothing was written: try the other one once.
-        if (r.status === 405) { method = method === 'PUT' ? 'POST' : 'PUT'; r = await serial(() => jace(method, pointUrl(cfg.writePath, slot, q))); }
+        // Known style (OSS_WRITE_STYLE or found earlier this run), else try each until the JACE accepts one.
+        const styles = writeStyle ? [writeStyle] : WRITE_STYLES;
+        let r, style;
+        for (style of styles) {
+          const w = writeRequest(style, value, priority);
+          r = await serial(() => jace(w.method, pointUrl(cfg.writePath, slot, w.query), 0, { headers: w.headers, body: w.body }));
+          const why = String(r.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+          console.log(`[gateway] write (${style}) ${slot} = ${value} @ priority ${priority} -> HTTP ${r.status}${why ? '  ' + why : ''}`);
+          if (r.status >= 200 && r.status < 300) {
+            if (!writeStyle) { writeStyle = style; console.log(`[gateway] write format found: ${style}  (add OSS_WRITE_STYLE=${style} to .env to skip the search)`); }
+            break;
+          }
+          if (![400, 404, 405, 415].includes(r.status)) break; // a real refusal (e.g. 403): don't try other formats
+        }
         const ok = r.status >= 200 && r.status < 300;
         const why = String(r.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
-        console.log(`[gateway] write ${method} ${slot} = ${value} @ priority ${priority} -> HTTP ${r.status}${why ? '  ' + why : ''}`);
         send(res, ok ? 200 : 502, ok ? { status: 'ok' } : { status: 'error', message: `JACE returned HTTP ${r.status}${why ? ': ' + why : ''}` });
         return true;
       }
