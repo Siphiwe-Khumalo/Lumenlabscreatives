@@ -28,7 +28,7 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
     const lib = u.protocol === 'https:' ? https : http;
     const r = lib.request(u, { method, headers, rejectUnauthorized: false, timeout: 6000 }, (res) => {
       const c = []; res.on('data', (d) => c.push(d));
-      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(c).toString('utf8').slice(0, 300), type: res.headers['content-type'] || '', location: res.headers.location || '', headers: res.headers }));
+      res.on('end', () => resolve({ status: res.statusCode, full: Buffer.concat(c).toString('utf8'), text: Buffer.concat(c).toString('utf8').slice(0, 300), type: res.headers['content-type'] || '', location: res.headers.location || '', headers: res.headers }));
     });
     r.on('timeout', () => r.destroy(new Error('timeout')));
     r.on('error', (e) => resolve({ status: 0, text: e.code || e.message }));
@@ -77,6 +77,22 @@ if it shows locked, then run npm run check again (alone).`);
     return;
   }
   saveEnv({ JACE_URL: cfg.jaceUrl });
+
+  // 2b. What the API exposes for the points the dashboard writes (listPoints, as ARC). Shows whether
+  // the JACE treats them as writable.
+  {
+    const r = await req(`${cfg.jaceUrl}/ossRestApiServer/query/listPoints`, { headers: { Authorization: `Bearer ${found.token}`, Accept: 'application/json' }, full: true });
+    console.log(`\n2b. listPoints -> HTTP ${r.status}`);
+    if (r.status === 200) {
+      let list = null; try { list = JSON.parse(r.full); } catch { /* not JSON */ }
+      const items = Array.isArray(list) ? list : (list && (list.points || list.data || list.result)) || [];
+      const want = /RUT_1\/(Uni1StartCmd|Unit1Setpoint|SPACE_TEMP1)|HYBRID_1\/points\/(BMS_Enable|COOL_MODE)/;
+      const hits = (Array.isArray(items) ? items : []).filter((p) => want.test(JSON.stringify(p)));
+      console.log(`   ${Array.isArray(items) ? items.length : '?'} points listed. Entries for the points we write:`);
+      for (const h of hits.slice(0, 10)) console.log('   ' + JSON.stringify(h).slice(0, 300));
+      if (!hits.length) console.log('   (none of them listed) First entry: ' + (Array.isArray(items) && items[0] ? JSON.stringify(items[0]).slice(0, 300) : r.full.slice(0, 300)));
+    } else console.log('   ' + r.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160));
+  }
 
   // 3. Read one point. ARC uses the plain slot path (segments, no prefix); that is tried first.
   console.log(`\n3. Reading ${POINT}:`);
