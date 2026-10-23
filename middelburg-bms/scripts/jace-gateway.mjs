@@ -34,6 +34,7 @@ export function createGateway(env) {
     return new Promise((resolve, reject) => {
       const u = new URL(url);
       const lib = u.protocol === 'https:' ? https : http;
+      if (method !== 'GET') headers = { ...headers, 'Content-Length': body ? Buffer.byteLength(body) : 0 }; // no chunked uploads
       const req = lib.request(u, { method, headers, rejectUnauthorized: !cfg.allowSelfSigned, timeout: cfg.timeoutMs }, (res) => {
         const chunks = [];
         res.on('data', (c) => chunks.push(c));
