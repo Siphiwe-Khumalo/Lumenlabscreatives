@@ -39,7 +39,7 @@ export const APP_CONFIG = Object.freeze({
   /** Plausible sensor ranges. A value outside its range is OUT OF RANGE and is not displayed. */
   plausibleRanges: {
     temperature: [-30, 70],
-    temperatureSetpoint: [0, 40],
+    temperatureSetpoint: [0, 50],
     humidity: [0, 100],
     fanSpeed: [0, 100],
     airflow: [0, 100000],
@@ -64,6 +64,7 @@ export const APP_CONFIG = Object.freeze({
     writePriority: 1,
     confirmTimeoutMs: 60000,      // no feedback within this time -> NOT CONFIRMED (red)
     setpointStep: 0.5,            // °C slider / step size
+    setpointRange: [15, 35],      // °C, every unit (site decision). Values outside are rejected.
   },
 
   /** Browser-recorded history used for the 1 h trend (with quality per sample). */

@@ -18,7 +18,6 @@ import * as store from '../data/store.js';
 const FIELDS = [
   ['temperature', 'actionLow', 'Temp action low'], ['temperature', 'alertLow', 'Temp alert low'],
   ['temperature', 'alertHigh', 'Temp alert high'], ['temperature', 'actionHigh', 'Temp action high'],
-  ['temperature', 'setpointMin', 'Setpoint min'], ['temperature', 'setpointMax', 'Setpoint max'],
   ['humidity', 'alertHigh', 'RH alert high'], ['humidity', 'actionHigh', 'RH action high'],
 ];
 

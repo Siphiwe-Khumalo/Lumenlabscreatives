@@ -17,14 +17,14 @@ import model from './pages/model.js';
 import commissioning from './pages/commissioning.js';
 
 const PAGES = [
-  { id: 'controls', label: 'Controls', icon: 'hvac', page: controls },
+  { id: 'controls', label: 'Units', icon: 'hvac', page: controls },
   { id: 'overview', label: 'Overview', icon: 'overview', page: overview },
-  { id: 'model', label: 'Facility Model', icon: 'model', page: model },
-  { id: 'environment', label: 'Environmental Conditions', icon: 'environment', page: environment },
-  { id: 'alarms', label: 'Alarm Register', icon: 'alarm', page: alarms },
-  { id: 'trends', label: 'Trends & Reports', icon: 'trends', page: trends },
-  { id: 'audit', label: 'Audit Trail', icon: 'audit', page: audit },
-  { id: 'commissioning', label: 'Commissioning', icon: 'checklist', page: commissioning, sepBefore: true },
+  { id: 'model', label: '3D Model', icon: 'model', page: model },
+  { id: 'environment', label: 'Conditions', icon: 'environment', page: environment },
+  { id: 'alarms', label: 'Alarms', icon: 'alarm', page: alarms },
+  { id: 'trends', label: 'Trends', icon: 'trends', page: trends },
+  { id: 'audit', label: 'Audit Trail', icon: 'audit', page: audit, sepBefore: true },
+  { id: 'commissioning', label: 'Commissioning', icon: 'checklist', page: commissioning },
   { id: 'settings', label: 'Settings', icon: 'settings', page: settings },
 ];
 

@@ -81,7 +81,7 @@ function zonePanel(z, mode) {
         <dl class="kv">
           <dt>Acceptable range (alert limits)</dt><dd>${lim(t.alertLow, '°C')} to ${lim(t.alertHigh, '°C')}</dd>
           <dt>Action limits</dt><dd>${lim(t.actionLow, '°C')} to ${lim(t.actionHigh, '°C')}</dd>
-          <dt>Permitted setpoint adjustment</dt><dd>${lim(t.setpointMin, '°C')} to ${lim(t.setpointMax, '°C')}</dd>
+          <dt>Permitted setpoint adjustment</dt><dd>15 °C to 35 °C (all units)</dd>
           <dt>Evaluation</dt><dd>${esc(z.status.temperature.reason)}</dd>
           <dt title="Single temperature expressing the cumulative thermal stress of the recorded temperatures (ΔH/R = 10 000 K)">Mean kinetic temperature</dt><dd>${mktHTML(z.id)}</dd>
           <dt>Sensor calibration</dt><dd>${calibrationHTML(z.id, 'temperature')}</dd>

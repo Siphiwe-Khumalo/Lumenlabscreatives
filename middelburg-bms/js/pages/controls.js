@@ -21,64 +21,50 @@ const boolText = (def, v) => (v == null ? '—' : v ? (def.onLabel || 'On').toUp
 function cmdStatusHTML(rec, def) {
   if (!rec) return '';
   const val = def.kind === 'setpoint' ? `${num(rec.value)} °C` : def.kind === 'mode' ? MODE_LABEL[rec.value] : boolText(def, rec.value);
-  if (rec.status === 'pending') return `<div class="cmd cmd-pending" role="status"><span class="spinner sm" aria-hidden="true"></span><b>PENDING</b> ${esc(val)} · sent ${esc(time(rec.sentAt))} by ${esc(rec.by)} — waiting for feedback</div>`;
-  if (rec.status === 'confirmed') return `<div class="cmd cmd-ok" role="status">${icon('check')}<b>CONFIRMED</b> ${esc(val)} at ${esc(time(rec.resolvedAt))}</div>`;
+  if (rec.status === 'pending') return `<div class="cmd cmd-pending" role="status"><span class="spinner sm" aria-hidden="true"></span><b>Sending</b> ${esc(val)} · waiting for the unit to confirm</div>`;
+  if (rec.status === 'confirmed') return `<div class="cmd cmd-ok" role="status">${icon('check')}<b>Confirmed</b> ${esc(val)} at ${esc(time(rec.resolvedAt))}</div>`;
   if (rec.status === 'not-confirmed') {
     const act = rec.actual == null ? '—' : def.kind === 'setpoint' ? `${num(rec.actual)} °C` : def.kind === 'mode' ? MODE_LABEL[rec.actual] || rec.actual : boolText(def, rec.actual);
-    return `<div class="cmd cmd-bad" role="alert">${icon('alarm')}<b>NOT CONFIRMED</b> ${esc(val)} — controller still reports ${esc(act)}${rec.override ? ` (overridden by ${esc(rec.override.source)})` : ''}</div>`;
+    return `<div class="cmd cmd-bad" role="alert">${icon('alarm')}<b>Not confirmed</b> ${esc(val)}: the unit still reports ${esc(act)}${rec.override ? ` (overridden by ${esc(rec.override.source)})` : ''}</div>`;
   }
-  if (rec.status === 'failed') return `<div class="cmd cmd-bad" role="alert">${icon('alarm')}<b>FAILED</b> ${esc(rec.error || '')}</div>`;
+  if (rec.status === 'failed') return `<div class="cmd cmd-bad" role="alert">${icon('alarm')}<b>Failed</b> ${esc(rec.error || '')}</div>`;
   return '';
-}
-
-function actualHTML(e, def) {
-  if (!def.actualRole) return '';
-  const r = e.readings[def.actualRole];
-  let v;
-  if (!isGood(r)) v = `<span class="v-none">—</span> <span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`;
-  else if (def.actualRole === 'fanStatus') v = r.value ? '<b class="ok-ink">Fan running</b>' : '<b>Fan off</b>';
-  else v = `<b class="mono-v">${num(r.value)}</b> ${esc(r.unit || '')}`;
-  return `<div class="fb"><span class="label-caps">Actual · ${esc(def.actualLabel)}</span><span>${v}</span></div>`;
-}
-
-function commandedHTML(e, def) {
-  const role = def.kind === 'mode' ? null : def.commandRole;
-  const r = role ? e.readings[role] : null;
-  let v;
-  if (def.kind === 'mode') v = e.mode === 'unknown' ? '<span class="v-none">—</span> <span class="q-label">UNKNOWN</span>' : `<b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`;
-  else if (!isGood(r)) v = `<span class="v-none">—</span> <span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`;
-  else v = def.kind === 'setpoint' ? `<b class="mono-v">${num(r.value)}</b> °C` : `<b>${boolText(def, r.value)}</b>`;
-  return `<div class="fb"><span class="label-caps">Commanded</span><span>${v}</span></div>`;
 }
 
 export default {
   mount(root) {
     const drafts = new Map();     // `${unitId}` -> setpoint draft
-    let interacting = null;       // unit id whose slider is being dragged
     let last = null;
     let typeFilter = 'all';
     const trends = [];
     let range = '1h';
 
+    let tab = 'units';
     root.innerHTML = `
       <div class="page-head">
-        <div class="titles"><h1>Controls</h1><p>Unit control with confirmed feedback, then live readings per zone</p></div>
+        <div class="titles"><h1>Units</h1><p>Start, stop and set each unit. Changes are confirmed by the unit itself.</p></div>
         <div class="toolbar">
-          <div class="seg" role="group" aria-label="Unit type">
-            <button type="button" data-type="all" aria-pressed="true">All units</button>
-            <button type="button" data-type="hybrid" aria-pressed="false">Hybrid</button>
-            <button type="button" data-type="rooftop" aria-pressed="false">Rooftop</button>
+          <div class="seg seg-lg" role="tablist" aria-label="View">
+            <button type="button" role="tab" data-tab="units" aria-pressed="true">Units</button>
+            <button type="button" role="tab" data-tab="readings" aria-pressed="false">Readings &amp; trends</button>
           </div>
-          <a class="btn" href="#live-readings" data-jump>${icon('trends')}Live readings</a>
         </div>
       </div>
       <section class="summary-strip" data-summary aria-label="Summary"></section>
       <div data-role-note></div>
-      <section class="unit-groups" data-groups aria-label="Unit controls"></section>
-      <section class="live-section" id="live-readings" aria-labelledby="lr-h">
+      <div data-panel="units">
+        <div class="filter-row">
+          <div class="seg" role="group" aria-label="Unit type">
+            <button type="button" data-type="all" aria-pressed="true">All units</button>
+            <button type="button" data-type="hybrid" aria-pressed="false"><span class="type-dot hyb"></span>Hybrid</button>
+            <button type="button" data-type="rooftop" aria-pressed="false"><span class="type-dot rtu"></span>Rooftop</button>
+          </div>
+        </div>
+        <section class="unit-groups" data-groups aria-label="Unit controls"></section>
+      </div>
+      <section class="live-section" data-panel="readings" hidden aria-labelledby="lr-h">
         <div class="section-head">
-          <h2 id="lr-h">Live readings</h2>
-          <span class="muted small">Per zone: temperature, humidity, the units serving it, and trends with limits, alarms and fan state.</span>
+          <h2 id="lr-h">Readings per zone</h2>
           <div class="seg" role="group" aria-label="Trend range">${['1h', '24h', '7d'].map((k) => `<button type="button" data-range="${k}" aria-pressed="${k === range}">${RANGES[k].label}</button>`).join('')}</div>
         </div>
         <div class="zone-live-grid" data-zones></div>
@@ -111,30 +97,32 @@ export default {
     }
 
     /* ---- control widgets ------------------------------------------------------- */
+    const runText = (r, def) => {
+      if (!isGood(r)) return `<span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`;
+      if (def.actualRole === 'fanStatus') return r.value ? '<b class="ok-ink">fan running</b>' : '<b>fan off</b>';
+      return `<b>${num(r.value)} ${esc(r.unit || '')}</b>`;
+    };
+    /** One short line under a control: what the unit itself reports now. */
+    function nowLine(e, def) {
+      if (def.kind === 'setpoint') {
+        const sp = e.readings[def.commandRole];
+        return `Unit setpoint ${isGood(sp) ? `<b>${num(sp.value)} °C</b>` : runText(sp, def)}`;
+      }
+      if (def.kind === 'mode') return `Unit reports <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`;
+      return def.actualRole ? `Unit reports ${runText(e.readings[def.actualRole], def)}` : '';
+    }
+
     function controlHTML(e, def) {
       const avail = controlAvailability(e, def);
-      const dis = avail.ok ? '' : `disabled title="${esc(avail.reason)}" aria-description="${esc(avail.reason)}"`;
+      const dis = avail.ok ? '' : `disabled title="${esc(avail.reason)}"`;
       const rec = getCommand(e.id, def.id);
       const ovr = def.commandRole && e.readings[def.commandRole]?.override;
-      const head = `<div class="ctl-head"><span class="label-caps">${esc(def.label)}</span>
-        ${ovr ? `<span class="ovr-chip" title="Commands from this dashboard will not take effect">${icon('alarm')}Overridden by ${esc(ovr.source)}</span>` : ''}
-        ${def.feedbackTodo ? '<span class="todo-chip" title="TODO: the feedback point for this command is not confirmed yet. Until it is, the command is confirmed by reading back the command point itself. See js/config/controls.js">TODO feedback</span>' : ''}
-        ${!avail.ok && !avail.notMapped && def.kind !== 'status' ? `<span class="lock" title="${esc(avail.reason)}">${icon('lock')}</span>` : ''}</div>`;
-
-      if (def.kind === 'status') {
-        const r = e.readings[def.role];
-        const v = def.role === 'enable' && isGood(r) ? `<b>${r.value ? 'ENABLED' : 'DISABLED'}</b>` : readingHTML(r, { digits: def.role === 'fanSpeed' ? 0 : 1, lastGood: true });
-        return `<div class="ctl ctl-status">${head}<div class="ctl-row"><span>${v}</span><span class="small muted">${esc(def.note || '')}</span></div></div>`;
-      }
-      if (avail.notMapped) {
-        return `<div class="ctl ctl-unmapped" title="${esc(avail.reason)}">${head}<div class="ctl-row">${qualityChip('not-mapped')}<span class="small muted">${esc(def.todo || avail.reason)}</span></div></div>`;
-      }
       let widget = '';
       if (def.kind === 'toggle') {
         const cur = commandedValue(e, def);
         widget = `<div class="seg seg-cmd" role="group" aria-label="${esc(def.label)}">
-          <button type="button" data-cmd="${e.id}|${def.id}|1" aria-pressed="${cur === true}" ${dis}>${esc(def.onLabel)}</button>
-          <button type="button" data-cmd="${e.id}|${def.id}|0" aria-pressed="${cur === false}" ${dis}>${esc(def.offLabel)}</button></div>`;
+          <button type="button" class="on" data-cmd="${e.id}|${def.id}|1" aria-pressed="${cur === true}" ${dis}>${esc(def.onLabel)}</button>
+          <button type="button" class="off" data-cmd="${e.id}|${def.id}|0" aria-pressed="${cur === false}" ${dis}>${esc(def.offLabel)}</button></div>`;
       } else if (def.kind === 'mode') {
         widget = `<div class="seg seg-cmd" role="group" aria-label="Mode">${def.options.map((o) => `<button type="button" data-cmd="${e.id}|${def.id}|${o.value}" aria-pressed="${e.mode === o.value}" class="mode-${o.value === 'cooling' ? 'cool' : o.value === 'heating' ? 'heat' : 'fan'}" ${dis}>${esc(o.label)}</button>`).join('')}</div>`;
       } else if (def.kind === 'setpoint') {
@@ -142,43 +130,60 @@ export default {
         const cur = commandedValue(e, def);
         const draft = drafts.has(e.id) ? drafts.get(e.id) : cur;
         const changed = draft != null && cur != null && Math.abs(draft - cur) >= 0.05;
-        widget = `<div class="sp">
-          <input type="range" class="sp-range" id="sp-${e.id}" data-sp="${e.id}" min="${lim.min ?? 0}" max="${lim.max ?? 40}" step="${lim.step}" value="${draft ?? lim.min ?? 0}" aria-label="${esc(e.id)} temperature setpoint" ${dis}>
-          <output class="sp-val mono-v" data-sp-out="${e.id}">${draft == null ? '—' : num(draft)} °C</output>
-          <button type="button" class="btn sm primary" data-sp-apply="${e.id}" ${dis} ${changed ? '' : 'disabled'}>Apply</button>
-          <span class="sp-lim small muted">${lim.min ?? '—'}–${lim.max ?? '—'} °C</span></div>`;
+        widget = `<div class="stepper" role="group" aria-label="${esc(e.id)} temperature setpoint, ${lim.min} to ${lim.max} °C">
+            <button type="button" data-sp-step="${e.id}|-1" aria-label="Lower setpoint" ${dis} ${draft != null && draft <= lim.min ? 'disabled' : ''}>−</button>
+            <output data-sp-out="${e.id}">${draft == null ? '—' : num(draft)}<small>°C</small></output>
+            <button type="button" data-sp-step="${e.id}|1" aria-label="Raise setpoint" ${dis} ${draft != null && draft >= lim.max ? 'disabled' : ''}>+</button>
+          </div>
+          <button type="button" class="btn sm primary" data-sp-apply="${e.id}" ${dis} ${changed ? '' : 'disabled'}>Apply</button>`;
       }
-      return `<div class="ctl">${head}${widget}
-        <div class="ctl-fb">${commandedHTML(e, def)}${actualHTML(e, def)}</div>
-        ${cmdStatusHTML(rec, def)}
-        ${!avail.ok && rec?.status !== 'pending' ? `<div class="ctl-reason small">${icon('lock')}${esc(avail.reason)}</div>` : ''}</div>`;
+      return `<div class="ctl">
+        <div class="ctl-main">
+          <div class="ctl-l"><span class="ctl-name">${esc(def.label)}${!avail.ok ? `<span class="lock" title="${esc(avail.reason)}">${icon('lock')}</span>` : ''}</span>
+            <span class="ctl-now">${nowLine(e, def)}${def.kind === 'setpoint' ? ` <span class="muted">· range ${setpointLimits(e.id).min}–${setpointLimits(e.id).max} °C</span>` : ''}</span></div>
+          <div class="ctl-r">${widget}</div>
+        </div>
+        ${ovr ? `<div class="cmd cmd-bad">${icon('alarm')}Overridden by ${esc(ovr.source)}: commands from here will not take effect</div>` : ''}
+        ${cmdStatusHTML(rec, def)}</div>`;
     }
 
     const isUnmapped = (e, d) => d.kind !== 'status' && controlAvailability(e, d).notMapped;
-    /** All controls without a point, in one compact line (reason on hover). */
-    function unmappedRow(e) {
-      const list = controlDefs(e.type).filter((d) => isUnmapped(e, d));
-      if (!list.length) return '';
-      return `<div class="ctl-unmapped-row">${qualityChip('not-mapped')}${list.map((d) => `<span class="um" tabindex="0" title="${esc(controlAvailability(e, d).reason)}">${esc(d.label)}</span>`).join('<span class="muted">·</span>')}</div>`;
+
+    /** Read-only facts (unit enable, hybrid setpoint, fan speed) as small key/value pairs. */
+    function factsHTML(e) {
+      const items = controlDefs(e.type).filter((d) => d.kind === 'status').map((d) => {
+        const r = e.readings[d.role];
+        const v = !isGood(r) ? `<span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`
+          : d.role === 'enable' ? `<b>${r.value ? 'Enabled' : 'Disabled'}</b>` : `<b>${num(r.value, d.role === 'fanSpeed' ? 0 : 1)} ${esc(r.unit || '')}</b>`;
+        return `<span class="fact"><span>${esc(d.label)}</span>${v}</span>`;
+      });
+      return items.length ? `<div class="facts">${items.join('')}</div>` : '';
     }
 
+    const STATE_TEXT = { running: 'Running', stopped: 'Stopped', fault: 'Fault', unknown: 'No data' };
     function unitCard(e) {
       const t = EQUIPMENT_TYPES[e.type];
-      const fanOff = isGood(e.readings.fanStatus) && e.readings.fanStatus.value === false;
+      const temp = e.readings.temperature;
       const second = e.type === 'rooftop'
-        ? bigReadingHTML(e.readings.humidity, { label: 'Humidity', cls: 'hum sm' })
-        : bigReadingHTML(e.readings.fanSpeed, { label: 'Fan speed', digits: 0, cls: 'sm' });
-      return `<article class="ucard ${e.type}" data-unit="${e.id}">
+        ? { r: e.readings.humidity, label: 'Humidity', digits: 0 }
+        : { r: e.readings.fanSpeed, label: 'Fan speed', digits: 0 };
+      const big = (r, unit, digits = 1) => (isGood(r) ? `${num(r.value, digits)}<small>${unit}</small>` : `<span class="v-none">—</span>`);
+      return `<article class="ucard ${e.type} st-${e.runState}" data-unit="${e.id}">
         <header class="ucard-head">
-          ${fanHTML(e)}
-          <div class="ucard-title"><button type="button" class="linkish" data-open="${e.id}" title="Open ${esc(e.name)} details"><strong>${esc(e.id)}</strong></button>
-            <span class="small muted">${esc(t.short)} · ${esc(e.zoneName || '')} · <span class="mono">${esc(controllerName(e.id))}</span></span></div>
-          <div class="ucard-state">${runChip(e.runState)}${fanOff ? `<span class="badge-fanoff">${icon('dot')}FAN OFF</span>` : ''}</div>
+          ${fanHTML(e, { size: 64 })}
+          <div class="ucard-title">
+            <button type="button" class="linkish" data-open="${e.id}" title="Details for ${esc(e.name)}"><strong>${esc(e.name)}</strong></button>
+            <span class="ucard-sub"><span class="type-dot ${e.type === 'hybrid' ? 'hyb' : 'rtu'}"></span>${esc(e.id)} · ${esc(e.zoneName || '')}</span>
+          </div>
+          <span class="state-pill st-${e.runState}"><i></i>${STATE_TEXT[e.runState] || 'No data'}</span>
         </header>
+        <div class="ucard-readings">
+          <div class="rd temp"><span>Temperature</span><b>${big(temp, '°C')}</b>${!isGood(temp) ? qualityChip(temp?.quality) : ''}</div>
+          <div class="rd ${e.type === 'rooftop' ? 'hum' : ''}"><span>${second.label}</span><b>${big(second.r, second.r?.unit || '', second.digits)}</b>${!isGood(second.r) ? qualityChip(second.r?.quality) : ''}</div>
+        </div>
         ${e.faults.length ? `<div class="faults">${e.faults.map((f) => `<span class="status-chip st-${f.severity === 'critical' ? 'critical' : 'warning'}">${icon('alarm')}${esc(f.label)}</span>`).join('')}</div>` : ''}
-        <div class="ucard-readings">${bigReadingHTML(e.readings.temperature, { label: 'Space temperature', cls: 'temp' })}${second}</div>
-        <div class="ctls">${controlDefs(e.type).filter((d) => !isUnmapped(e, d)).map((d) => controlHTML(e, d)).join('')}
-          ${unmappedRow(e)}</div>
+        <div class="ctls">${controlDefs(e.type).filter((d) => d.kind !== 'status' && !isUnmapped(e, d)).map((d) => controlHTML(e, d)).join('')}</div>
+        ${factsHTML(e)}
       </article>`;
     }
 
@@ -193,16 +198,7 @@ export default {
       }).join('');
       const g = $('[data-groups]');
       g.classList.toggle('single', typeFilter !== 'all');
-      // Do not rebuild a card while its slider is being dragged.
-      if (interacting) {
-        for (const e of s.equipment) {
-          if (e.id === interacting) continue;
-          const el = g.querySelector(`[data-unit="${e.id}"]`);
-          if (el) el.outerHTML = unitCard(e);
-        }
-      } else {
-        g.innerHTML = html;
-      }
+      g.innerHTML = html;
     }
 
     /* ---- zones: live readings ------------------------------------------------------- */
@@ -254,8 +250,7 @@ export default {
       summary(s);
       $('[data-role-note]').innerHTML = canOperate() ? '' : `<div class="notice">${icon('lock')}<span><strong>Viewer role.</strong> Controls are read-only. Switch to Operator in the top bar to operate units.</span></div>`;
       groups(s);
-      zones(s);
-      trends.forEach((t) => t.tick());
+      if (tab === 'readings') { zones(s); trends.forEach((t) => t.tick()); }
     }
 
     /* ---- detail drawer per unit ------------------------------------------------------- */
@@ -317,8 +312,26 @@ export default {
       const t = ev.target.closest('[data-type]');
       if (t) { typeFilter = t.dataset.type; root.querySelectorAll('[data-type]').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); if (last) render(last); return; }
       const r = ev.target.closest('[data-range]');
-      if (r) { range = r.dataset.range; root.querySelectorAll('[data-range]').forEach((b) => b.setAttribute('aria-pressed', String(b === r))); trends.forEach((x) => x.load(range)); return; }
-      if (ev.target.closest('[data-jump]')) { ev.preventDefault(); $('#live-readings').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      if (r) { range = r.dataset.range; root.querySelectorAll('[data-range]').forEach((b) => b.setAttribute('aria-pressed', String(b === r))); trendsLoaded = true; trends.forEach((x) => x.load(range)); return; }
+      const tb = ev.target.closest('[data-tab]');
+      if (tb) {
+        tab = tb.dataset.tab;
+        root.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b === tb)));
+        root.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== tab; });
+        if (tab === 'readings') { if (!trendsLoaded) { trendsLoaded = true; trends.forEach((t) => t.load(range)); } if (last) render(last); }
+        return;
+      }
+      const st = ev.target.closest('[data-sp-step]');
+      if (st && !st.disabled) {
+        const [u, dir] = st.dataset.spStep.split('|');
+        const e = last.equipment.find((x) => x.id === u);
+        const lim = setpointLimits(u);
+        const cur = drafts.has(u) ? drafts.get(u) : commandedValue(e, controlDefs(e.type).find((d) => d.id === 'tempSetpoint'));
+        const next = Math.min(lim.max, Math.max(lim.min, Math.round(((cur ?? 21) + Number(dir) * lim.step) / lim.step) * lim.step));
+        drafts.set(u, next);
+        render(last);
+        return;
+      }
       const c = ev.target.closest('[data-cmd]');
       if (c && !c.disabled) { const [u, id, v] = c.dataset.cmd.split('|'); command(u, id, v); return; }
       const ap = ev.target.closest('[data-sp-apply]');
@@ -326,28 +339,11 @@ export default {
       const o = ev.target.closest('[data-open]');
       if (o) openUnit(o.dataset.open);
     });
-    root.addEventListener('input', (ev) => {
-      const sl = ev.target.closest('[data-sp]');
-      if (!sl) return;
-      const u = sl.dataset.sp;
-      interacting = u;
-      drafts.set(u, Number(sl.value));
-      root.querySelector(`[data-sp-out="${u}"]`).textContent = `${num(Number(sl.value))} °C`;
-      const e = last.equipment.find((x) => x.id === u);
-      const cur = commandedValue(e, controlDefs(e.type).find((d) => d.id === 'tempSetpoint'));
-      const btn = root.querySelector(`[data-sp-apply="${u}"]`);
-      if (btn) btn.disabled = cur == null || Math.abs(Number(sl.value) - cur) < 0.05;
-    });
-    root.addEventListener('change', (ev) => { if (ev.target.closest('[data-sp]')) interacting = null; });
-    root.addEventListener('pointerup', () => { interacting = null; });
 
     zoneSkeleton();
-    let loaded = false;
+    let trendsLoaded = false;
     return {
-      update(s) {
-        render(s);
-        if (!loaded && !s.loading) { loaded = true; trends.forEach((t) => t.load(range)); }
-      },
+      update(s) { render(s); },
       destroy() { trends.forEach((t) => t.destroy()); },
     };
   },

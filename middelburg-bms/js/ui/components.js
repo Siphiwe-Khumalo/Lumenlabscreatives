@@ -79,18 +79,34 @@ export function runChip(state) {
 }
 
 /**
- * Fan animation: spins only when the fan point is LIVE and ON. Air colour follows the mode
- * (cooling blue, heating orange, fan-only grey). Still when off; greyed when unknown.
+ * Fan graphic: a ducted fan with curved blades. It spins only when the fan point is LIVE and ON;
+ * the glow ring follows the mode (cooling blue, heating orange, fan only teal). Still when off,
+ * faded with a "?" when the state is unknown.
  */
-export function fanHTML(e) {
+const BLADE = 'M32 32C33.5 24.5 38 18.5 45.5 15.5C47.8 14.6 49.6 16.4 48.9 18.7C46.4 26.2 40.4 30.6 32 32Z';
+export function fanHTML(e, { size = 56 } = {}) {
   const fan = e.readings.fanStatus;
   const known = isGood(fan);
   const on = known && fan.value === true;
   const mode = e.mode === 'cooling' ? 'cool' : e.mode === 'heating' ? 'heat' : 'fan';
   const label = !known ? 'Fan state unknown' : on ? `Fan running${e.mode !== 'unknown' ? ', ' + e.mode : ''}` : 'Fan off';
-  return `<span class="fan ${on ? `on ${mode}` : known ? 'off' : 'unknown'}" role="img" aria-label="${esc(label)}" title="${esc(label)}">
-    <svg viewBox="0 0 40 40" aria-hidden="true"><g class="blades"><path d="M20 20c0-6 2-11 6-11s4 5-6 11Z"/><path d="M20 20c6 0 11 2 11 6s-5 4-11-6Z"/><path d="M20 20c0 6-2 11-6 11s-4-5 6-11Z"/><path d="M20 20c-6 0-11-2-11-6s5-4 11 6Z"/></g><circle cx="20" cy="20" r="2.6"/></svg>
-    <span class="air"><i></i><i></i><i></i></span></span>`;
+  const blades = [0, 72, 144, 216, 288].map((r) => `<path d="${BLADE}" transform="rotate(${r} 32 32)"/>`).join('');
+  return `<span class="fan ${on ? `on ${mode}` : known ? 'off' : 'unknown'}" style="--fan-size:${size}px" role="img" aria-label="${esc(label)}" title="${esc(label)}">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <radialGradient id="fanHousing" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D5DDE8"/></radialGradient>
+        <radialGradient id="fanWell" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1D3557"/><stop offset="1" stop-color="#0A1628"/></radialGradient>
+        <linearGradient id="fanBlade" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4F8FC"/><stop offset="1" stop-color="#9FB3CC"/></linearGradient>
+        <radialGradient id="fanHub" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#8FA3BD"/></radialGradient>
+      </defs>
+      <circle cx="32" cy="32" r="31" fill="url(#fanHousing)" stroke="#C4CEDB"/>
+      <circle class="fan-glow" cx="32" cy="32" r="26.5" fill="none" stroke-width="2.5"/>
+      <circle cx="32" cy="32" r="24.5" fill="url(#fanWell)"/>
+      <g class="blades" fill="url(#fanBlade)">${blades}</g>
+      <g class="guard" fill="none" stroke="#FFFFFF" stroke-opacity=".14" stroke-width=".8"><circle cx="32" cy="32" r="10"/><circle cx="32" cy="32" r="17"/><path d="M32 7.5V56.5M7.5 32H56.5"/></g>
+      <circle cx="32" cy="32" r="5.2" fill="url(#fanHub)" stroke="#6F84A0" stroke-width=".6"/>
+      <circle cx="30.4" cy="30.4" r="1.4" fill="#FFFFFF" opacity=".8"/>
+    </svg>${!known ? '<b class="fan-q">?</b>' : ''}</span>`;
 }
 
 export function tsHTML(ts) {

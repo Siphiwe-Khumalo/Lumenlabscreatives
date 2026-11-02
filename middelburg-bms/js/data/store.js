@@ -347,11 +347,10 @@ export function controlAvailability(e, def) {
   return { ok: true, reason: '' };
 }
 
-/** Permitted setpoint range for a unit: its zone's setpoint adjustment limits. */
-export function setpointLimits(unitId) {
-  const eq = equipmentById(unitId);
-  const t = eq && getThresholds(eq.zoneId)?.temperature;
-  return { min: t?.setpointMin ?? null, max: t?.setpointMax ?? null, step: APP_CONFIG.controls.setpointStep };
+/** Permitted setpoint range: the same for every unit (APP_CONFIG.controls.setpointRange, 15–35 °C). */
+export function setpointLimits() {
+  const [min, max] = APP_CONFIG.controls.setpointRange;
+  return { min, max, step: APP_CONFIG.controls.setpointStep };
 }
 
 const fmt = (def, v) => (v == null ? '—' : def.kind === 'setpoint' ? `${Number(v).toFixed(1)} °C` : def.kind === 'mode' ? String(v) : v === true ? (def.onLabel || 'ON').toUpperCase() : v === false ? (def.offLabel || 'OFF').toUpperCase() : String(v));

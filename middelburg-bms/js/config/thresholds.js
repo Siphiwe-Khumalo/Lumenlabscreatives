@@ -14,7 +14,7 @@
 export const THRESHOLDS_LABEL = 'Illustrative — replace with approved site requirements';
 
 const ambient = {
-  temperature: { actionLow: 13, alertLow: 15, alertHigh: 25, actionHigh: 27, setpointMin: 17, setpointMax: 23 },
+  temperature: { actionLow: 13, alertLow: 15, alertHigh: 25, actionHigh: 27, setpointMin: 15, setpointMax: 35 },
   humidity:    { actionLow: null, alertLow: null, alertHigh: 60, actionHigh: 65 },
 };
 

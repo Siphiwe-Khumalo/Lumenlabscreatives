@@ -20,7 +20,7 @@ export const DOCKS = Object.freeze([
 export const UNIT_POS = Object.freeze({
   'HYB-01': { x: 30, y: 8 },  'HYB-05': { x: 62, y: 8 },
   'HYB-02': { x: 30, y: 92 }, 'HYB-03': { x: 78, y: 8 },
-  'HYB-04': { x: 6,  y: 90 }, 'HYB-06': { x: 94, y: 56 },
-  'RTU-01': { x: 32, y: 54 }, 'RTU-02': { x: 63, y: 54 },
-  'RTU-03': { x: 44, y: 80 }, 'RTU-04': { x: 11, y: 22 }, 'RTU-05': { x: 80, y: 58 },
+  'HYB-04': { x: 6,  y: 90 }, 'HYB-06': { x: 94, y: 60 },
+  'RTU-01': { x: 36, y: 30 }, 'RTU-02': { x: 64, y: 30 },
+  'RTU-03': { x: 82, y: 95 }, 'RTU-04': { x: 11, y: 30 }, 'RTU-05': { x: 88, y: 28 },
 });
