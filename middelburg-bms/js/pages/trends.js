@@ -103,7 +103,7 @@ export default {
 
     function printHead() {
       const s = storeState;
-      $('[data-print-head]').innerHTML = `<h1 style="font-size:18px">${esc(SITE.name)} — Environmental report</h1>
+      $('[data-print-head]').innerHTML = `<img class="print-logo" src="assets/doh-logo.png" alt="Department of Health, Republic of South Africa" onerror="this.remove()"><h1 style="font-size:18px">${esc(SITE.name)} — Environmental report</h1>
         <p>${esc(SITE.subtitle)} · ${esc(SITE.location)}</p>
         <p>Zone: ${esc(ui.zone === 'all' ? 'All zones' : ZONES.find((z) => z.id === ui.zone).name)} · Range: last ${RANGES[ui.range].label} · Generated ${esc(dateTime(Date.now()))} (${esc(SITE.timeZoneLabel)})</p>
         <p><strong>Data source: ${esc(MODE_TEXT[s.mode])}</strong></p>
