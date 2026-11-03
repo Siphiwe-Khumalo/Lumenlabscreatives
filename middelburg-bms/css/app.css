@@ -775,3 +775,11 @@ body.wall .content { max-width: none; zoom: 1.15; }
 /* Banners stay visible under the top bar while scrolling. */
 #mode-banner { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--topbar-h)); z-index: 29; }
 .big-meta .last-good { white-space: normal; }
+
+/* ===== Stored logs (Trends) ============================================================ */
+.logs { display: flex; flex-direction: column; gap: 16px; }
+.logs-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.logs-facts > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); }
+.logs-facts span { font-size: 12px; color: var(--text-2); font-weight: 600; }
+.logs-facts b { font-size: 14px; }
+.logs-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }

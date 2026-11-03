@@ -52,7 +52,7 @@ export const APP_CONFIG = Object.freeze({
     alarmAcknowledgement: false,
     notifications: false,
     audit: false,          // central audit log (the dashboard keeps a browser log meanwhile)
-    history: false,        // gateway history endpoint (Niagara histories) — proposed
+    history: true,         // host PC history (scripts/history.mjs): 24 h / 7 d / 30 d trends and log downloads
   },
 
   /** Unit controls (Controls page). */

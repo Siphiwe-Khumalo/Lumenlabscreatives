@@ -39,6 +39,24 @@ the working settings in `.env`. All of this lives in one module, `scripts/oss-au
 the gateway and the check; after a refused login the gateway waits 5 minutes before trying again. The JACE invalidates the previous token whenever a new one is
 minted, so the gateway keeps one token, allows one refresh at a time and one request in flight.
 
+## Stored history and logs (host PC)
+
+While `npm run dev` runs on the host PC it records **every point of every unit** (166 points) every
+`LOG_INTERVAL_MIN` minutes (default 5, on the clock: 14:00, 14:05, ...), whether or not anyone has the
+dashboard open (`scripts/history.mjs`, no database server or install needed):
+
+| Where (under `data/history/`) | What |
+|---|---|
+| `daily/2026-11-03.csv` | One file per day (SAST). Time, unit, reading, value, units, status, JACE point. Opens in Excel. |
+| `points/RTU-01/temperature/2026-11.csv` | One file per point per month (time, value, status), used for trends. |
+
+- A failed read is recorded with status `down: <reason>`, so gaps in the record are explicit.
+- Files are only appended to. `data/` is not in git; **back it up** like any other records
+  (roughly 4–5 MB per day at 5-minute intervals).
+- **Trends** (24 h / 7 d / 30 d), the run-state strips and MKT use this history. **Trends → Stored logs**
+  downloads the logs for any date range (all units or one unit) as CSV.
+- Routes: `GET /gw/query/history/<slot path>?from=&to=` (ms), `GET /gw/logs`, `GET /gw/logs.csv?from=YYYY-MM-DD&to=YYYY-MM-DD[&unit=RTU-01]`.
+
 ## Data honesty rules (enforced in `js/data/quality.js` and `js/data/store.js`)
 
 | State | Meaning | Display |

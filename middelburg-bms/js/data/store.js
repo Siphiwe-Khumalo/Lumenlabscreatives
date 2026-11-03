@@ -288,11 +288,12 @@ export async function getUnitSeries(unitId, role, rangeKey) {
     return { points: pts, from, to, source: 'demo' };
   }
   if (rangeKey === '1h' || !provider?.capabilities.history) {
-    if (rangeKey !== '1h') throw new NotConfigured('Historian not configured — longer ranges need the gateway history endpoint');
+    if (rangeKey !== '1h') throw new NotConfigured('No recorded history — longer ranges need the host PC history (npm run dev)');
     const raw = (history.get(`${unitId}|${role}`) || []).filter((p) => p[0] >= from).map(([t, v, q]) => [t, v, QUALITY_FROM_CODE[q] || q]);
     return { points: withBreaks(raw, Math.max(state.staleMs, 60e3)), from, to, source: 'browser' };
   }
-  return { points: await provider.series({ unitId, role, from, to, stepMs: r.stepMs }), from, to, source: 'historian' };
+  // Logged every few minutes on the host PC; a longer silence (server off, JACE down) is shown as a gap.
+  return { points: withBreaks(await provider.series({ unitId, role, from, to, stepMs: r.stepMs }), 11 * 60e3), from, to, source: 'historian' };
 }
 export const getZoneSeries = (zoneId, role, rangeKey) => getUnitSeries(ZONE_SOURCES[zoneId], role, rangeKey);
 
@@ -301,9 +302,15 @@ export async function getRunSegments(unitId, rangeKey) {
   const r = RANGES[rangeKey];
   const to = Date.now(), from = to - r.ms;
   if (state.mode === 'demo') return { segments: await provider.runSegments({ unitId, from, to }), from, to };
-  const raw = (history.get(`${unitId}|runState`) || []).filter((p) => p[0] >= from);
+  let raw = (history.get(`${unitId}|runState`) || []).filter((p) => p[0] >= from);
+  let maxGap = Math.max(state.staleMs, 60e3);
+  // Longer ranges: run state from the logged supply-fan point (host PC history, one sample per interval).
+  if (rangeKey !== '1h' && provider?.capabilities.history) {
+    const pts = await provider.series({ unitId, role: 'fanStatus', from, to }).catch(() => []);
+    raw = pts.map(([t, v, q]) => [t, null, q !== QUALITY.LIVE || v == null ? 'unknown' : v ? 'running' : 'stopped']);
+    maxGap = 11 * 60e3;
+  }
   const segs = [];
-  const maxGap = Math.max(state.staleMs, 60e3);
   let cursor = from;
   for (let i = 0; i < raw.length; i++) {
     const [t, , st] = raw[i];

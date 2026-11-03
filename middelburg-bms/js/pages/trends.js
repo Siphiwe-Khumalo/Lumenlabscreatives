@@ -40,9 +40,63 @@ export default {
         <div class="table-meta"><span>Limits: ${esc(THRESHOLDS_LABEL)}</span><span>Outside range = share of samples beyond the alert limits.</span></div></section>
       <section class="card"><div class="card-head"><h2>Excursion report</h2><span class="sub">Periods outside the acceptable range (alert limits)</span><span data-exc-tag></span></div><div data-exc></div>
         <div class="table-meta"><span>Calculated from the history shown above. Gaps in data end an excursion.</span><span>Times in SAST.</span></div></section>
-      <section class="card"><div class="card-head"><h2>HVAC operating-state history</h2><span data-hvac-tag></span></div><div data-hvac></div></section>`;
+      <section class="card"><div class="card-head"><h2>HVAC operating-state history</h2><span data-hvac-tag></span></div><div data-hvac></div></section>
+      <section class="card no-print"><div class="card-head"><h2>Stored logs</h2><span class="sub">Every reading, recorded on the host PC</span></div><div class="card-body" data-logs></div></section>`;
 
     const $ = (s) => root.querySelector(s);
+
+    /* ---- stored logs (host PC history, scripts/history.mjs) ---- */
+    async function loadLogs() {
+      const el = $('[data-logs]');
+      if (storeState.mode === 'demo') {
+        el.innerHTML = `<p class="muted">In the live system the host PC records every reading of every unit (every 5 minutes by default) into daily log files. Here you choose a date range and download them as a spreadsheet (CSV, opens in Excel). Not available with simulated data.</p>`;
+        return;
+      }
+      let info;
+      try {
+        const r = await fetch('/gw/logs', { headers: { Accept: 'application/json' } });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        info = await r.json();
+      } catch (e) {
+        el.innerHTML = stateBox('error', 'Stored logs are not available', `The host PC did not answer (${e.message}). Logs are kept by the dashboard server (npm run dev).`);
+        return;
+      }
+      const days = info.days || [];
+      const today = dateTime(Date.now()).slice(0, 10); // SAST, YYYY-MM-DD
+      const first = days[0]?.date, lastDay = days[days.length - 1]?.date;
+      const mb = days.reduce((a, d) => a + d.bytes, 0) / 1048576;
+      el.innerHTML = `<div class="logs">
+          <div class="logs-facts">
+            <div><span>Recorded</span><b>${days.length ? `${esc(first)} → ${esc(lastDay)}` : 'Nothing yet'}</b></div>
+            <div><span>Days</span><b>${days.length}</b></div>
+            <div><span>Interval</span><b>every ${info.intervalMin} min</b></div>
+            <div><span>Last recording</span><b>${info.last ? `${esc(time(info.last.ts))}${info.last.failed ? ` · ${info.last.failed} failed` : ''}` : '—'}</b></div>
+            <div><span>Size</span><b>${num(mb, 1)} MB</b></div>
+          </div>
+          <form class="logs-form" data-logs-form>
+            <label class="field"><span>From</span><input class="input" type="date" name="from" value="${esc(lastDay && lastDay < today ? lastDay : today)}" ${first ? `min="${esc(first)}"` : ''} max="${esc(today)}" required></label>
+            <label class="field"><span>To</span><input class="input" type="date" name="to" value="${esc(today)}" ${first ? `min="${esc(first)}"` : ''} max="${esc(today)}" required></label>
+            <label class="field"><span>Units</span><select class="select" name="unit"><option value="">All units</option>${EQUIPMENT.map((e) => `<option value="${e.id}">${esc(e.id)} · ${esc(e.name)}</option>`).join('')}</select></label>
+            <button class="btn primary" type="submit" ${days.length ? '' : 'disabled'}>${icon('download')}Download logs (CSV)</button>
+          </form>
+          <p class="muted small">Each row: time (SAST), unit, reading, value, units, status and the JACE point. Failed readings are recorded as <b>down</b>, so gaps are visible. Files are stored on the host PC in <span class="mono">${esc(info.dir)}</span>.</p>
+        </div>`;
+    }
+    root.addEventListener('submit', (ev) => {
+      const f = ev.target.closest('[data-logs-form]');
+      if (!f) return;
+      ev.preventDefault();
+      const from = f.from.value, to = f.to.value;
+      if (!from || !to || to < from) { toast('Choose a "from" date on or before the "to" date', 'err'); return; }
+      const q = new URLSearchParams({ from, to });
+      if (f.unit.value) q.set('unit', f.unit.value);
+      const a = document.createElement('a');
+      a.href = `/gw/logs.csv?${q}`;
+      a.download = '';
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+    loadLogs();
+
     const tT = mountTrendCard($('[data-trend="temperature"]'), 'temperature');
     const tH = mountTrendCard($('[data-trend="humidity"]'), 'humidity');
     let lastLoad = null;
@@ -58,7 +112,7 @@ export default {
 
     function summary(t, h) {
       excursionReport(t, h);
-      if (!t && !h) { $('[data-summary]').innerHTML = stateBox('empty', 'No history available', storeState.mode === 'demo' ? '' : 'Historian not configured.'); return; }
+      if (!t && !h) { $('[data-summary]').innerHTML = stateBox('empty', 'No history available', storeState.mode === 'demo' ? '' : 'Nothing has been recorded for this period yet.'); return; }
       const rows = [];
       for (const [data, metric, unit] of [[t, 'temperature', '°C'], [h, 'humidity', '%RH']]) {
         if (!data) continue;
@@ -131,7 +185,9 @@ export default {
       root.querySelectorAll('[data-sub]').forEach((el) => (el.textContent = `${ui.zone === 'all' ? 'All zones' : ZONES.find((z) => z.id === ui.zone).name} · last ${RANGES[ui.range].label}`));
       $('[data-note]').innerHTML = storeState.mode === 'demo'
         ? `<div class="notice demo no-print">${icon('info')}<span><strong>Illustrative history.</strong> All history on this page is generated in the browser for demonstration. It is not recorded site data.</span></div>`
-        : `<div class="notice no-print">${icon('info')}<span><strong>Historian not configured.</strong> Trend history, operating-state history and reports require a historian service, which has not been supplied.</span></div>`;
+        : ui.range === '1h'
+          ? ''
+          : `<div class="notice no-print">${icon('info')}<span><strong>Recorded history.</strong> Longer ranges come from the readings the host PC records every few minutes. Times when nothing was recorded (server off, JACE unreachable) are shown as gaps.</span></div>`;
       $('[data-sum-tag]').innerHTML = storeState.mode === 'demo' ? DEMO_TAG : '';
       const [t, h] = await Promise.all([tT.load({ zoneId: ui.zone, range: ui.range }), tH.load({ zoneId: ui.zone, range: ui.range }), hvacHistory()]);
       lastLoad = { t, h };

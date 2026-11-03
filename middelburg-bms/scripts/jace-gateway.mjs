@@ -121,6 +121,16 @@ export function createGateway(env) {
     return { value, status: status ?? '{ok}', timestamp, activeLevel };
   }
 
+  /** Reads one point for server-side use (the history logger). -> { value, status } or throws. */
+  async function readPoint(slot) {
+    const r = await serial(() => jace('GET', pointUrl(cfg.readPath, slot)));
+    if (r.status === 404) throw Object.assign(new Error('Point not found on the JACE'), { notFound: true });
+    if (r.status !== 200) throw new Error(`JACE returned HTTP ${r.status}`);
+    const n = normalise(r.text, slot);
+    if (!n) throw new Error('Unrecognised reply from the JACE');
+    return n;
+  }
+
   const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 
   /** Handles /gw/* requests. Returns true when handled. */
@@ -176,5 +186,5 @@ export function createGateway(env) {
     return true;
   }
 
-  return { handle, configured, missing, cfg: { jaceUrl: cfg.jaceUrl, tokenPath: useUser ? `none (station user ${cfg.user})` : cfg.tokenPath, allowSelfSigned: cfg.allowSelfSigned } };
+  return { handle, readPoint, configured, missing, cfg: { jaceUrl: cfg.jaceUrl, tokenPath: useUser ? `none (station user ${cfg.user})` : cfg.tokenPath, allowSelfSigned: cfg.allowSelfSigned } };
 }

@@ -9,6 +9,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createGateway } from './jace-gateway.mjs';
+import { createHistory } from './history.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -30,6 +31,8 @@ const env = { ...loadEnv(join(root, '.env')), ...process.env };
 const port = Number(process.argv[2] || env.PORT || 8080);
 const host = env.HOST || '127.0.0.1'; // set HOST=0.0.0.0 on the host PC so VPN users can reach it
 const gateway = createGateway(env);
+// History logger: reads every point every LOG_INTERVAL_MIN minutes into data/history (see scripts/history.mjs).
+const history = createHistory({ readPoint: gateway.readPoint, root, env });
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -41,6 +44,7 @@ const PUBLIC = [/^\/index\.html$/, /^\/hosted\.html$/, /^\/css\//, /^\/js\//, /^
 
 createServer(async (req, res) => {
   try {
+    if (await history.handle(req, res)) return;
     if (await gateway.handle(req, res)) return;
     let path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     if (path === '/') path = '/index.html';
@@ -58,4 +62,10 @@ createServer(async (req, res) => {
   console.log(gateway.configured
     ? `JACE gateway: ${gateway.cfg.jaceUrl} (token path ${gateway.cfg.tokenPath}${gateway.cfg.allowSelfSigned ? ', self-signed certificate allowed' : ''})`
     : `JACE gateway: NOT configured — create .env with ${gateway.missing.join(', ')} (see .env.example)`);
+  if (gateway.configured && !/^(0|false|no|off)$/i.test(env.HISTORY_LOG || '')) {
+    history.start();
+    console.log(`History: logging ${history.points} points every ${history.intervalMin} min to ${history.dir}`);
+  } else {
+    console.log(`History: not logging (${gateway.configured ? 'HISTORY_LOG is off' : 'JACE not configured'}); stored logs are still available`);
+  }
 });

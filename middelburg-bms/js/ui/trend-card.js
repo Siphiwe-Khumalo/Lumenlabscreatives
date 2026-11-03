@@ -95,7 +95,7 @@ export function mountTrend(el, cfg) {
       chart?.destroy(); chart = null; lastData = null;
       legendEl.innerHTML = ''; stripsEl.innerHTML = '';
       overlay(err.notConfigured
-        ? stateBox('empty', 'Historian not configured', `${err.message}. The 1 h range uses readings recorded by this dashboard.`)
+        ? stateBox('empty', 'History not available', `${err.message}. The 1 h range uses readings recorded by this dashboard.`)
         : err.connectionLost ? stateBox('error', 'JACE connection lost', 'History cannot be read while the connection is down.')
         : stateBox('error', 'Could not load the trend', err.message));
       return null;
