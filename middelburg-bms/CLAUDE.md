@@ -56,6 +56,7 @@ Host PC project path: **`C:\Users\siphi\Lumenlabscreatives\middelburg-bms`**. Al
 | `npm run setup` | Interactive: writes `.env` (JACE address, client ID, client secret pasted over several lines then Enter on an empty line). Prints secret length (must be **256**). |
 | `npm run check` | `scripts/check-jace.mjs`: tests reachability, gets a token from `/ossRestApiServer/token`, lists points (`/query/listPoints`), reads `RUT_1/SPACE_TEMP1` trying path formats, saves the working `OSS_ORD_PREFIX`/`OSS_PATH_ENCODING` into `.env`, deletes legacy keys. Prints **WORKS** on success. Never prints the secret. |
 | `npm run check-write` | `scripts/check-write.mjs`: reads `RUT_1/Unit1Setpoint` and writes the **same value back at priority 16**, printing the JACE's full reply (headers + body) for three variants. Diagnostic only. |
+| `start-bms.cmd` | Windows start file for the host PC: runs `node scripts\serve.mjs` in a loop (restarts 10 s after a stop), output to `data\server.log`. Run at boot by the scheduled task "Middelburg BMS" (`schtasks /Create /TN "Middelburg BMS" /TR "C:\BMS\middelburg-bms\start-bms.cmd" /SC ONSTART /RU SYSTEM /RL HIGHEST`). |
 | `npm run vendor` | Re-copies vendored libs from `node_modules` (needs `npm install` first). |
 
 **Testing:** there is **no automated test suite** (`npm test` does not exist). Verification so far was:
