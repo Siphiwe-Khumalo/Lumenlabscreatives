@@ -111,7 +111,11 @@ export function fanHTML(e, { size = 56 } = {}) {
 
 /** Unit photo (HVAC units) with the live fan as a badge: the photo shows what the unit is, the fan shows its state. */
 export function unitPhotoHTML(e, { size = 'sm' } = {}) {
-  return `<span class="unit-photo ${size}"><img src="assets/hvac-unit.jpg" alt="" loading="lazy" width="523" height="382">${fanHTML(e, { size: size === 'lg' ? 52 : 34 })}</span>`;
+  // Hybrid: outdoor unit photo (with its background, cropped to fill). Rooftop: packaged unit on white.
+  const img = e.type === 'hybrid'
+    ? '<img class="photo-fill" src="assets/hybrid-unit.jpg" alt="" loading="lazy" width="588" height="459">'
+    : '<img src="assets/hvac-unit.jpg" alt="" loading="lazy" width="523" height="382">';
+  return `<span class="unit-photo ${size} ${e.type}">${img}${fanHTML(e, { size: size === 'lg' ? 52 : 34 })}</span>`;
 }
 
 /**

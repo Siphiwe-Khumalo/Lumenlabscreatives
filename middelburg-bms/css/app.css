@@ -798,6 +798,7 @@ body.wall .content { max-width: none; zoom: 1.15; }
 /* ===== Unit photo + facility hero ======================================================= */
 .unit-photo { position: relative; flex: none; display: inline-block; width: 96px; height: 70px; border-radius: 12px; background: linear-gradient(180deg, #FFFFFF, #EEF2F7); border: 1px solid var(--border); }
 .unit-photo img { width: 100%; height: 100%; object-fit: contain; padding: 4px 6px; mix-blend-mode: multiply; }
+.unit-photo img.photo-fill { object-fit: cover; padding: 0; mix-blend-mode: normal; border-radius: 11px; }
 .unit-photo .fan { position: absolute; right: -8px; bottom: -8px; background: #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(11, 31, 58, 0.25); }
 .unit-photo.lg { width: 100%; max-width: 360px; height: 220px; display: block; margin: 0 auto 8px; }
 .unit-photo.lg .fan { right: 10px; bottom: 10px; }
