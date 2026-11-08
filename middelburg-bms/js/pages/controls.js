@@ -143,7 +143,15 @@ export default {
       if (def.kind === 'setpoint') {
         const sp = e.readings[def.commandRole];
         const m = e.type === 'rooftop' && isGood(e.readings.operatingMode) ? ` · unit mode <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>` : '';
-        return `Unit setpoint ${isGood(sp) ? `<b>${num(sp.value)} °C</b>` : runText(sp, def)}${m}`;
+        // Room vs target: the room takes time to reach a new setpoint; say which way the unit should be working.
+        const room = e.readings.temperature;
+        let gap = '';
+        if (isGood(sp) && isGood(room)) {
+          const d = room.value - sp.value;
+          gap = Math.abs(d) < 0.5 ? ' · room is at the target'
+            : ` · room ${num(Math.abs(d))} °C ${d > 0 ? 'above' : 'below'} target, unit should be ${d > 0 ? 'cooling' : 'heating'} (takes time)`;
+        }
+        return `Target (setpoint) ${isGood(sp) ? `<b>${num(sp.value)} °C</b>` : runText(sp, def)}${m}${gap}`;
       }
       if (def.kind === 'mode') return `Unit reports <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`;
       return def.actualRole ? `Unit reports ${runText(e.readings[def.actualRole], def)}` : '';
