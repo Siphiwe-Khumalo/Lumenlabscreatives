@@ -32,9 +32,10 @@ export const ZONES = Object.freeze([
 export const EQUIPMENT_TYPES = Object.freeze({
   hybrid:  { label: 'Hybrid units',   short: 'Hybrid',  prefix: 'HYB' },
   rooftop: { label: 'Rooftop units',  short: 'Rooftop', prefix: 'RTU' },
+  sensor:  { label: 'Room sensors',   short: 'Sensor',  prefix: 'SEN' }, // temperature, humidity, CO2 only
 });
 
-// 6 hybrid + 5 rooftop = 11 units. Zone allocation is illustrative.
+// 11 hybrid + 5 rooftop units + 6 room sensors. Zone allocation is illustrative (TODO confirm with Aina).
 export const EQUIPMENT = Object.freeze([
   { id: 'HYB-01', type: 'hybrid',  name: 'Hybrid unit 1',  zoneId: 'main-store' },
   { id: 'HYB-02', type: 'hybrid',  name: 'Hybrid unit 2',  zoneId: 'dispatch' },
@@ -42,13 +43,29 @@ export const EQUIPMENT = Object.freeze([
   { id: 'HYB-04', type: 'hybrid',  name: 'Hybrid unit 4',  zoneId: 'receiving' },
   { id: 'HYB-05', type: 'hybrid',  name: 'Hybrid unit 5',  zoneId: 'main-store' },
   { id: 'HYB-06', type: 'hybrid',  name: 'Hybrid unit 6',  zoneId: 'storage-b' },
+  { id: 'HYB-07', type: 'hybrid',  name: 'Hybrid unit 7',  zoneId: 'main-store' },
+  { id: 'HYB-08', type: 'hybrid',  name: 'Hybrid unit 8',  zoneId: 'main-store' },
+  { id: 'HYB-09', type: 'hybrid',  name: 'Hybrid unit 9',  zoneId: 'dispatch' },
+  { id: 'HYB-10', type: 'hybrid',  name: 'Hybrid unit 10', zoneId: 'storage-b' },
+  { id: 'HYB-11', type: 'hybrid',  name: 'Hybrid unit 11', zoneId: 'receiving' },
   { id: 'RTU-01', type: 'rooftop', name: 'Rooftop unit 1', zoneId: 'main-store' },
   { id: 'RTU-02', type: 'rooftop', name: 'Rooftop unit 2', zoneId: 'main-store' },
   { id: 'RTU-03', type: 'rooftop', name: 'Rooftop unit 3', zoneId: 'dispatch' },
   { id: 'RTU-04', type: 'rooftop', name: 'Rooftop unit 4', zoneId: 'receiving' },
   { id: 'RTU-05', type: 'rooftop', name: 'Rooftop unit 5', zoneId: 'storage-b' },
+  { id: 'SEN-E1', type: 'sensor',  name: 'East sensor 1',  zoneId: 'storage-b' },
+  { id: 'SEN-E2', type: 'sensor',  name: 'East sensor 2',  zoneId: 'storage-b' },
+  { id: 'SEN-E3', type: 'sensor',  name: 'East sensor 3',  zoneId: 'dispatch' },
+  { id: 'SEN-W1', type: 'sensor',  name: 'West sensor 1',  zoneId: 'receiving' },
+  { id: 'SEN-W2', type: 'sensor',  name: 'West sensor 2',  zoneId: 'main-store' },
+  { id: 'SEN-W3', type: 'sensor',  name: 'West sensor 3',  zoneId: 'main-store' },
 ]);
 
 export const zoneById = (id) => ZONES.find((z) => z.id === id) || null;
 export const equipmentById = (id) => EQUIPMENT.find((e) => e.id === id) || null;
-export const equipmentForZone = (zoneId) => EQUIPMENT.filter((e) => e.zoneId === zoneId);
+/** HVAC units serving a zone (room sensors excluded; see sensorsForZone). */
+export const equipmentForZone = (zoneId) => EQUIPMENT.filter((e) => e.zoneId === zoneId && e.type !== 'sensor');
+export const sensorsForZone = (zoneId) => EQUIPMENT.filter((e) => e.zoneId === zoneId && e.type === 'sensor');
+
+/** HVAC units only (sensors have no fan, run state or controls). */
+export const isHvac = (e) => e.type !== 'sensor';

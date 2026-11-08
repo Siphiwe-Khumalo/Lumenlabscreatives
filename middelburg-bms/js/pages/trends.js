@@ -160,7 +160,7 @@ export default {
       const el = $('[data-hvac]');
       $('[data-hvac-tag]').innerHTML = storeState.mode === 'demo' ? DEMO_TAG : '';
       el.innerHTML = stateBox('loading', 'Loading run-state history…');
-      const eqs = (ui.zone === 'all' ? EQUIPMENT : EQUIPMENT.filter((e) => e.zoneId === ui.zone)).slice().sort((a, b) => a.type.localeCompare(b.type) || a.id.localeCompare(b.id));
+      const eqs = (ui.zone === 'all' ? EQUIPMENT : EQUIPMENT.filter((e) => e.zoneId === ui.zone)).filter((e) => e.type !== 'sensor').sort((a, b) => a.type.localeCompare(b.type) || a.id.localeCompare(b.id));
       try {
         const runs = await Promise.all(eqs.map((eq) => getRunSegments(eq.id, ui.range)));
         const from = runs[0]?.from ?? Date.now() - RANGES[ui.range].ms, to = runs[0]?.to ?? Date.now();

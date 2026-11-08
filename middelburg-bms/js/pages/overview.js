@@ -168,7 +168,8 @@ export default {
       } else banner.innerHTML = '';
 
       // Metric cards
-      const eqs = ui.zone === 'all' ? s.equipment : s.equipment.filter((e) => e.zoneId === ui.zone);
+      const hvac = s.equipment.filter((e) => e.type !== 'sensor');
+      const eqs = ui.zone === 'all' ? hvac : hvac.filter((e) => e.zoneId === ui.zone);
       const running = eqs.filter((e) => e.runState === 'running').length;
       const stopped = eqs.filter((e) => e.runState === 'fault').length;
       const standby = eqs.filter((e) => e.runState === 'stopped').length;

@@ -91,6 +91,7 @@ const val = (r) => (isGood(r) ? r.value : null);
  *   unknown  fan status not LIVE
  */
 function deriveRunState(type, r) {
+  if (type === 'sensor') return 'sensor'; // room sensors have no fan / run state
   const fan = val(r.fanStatus);
   if (fan == null) return 'unknown';
   if (fan) return 'running';
@@ -100,6 +101,7 @@ function deriveRunState(type, r) {
 }
 
 function deriveMode(type, r) {
+  if (type === 'sensor') return 'n/a';
   if (type === 'rooftop') return isGood(r.operatingMode) ? r.operatingMode.value : 'unknown';
   const flags = [val(r.coolMode), val(r.heatMode), val(r.fanOnlyMode)];
   if (flags.some((f) => f == null)) return 'unknown';

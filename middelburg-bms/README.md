@@ -41,7 +41,7 @@ minted, so the gateway keeps one token, allows one refresh at a time and one req
 
 ## Stored history and logs (host PC)
 
-While `npm run dev` runs on the host PC it records **every point of every unit** (166 points) every
+While `npm run dev` runs on the host PC it records **every point of every unit and sensor** (289 points) every
 `LOG_INTERVAL_MIN` minutes (default 5, on the clock: 14:00, 14:05, ...), whether or not anyone has the
 dashboard open (`scripts/history.mjs`, no database server or install needed):
 
@@ -83,7 +83,7 @@ dashboard open (`scripts/history.mjs`, no database server or install needed):
 ## Controls page (landing page)
 
 - Summary strip: units running, active alarms, sensors offline, comms status.
-- One card per unit — 6 hybrid (blue), 5 rooftop (violet). Each control shows
+- One card per unit — 11 hybrid (blue), 5 rooftop (violet) — plus 6 room sensor cards (temperature, humidity, CO₂). Each control shows
   **COMMANDED** vs **ACTUAL** side by side.
 - No optimistic UI: after a command the control shows **PENDING** until the feedback point
   confirms it; after `controls.confirmTimeoutMs` (60 s) it shows **NOT CONFIRMED** in red with
@@ -112,7 +112,7 @@ dashboard open (`scripts/history.mjs`, no database server or install needed):
 ## Site points
 
 `js/config/points.js` is the only file with point names. Unit 1 of each type was supplied; units
-2–n follow the same pattern (`RUT_1…RUT_5`, `HYBRID_1…HYBRID_6`) — 166 points. Names are kept
+2–n follow the same pattern (`RUT_1…RUT_5`, `HYBRID_1…HYBRID_11`; hybrids 1–5 on `ModbusAsyncNetwork`, 6–11 on `ModbusTcpNetwork`), plus room sensors `TempEast`/`TempWest` `Modbus$20Tcp$20Gateway$20Device1…3` — 289 points. `npm run check-points` reads every one and reports what the JACE has. Names are kept
 exactly as supplied (including `Uni1StartCmd` and `STATIC_PESSURE_SETPOINT`). The app sends the slot
 path (`Drivers/...`); the gateway adds `station:|slot:/`. Verify each derived point on the
 Commissioning page.

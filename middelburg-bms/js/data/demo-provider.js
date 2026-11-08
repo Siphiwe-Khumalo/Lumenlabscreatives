@@ -44,6 +44,8 @@ const UNIT = {
   'HYB-04': { flow: 3100, duty: 1 }, 'HYB-05': { flow: 4100, duty: 1 }, 'HYB-06': { flow: 2500, duty: 0.55 },
   'RTU-01': { flow: 6200, duty: 1 }, 'RTU-02': { flow: 6100, duty: 1 }, 'RTU-03': { flow: 5400, duty: 1 },
   'RTU-04': { flow: 5200, duty: 1 }, 'RTU-05': { flow: 4800, duty: 0.5 },
+  'HYB-07': { flow: 3900, duty: 1 }, 'HYB-08': { flow: 3600, duty: 1 }, 'HYB-09': { flow: 3300, duty: 0.7 },
+  'HYB-10': { flow: 2900, duty: 1 }, 'HYB-11': { flow: 3000, duty: 1 },
 };
 
 function hash(a, b) {
@@ -128,6 +130,14 @@ function modeAt(eq, t) {
 
 /** Numeric/boolean value of a role at time t (no quality applied). */
 function valueAt(eq, role, t) {
+  if (eq.type === 'sensor') {
+    const n = noise(seedOf(eq.id, role), t);
+    const off = ((seedOf(eq.id, 'off') % 9) - 4) / 10;
+    if (role === 'temperature') return round(signal(eq.zoneId, 'temperature', t) + off + n * 0.15);
+    if (role === 'humidity') return round(signal(eq.zoneId, 'humidity', t) + off * 2 + n * 0.6);
+    if (role === 'co2') { const h = ((t / HOUR) + 2) % 24; return Math.round(430 + (h > 7 && h < 18 ? 160 : 20) + n * 35 + (seedOf(eq.id, 'co2') % 60)); }
+    return null;
+  }
   const state = runState(eq, t);
   const on = state === 'running';
   const n = noise(seedOf(eq.id, role), t);
@@ -351,6 +361,7 @@ export function createDemoProvider(initialScenario = 'normal') {
     async runSegments({ unitId, from, to }) {
       if (scenario === 'comms-lost') throw new ConnectionLostError('JACE not responding (simulated)');
       const eq = equipmentById(unitId);
+      if (!eq || eq.type === 'sensor') return [];
       const step = Math.max(MIN, Math.round((to - from) / 600));
       const segs = [];
       for (let t = from; t < to; t += step) {

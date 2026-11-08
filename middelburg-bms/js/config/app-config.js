@@ -41,6 +41,7 @@ export const APP_CONFIG = Object.freeze({
     temperature: [-30, 70],
     temperatureSetpoint: [0, 50],
     humidity: [0, 100],
+    co2: [0, 10000],
     fanSpeed: [0, 100],
     airflow: [0, 100000],
     staticPressure: [-1000, 3000],

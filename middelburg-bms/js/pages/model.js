@@ -64,9 +64,23 @@ function box(P, view, { x, y, z = 0, w, d, h }, c) {
 const UNIT_BODY = { top: '#F6F8FB', front: '#DCE3EC', right: '#C5CFDC', line: '#93A1B5' };
 const WALL = { top: '#FFFFFF', front: '#E9EEF4', right: '#D6DEE8', line: '#A3B0C2' };
 
+/** Room sensor: a slim post with a teal sensor head (no fan). */
+function sensorSVG(P, view, e, p) {
+  const live = Object.values(e.readings).some((r) => isGood(r));
+  const x = (p.x / 100) * W - 0.8, y = (p.y / 100) * D - 0.8;
+  const head = live ? { top: '#5FD3C9', front: '#14A3A0', right: '#0E7C79', line: '#0B6563' } : { top: '#D5DCE5', front: '#B7C2D0', right: '#A2AFC0', line: '#8796AA' };
+  const svg = `<g class="iso-unit iso-sensor" data-unit="${e.id}" tabindex="0" role="button" aria-label="${esc(e.name)} (${esc(e.id)}): ${live ? 'live' : 'no data'}">
+      ${box(P, view, { x: x + 0.45, y: y + 0.45, z: 0, w: 0.7, d: 0.7, h: 3.2 }, UNIT_BODY)}
+      ${box(P, view, { x, y, z: 3.2, w: 1.6, d: 1.6, h: 1.3 }, head)}
+      ${live && view !== 'plan' ? `<circle cx="${P(x + 0.8, y + 0.8, 5.2)[0]}" cy="${P(x + 0.8, y + 0.8, 5.2)[1]}" r="3" fill="#14A3A0" class="iso-led"/>` : ''}
+    </g>`;
+  return { svg, anchor: view === 'plan' ? P(x + 0.8, y - 0.4) : P(x + 0.8, y + 0.8, 6.5), depth: x + y };
+}
+
 function unitSVG(P, view, e) {
   const p = UNIT_POS[e.id];
   if (!p) return { svg: '', anchor: null };
+  if (e.type === 'sensor') return sensorSVG(P, view, e, p);
   const fan = e.readings.fanStatus;
   const on = isGood(fan) && fan.value === true;
   const color = MODE_COLOR[e.mode] || '#14A3A0';
@@ -262,7 +276,7 @@ export default {
         <div class="model-legend">
           <span><i class="lz st-normal"></i>Normal</span><span><i class="lz st-warning"></i>Warning</span><span><i class="lz st-critical"></i>Critical</span><span><i class="lz st-unknown"></i>No data</span>
           <span class="sep"></span>
-          <span><i class="lt hyb"></i>Hybrid unit (floor)</span><span><i class="lt rtu"></i>Rooftop unit (roof)</span>
+          <span><i class="lt hyb"></i>Hybrid unit (floor)</span><span><i class="lt rtu"></i>Rooftop unit (roof)</span><span><i class="lt sen"></i>Room sensor</span>
           <span class="sep"></span>
           <span><i class="ll" style="background:${RUN_COLOR.running}"></i>Running</span><span><i class="ll" style="background:${RUN_COLOR.stopped}"></i>Stopped</span><span><i class="ll" style="background:${RUN_COLOR.fault}"></i>Fault</span>
           <span class="model-meta"><span data-tag></span><span data-updated></span></span>
@@ -309,16 +323,16 @@ export default {
       const r = e.readings;
       openDrawer({
         title: `${e.name} · ${e.id}`,
-        subtitle: `${esc(EQUIPMENT_TYPES[e.type].short)} unit · serves ${esc(e.zoneName || '')}${last.mode === 'demo' ? ' · Demonstration data' : ''}`,
+        subtitle: `${esc(EQUIPMENT_TYPES[e.type].short)}${e.type === 'sensor' ? ' · in' : ' unit · serves'} ${esc(e.zoneName || '')}${last.mode === 'demo' ? ' · Demonstration data' : ''}`,
         body: `<dl class="kv">
-            <dt>State</dt><dd>${esc(UNIT_STATE_LABEL[e.runState])}</dd>
+            ${e.type === 'sensor' ? '' : `<dt>State</dt><dd>${esc(UNIT_STATE_LABEL[e.runState])}</dd>`}
             <dt>Space temperature</dt><dd>${readingHTML(r.temperature)}</dd>
-            <dt>Setpoint</dt><dd>${readingHTML(r.temperatureSetpoint)}</dd>
-            ${e.type === 'rooftop' ? `<dt>Humidity</dt><dd>${readingHTML(r.humidity)}</dd>` : `<dt>Fan speed</dt><dd>${readingHTML(r.fanSpeed, { digits: 0 })}</dd>`}
+            ${e.type === 'sensor' ? '' : `<dt>Setpoint</dt><dd>${readingHTML(r.temperatureSetpoint)}</dd>`}
+            ${e.type === 'rooftop' ? `<dt>Humidity</dt><dd>${readingHTML(r.humidity)}</dd>` : e.type === 'sensor' ? `<dt>Humidity</dt><dd>${readingHTML(r.humidity)}</dd><dt>CO₂</dt><dd>${readingHTML(r.co2, { digits: 0 })}</dd>` : `<dt>Fan speed</dt><dd>${readingHTML(r.fanSpeed, { digits: 0 })}</dd>`}
             <dt>Faults</dt><dd>${e.faults?.length ? esc(e.faults.map((f) => f.label).join(', ')) : 'None'}</dd>
             <dt>Open alarms</dt><dd>${e.openAlarms || 'None'}</dd>
           </dl>
-          <a class="btn primary" href="#/controls">${icon('hvac')}Control this unit</a>`,
+          ${e.type === 'sensor' ? '' : `<a class="btn primary" href="#/controls">${icon('hvac')}Control this unit</a>`}`,
       });
     }
 

@@ -27,17 +27,30 @@ export const POINT_MAP_STATUS = Object.freeze({
 
 export const ORD_PREFIX = 'station:|slot:/';
 
-/** Controller folders. `n` is the unit number (1, 2, 3 ...). */
+/**
+ * Hybrid units are on two Modbus networks (Aina, Nov 2026: "ModbusTcpNetwork HYBRID_6 TO 11", example HYBRID_7).
+ * TODO(confirm with Aina): whether HYBRID_6 is on ModbusTcpNetwork (assumed, per the document heading) or on
+ * ModbusAsyncNetwork. Change this one number if not. `npm run check-points` shows which paths exist.
+ */
+export const HYBRID_TCP_FROM = 6;
+
+/** Controller folders. `n` is the unit number (1, 2, 3 ...); `u` the EQUIPMENT_UNITS entry. */
 export const BASE_PATHS = Object.freeze({
   rooftop: (n) => `Drivers/BcpBacnetNetwork/OFFICES/points/RUT_${n}/`,
-  hybrid: (n) => `Drivers/ModbusAsyncNetwork/HYBRID_${n}/points/`,
+  hybrid: (n) => `Drivers/${n >= HYBRID_TCP_FROM ? 'ModbusTcpNetwork' : 'ModbusAsyncNetwork'}/HYBRID_${n}/points/`,
+  // Room sensors: Drivers/TempEast|TempWest/Modbus Tcp Gateway Device1..3 ("$20" is Niagara's escaped space; kept as is).
+  sensor: (n, u) => `Drivers/Temp${u.side}/Modbus$20Tcp$20Gateway$20Device${n}/points/`,
 });
 
 /** Controller names shown in the UI (e.g. on the unit detail panel). */
 export const CONTROLLER_NAME = Object.freeze({
   rooftop: (n) => `RUT_${n}`,
   hybrid: (n) => `HYBRID_${n}`,
+  sensor: (n, u) => `Temp${u.side} Device${n}`,
 });
+
+/** Points supplied verbatim by the project team (the rest are derived by changing the number). */
+const SUPPLIED = { rooftop: [1], hybrid: [1, 7], sensor: [1] };
 
 /**
  * Roles. `points[type]` gives the point name for a unit number n (function) or
@@ -54,12 +67,14 @@ export const CONTROLLER_NAME = Object.freeze({
 export const ROLE_POINTS = Object.freeze({
   // --- temperatures / humidity --------------------------------------------------
   temperature: { label: 'Space temperature', unit: '°C', kind: 'number',
-    points: { rooftop: (n) => `SPACE_TEMP${n}`, hybrid: 'ROOM_TEMP_AVERAGE' } },
+    points: { rooftop: (n) => `SPACE_TEMP${n}`, hybrid: 'ROOM_TEMP_AVERAGE', sensor: 'SpaceTemp' } },
   temperatureSetpoint: { label: 'Temperature setpoint', unit: '°C', kind: 'number', controllable: true, controlTypes: ['rooftop'],
     // Hybrid setpoint is read-only (only BMS switch and mode are controlled on hybrids).
     points: { rooftop: (n) => `Unit${n}Setpoint`, hybrid: 'ROOM_TEMP_SETPOINT' } },
   humidity: { label: 'Relative humidity', unit: '%RH', kind: 'number', monitoringOnly: true,
-    points: { rooftop: (n) => `R_Humidity${n}` } },
+    points: { rooftop: (n) => `R_Humidity${n}`, sensor: 'RelativeHumidity' } },
+  co2: { label: 'CO₂', unit: 'ppm', kind: 'number', monitoringOnly: true,
+    points: { sensor: 'C02' } }, // spelled with a zero, as supplied
 
   // --- run / enable / mode -------------------------------------------------------
   enable: { label: 'Unit enable', kind: 'boolean', controllable: true, controlTypes: ['hybrid'], // rooftop enable is an output (status only)
@@ -100,8 +115,12 @@ export const ROLE_POINTS = Object.freeze({
 export const EQUIPMENT_UNITS = Object.freeze({
   'HYB-01': { type: 'hybrid', n: 1 }, 'HYB-02': { type: 'hybrid', n: 2 }, 'HYB-03': { type: 'hybrid', n: 3 },
   'HYB-04': { type: 'hybrid', n: 4 }, 'HYB-05': { type: 'hybrid', n: 5 }, 'HYB-06': { type: 'hybrid', n: 6 },
+  'HYB-07': { type: 'hybrid', n: 7 }, 'HYB-08': { type: 'hybrid', n: 8 }, 'HYB-09': { type: 'hybrid', n: 9 },
+  'HYB-10': { type: 'hybrid', n: 10 }, 'HYB-11': { type: 'hybrid', n: 11 },
   'RTU-01': { type: 'rooftop', n: 1 }, 'RTU-02': { type: 'rooftop', n: 2 }, 'RTU-03': { type: 'rooftop', n: 3 },
   'RTU-04': { type: 'rooftop', n: 4 }, 'RTU-05': { type: 'rooftop', n: 5 },
+  'SEN-E1': { type: 'sensor', side: 'East', n: 1 }, 'SEN-E2': { type: 'sensor', side: 'East', n: 2 }, 'SEN-E3': { type: 'sensor', side: 'East', n: 3 },
+  'SEN-W1': { type: 'sensor', side: 'West', n: 1 }, 'SEN-W2': { type: 'sensor', side: 'West', n: 2 }, 'SEN-W3': { type: 'sensor', side: 'West', n: 3 },
 });
 
 /**
@@ -129,12 +148,12 @@ export function slotPath(equipmentId, role) {
   const name = pointName(equipmentId, role);
   if (!name) return null;
   const u = EQUIPMENT_UNITS[equipmentId];
-  return BASE_PATHS[u.type](u.n) + name;
+  return BASE_PATHS[u.type](u.n, u) + name;
 }
 
 export const controllerName = (equipmentId) => {
   const u = EQUIPMENT_UNITS[equipmentId];
-  return u ? CONTROLLER_NAME[u.type](u.n) : '';
+  return u ? CONTROLLER_NAME[u.type](u.n, u) : '';
 };
 
 /** Roles available for an equipment type. */
@@ -149,9 +168,9 @@ export function mappingRows() {
   for (const [id, u] of Object.entries(EQUIPMENT_UNITS)) {
     for (const role of rolesForType(u.type)) {
       rows.push({
-        kind: u.type === 'hybrid' ? 'Hybrid' : 'Rooftop', id, controller: controllerName(id), role,
+        kind: u.type === 'hybrid' ? 'Hybrid' : u.type === 'sensor' ? 'Sensor' : 'Rooftop', id, controller: controllerName(id), role,
         label: ROLE_POINTS[role].label, path: slotPath(id, role), ord: ORD_PREFIX + slotPath(id, role),
-        mapped: true, derived: u.n !== 1, writable: !!ROLE_POINTS[role].controllable && (!ROLE_POINTS[role].controlTypes || ROLE_POINTS[role].controlTypes.includes(u.type)),
+        mapped: true, derived: !SUPPLIED[u.type].includes(u.n), writable: !!ROLE_POINTS[role].controllable && (!ROLE_POINTS[role].controlTypes || ROLE_POINTS[role].controlTypes.includes(u.type)),
       });
     }
   }

@@ -14,10 +14,11 @@ under deadline pressure, and wants short, direct answers and commands to paste. 
 
 A web dashboard (BMS front end) for the **Middelburg pharmaceutical warehouse** (Department of Health office,
 14 Cnr Dr Mandela Drive & Jaspis Street, Middelburg, Mpumalanga), built for **Spartcon Technologies**.
-It monitors and controls **11 HVAC units** on a **Tridium JACE (Niagara N4)** at **192.168.1.140**:
+It monitors and controls **16 HVAC units** and reads **6 room sensors** on a **Tridium JACE (Niagara N4)** at **192.168.1.140**:
 
 - **5 rooftop units** (`RTU-01`…`RTU-05`, BACnet, station folders `RUT_1`…`RUT_5`)
-- **6 hybrid units** (`HYB-01`…`HYB-06`, Modbus, station folders `HYBRID_1`…`HYBRID_6`)
+- **11 hybrid units** (`HYB-01`…`HYB-11`, station folders `HYBRID_1`…`HYBRID_11`: 1–5 on `ModbusAsyncNetwork`, 6–11 on `ModbusTcpNetwork`)
+- **6 room sensors** (`SEN-E1`…`SEN-E3`, `SEN-W1`…`SEN-W3`: `Drivers/TempEast|TempWest/Modbus$20Tcp$20Gateway$20Device1…3`, temperature / humidity / CO₂, read-only)
 
 It is modelled on Siphiwe's earlier **ARC Glasshouse** build (repo `Siphiwe-Khumalo/ARC_Final_Deployment`,
 file `ARC FINAL DEPLOYMENT/api.js`), which talks to the same kind of JACE OSS REST API. ARC is a
@@ -57,6 +58,7 @@ Host PC project path: **`C:\Users\siphi\Lumenlabscreatives\middelburg-bms`**. Al
 | `npm run check` | `scripts/check-jace.mjs`: tests reachability, gets a token from `/ossRestApiServer/token`, lists points (`/query/listPoints`), reads `RUT_1/SPACE_TEMP1` trying path formats, saves the working `OSS_ORD_PREFIX`/`OSS_PATH_ENCODING` into `.env`, deletes legacy keys. Prints **WORKS** on success. Never prints the secret. |
 | `npm run check-write` | `scripts/check-write.mjs`: reads `RUT_1/Unit1Setpoint` and writes the **same value back at priority 16**, printing the JACE's full reply (headers + body) for three variants. Diagnostic only. |
 | `start-bms.cmd` | Windows start file for the host PC: runs `node scripts\serve.mjs` in a loop (restarts 10 s after a stop), output to `data\server.log`. Run at boot by the scheduled task "Middelburg BMS" (`schtasks /Create /TN "Middelburg BMS" /TR "C:\BMS\middelburg-bms\start-bms.cmd" /SC ONSTART /RU SYSTEM /RL HIGHEST`). |
+| `npm run check-points` | Reads every configured point once (read-only) and reports per unit what the JACE has; writes `data/check-points.csv`. |
 | `npm run vendor` | Re-copies vendored libs from `node_modules` (needs `npm install` first). |
 
 **Testing:** there is **no automated test suite** (`npm test` does not exist). Verification so far was:
@@ -116,7 +118,7 @@ middelburg-bms/
                         controls {enabled:true, writePriority:1, confirmTimeoutMs:60000, setpointStep:0.5,
                         setpointRange:[15,35]}, live {windowMs 1h, keepMs 2h}.
       site.js           SITE, ZONES (main-store, dispatch, storage-b, receiving — ILLUSTRATIVE names), EQUIPMENT
-                        (11 units with zoneId — ILLUSTRATIVE allocation), EQUIPMENT_TYPES.
+                        (16 units + 6 sensors with zoneId — ILLUSTRATIVE allocation), EQUIPMENT_TYPES (hybrid, rooftop, sensor), isHvac(), equipmentForZone() (HVAC only), sensorsForZone().
       layout.js         3D/plan model geometry: ZONE_RECTS (% of footprint), DOCKS, UNIT_POS — ILLUSTRATIVE.
       thresholds.js     Per-zone limits (ILLUSTRATIVE): temp action 13/27, alert 15/25; RH alert 60, action 65.
       settings-store.js localStorage 'mbms.settings.v1': mode/demo, scenario, user {name, role}, gateway URL,
@@ -162,7 +164,7 @@ middelburg-bms/
 Legend: ✅ working (tested) · 🟡 partial / unconfirmed · ❌ not built / broken.
 
 ### 5.1 Connection to the JACE — ✅ reads, ✅ writes (confirmed on site)
-- Token, reads of all 166 points, and writes all work on site (writes needed admin rights on the API client).
+- Token, reads of the original 166 points, and writes all work on site (writes needed admin rights on the API client).
 - Gateway routes (`scripts/jace-gateway.mjs` → `handle()`):
   - `GET /gw/health` → token check.
   - `GET /gw/query/readPoint/<slot path>` → `{ value, status, timestamp?, activeLevel? }` (normalises JSON or
@@ -211,7 +213,7 @@ Commissioning (`commissioning.js`), Settings (`settings.js`) — ✅ / 🟡
 - Alarms: derived in the browser from limits and fault points (`derivedConditions()`). 🟡 **Acknowledge works in demo
   only** (`services.alarmAcknowledgement:false`); no central alarm store.
 - Audit Trail: 🟡 **per browser only** (localStorage `mbms.localAudit.v1`) — not central, not tamper-proof.
-- Commissioning: list of all 166 points with live status, to verify derived points (units 2–n) on site.
+- Commissioning: list of all 289 points with live status, to verify derived points (units 2–n) on site.
 - Settings: data source (connected / DEMO + scenario), user name, thresholds (admin only), controls info.
   Setpoint min/max fields were removed (range is global 15–35).
 
@@ -232,7 +234,7 @@ refuses overwriting unread files). It does **not** have the Stored-logs text or 
 government branding on a shared link without the Department's sign-off).
 
 ### 5.9 Stored history / logs (`scripts/history.mjs`) — ✅ against a mock, 🟡 not yet run on the real JACE
-- While `npm run dev` runs, `logOnce()` reads **every point of every unit (166)** every `LOG_INTERVAL_MIN` (default 5,
+- While `npm run dev` runs, `logOnce()` reads **every point of every unit and sensor (289)** every `LOG_INTERVAL_MIN` (default 5,
   aligned to the clock) via `gateway.readPoint()` and appends to:
   - `data/history/daily/YYYY-MM-DD.csv` (SAST day): `Time (SAST),Unit,Unit name,Reading,Value,Units,Status,Point`
   - `data/history/points/<UNIT>/<role>/YYYY-MM.csv`: `ts_ms,value,status`
@@ -307,7 +309,7 @@ government branding on a shared link without the Department's sign-off).
   `Set-Content .env -Encoding ascii -Value @('JACE_URL=https://192.168.1.140','OSS_CLIENT_ID=…','OSS_CLIENT_SECRET=…','JACE_ALLOW_SELF_SIGNED=true','HOST=0.0.0.0','PORT=8080')`
   — or just `npm run setup`.
 
-### Point mapping (`js/config/points.js`) — 166 points
+### Point mapping (`js/config/points.js`) — 289 points
 These are **real site point names from Aina** (unit 1 of each type supplied; units 2–n derived by changing the
 number). **None are ARC placeholders.** Names are kept exactly, including the misspellings `Uni{n}StartCmd` and
 `STATIC_PESSURE_SETPOINT`. Derived points (n ≠ 1) still need verifying on the Commissioning page.
@@ -325,12 +327,26 @@ Rooftop `Drivers/BcpBacnetNetwork/OFFICES/points/RUT_{n}/` (n = 1…5), 8 points
 | enable | `Unit{n}Enable` | output, status only |
 | temperatureSetpoint | `Unit{n}Setpoint` | **written** (15–35) |
 
-Hybrid `Drivers/ModbusAsyncNetwork/HYBRID_{n}/points/` (n = 1…6), 21 points (same names in every unit):
+Hybrid `Drivers/ModbusAsyncNetwork/HYBRID_{n}/points/` (n = 1…5) and `Drivers/ModbusTcpNetwork/HYBRID_{n}/points/` (n = 6…11;
+split set by `HYBRID_TCP_FROM = 6` in `points.js`), 21 points each (same names in every unit). Aina's Nov 2026 document
+"new path for third party integration" says "ModbusTcpNetwork HYBRID_6 TO 11" with HYBRID_7 as the example — **TODO confirm
+HYBRID_6** is on the TCP network (not Async). Supplied verbatim: HYBRID_1 and HYBRID_7; the rest derived:
 `BMS_Enable` (**written**, BMS switch), `BMSControl`, `REMOTE_STATUS`, `COOL_MODE`/`HEAT_MODE`/`FAN_ONLY_MODE`
 (**written**, mode), `SUPPLY_AIR_FAN`, `FAN_SPEED`, `CALCULATED_AIRFLOW`, `STATIC_AIR_PRESSURE`,
 `STATIC_PESSURE_SETPOINT`, `STATIC_PRESSURE_STATUS`, `ROOM_TEMP_AVERAGE`, `ROOM_TEMP_SETPOINT` (read-only),
 alarms `SUPPLY_AIR_FAN_TRIP`, `NO_AIRFLOW`, `STATIC_PRESSURE_FAILURE`, `ROOM_TEMP1_FAILURE`, `ROOM_TEMP2_FAILURE`,
 `ONCOIL_TEMP_FAILURE`, `DIRTY_FILTER`.
+
+Room sensors (same document), type `sensor`, read-only, 3 points each, `n` = 1…3, side East/West:
+`Drivers/TempEast/Modbus$20Tcp$20Gateway$20Device{n}/points/` and `Drivers/TempWest/...`: `SpaceTemp` (temperature),
+`RelativeHumidity` (humidity), `C02` (role `co2`, ppm — spelled with a zero). `$20` is Niagara's escaped space and is
+kept in the slot path; the encoder sends `$` as `%24` (ARC does the same with `CO2$2eC02SCH`). Units page shows them in a
+"Room sensors" group; 3D model draws them as teal posts; they have no run state (`deriveRunState` returns `'sensor'`) and are
+excluded from HVAC counts and run-state history. **TODO**: which zone each sensor is in, and whether zone readings should
+come from these sensors instead of `ZONE_SOURCES` (rooftop units).
+
+`npm run check-points` (`scripts/check-points.mjs`) reads all 289 points once and prints, per unit, found / missing / stale,
+plus `data/check-points.csv`. Run it on site after any point change.
 
 Things in config that ARE placeholders (illustrative, to replace): zone names and unit→zone allocation
 (`site.js`), `ZONE_SOURCES` (`points.js`: main-store→RTU-01, dispatch→RTU-03, storage-b→RTU-05, receiving→RTU-04),
@@ -341,8 +357,8 @@ limits (`thresholds.js`), model geometry (`layout.js`), facility address status 
 ## 8. Open issues, blockers, in-progress
 
 1. 🟡 **History logger not yet run on the real JACE.** After `git pull` + restart, the console should show
-   `History: logging 166 points every 5 min …` then `[history] … logged 166 points` every 5 min. Check
-   `data\history\daily\` and Trends → Stored logs. The logger adds 166 reads per 5 min to the JACE's serial queue on
+   `History: logging 289 points every 5 min …` then `[history] … logged 289 points` every 5 min. Check
+   `data\history\daily\` and Trends → Stored logs. The logger adds 289 reads per 5 min to the JACE's serial queue on
    top of the dashboard's 15 s polling — watch for slow polling / STALE flicker.
 2. 🟡 **Stale points on the JACE**: `RUT_1/SPACE_TEMP1` read `{"value":"0.00","status":"stale"}`. Aina must make
    points poll continuously (proxy points poll only when subscribed; e.g. add history extensions / tuning policy) or fix
@@ -400,7 +416,7 @@ limits (`thresholds.js`), model geometry (`layout.js`), facility address status 
 ## 10. Next steps, in order
 
 1. On the host PC: `cd C:\Users\siphi\Lumenlabscreatives\middelburg-bms` → `git pull` → stop and restart
-   `npm run dev` → Ctrl+Shift+R. Confirm the logo, the new UI, and the `History: logging 166 points…` line.
+   `npm run dev` → Ctrl+Shift+R. Confirm the logo, the new UI, and the `History: logging 289 points…` line.
 2. After 10–15 min: check `data\history\daily\<today>.csv` opens in Excel, and Trends → 24 h shows recorded data and
    Stored logs downloads a CSV. Fix anything that differs from the mock (value formats, `down:` rows, speed).
 3. With Aina: make stale points poll continuously; verify all derived points on the Commissioning page (units 2–5 / 2–6).

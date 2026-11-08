@@ -58,6 +58,7 @@ export default {
             <button type="button" data-type="all" aria-pressed="true">All units</button>
             <button type="button" data-type="hybrid" aria-pressed="false"><span class="type-dot hyb"></span>Hybrid</button>
             <button type="button" data-type="rooftop" aria-pressed="false"><span class="type-dot rtu"></span>Rooftop</button>
+            <button type="button" data-type="sensor" aria-pressed="false"><span class="type-dot sen"></span>Sensors</button>
           </div>
         </div>
         <section class="unit-groups" data-groups aria-label="Unit controls"></section>
@@ -73,12 +74,13 @@ export default {
 
     /* ---- summary strip ------------------------------------------------------- */
     function summary(s) {
-      const units = s.equipment;
+      const units = s.equipment.filter((e) => e.type !== 'sensor');
       const run = (t) => units.filter((e) => (!t || e.type === t) && e.runState === 'running').length;
+      const count = (t) => units.filter((e) => e.type === t).length;
       const open = activeAlarms();
       const crit = open.filter((a) => a.severity === 'critical').length;
       const sensors = [];
-      for (const e of units) for (const role of ['temperature', 'humidity']) if (e.readings[role] && e.readings[role].quality !== QUALITY.NOT_MAPPED) sensors.push(e.readings[role]);
+      for (const e of s.equipment) for (const role of ['temperature', 'humidity']) if (e.readings[role] && e.readings[role].quality !== QUALITY.NOT_MAPPED) sensors.push(e.readings[role]);
       const offline = sensors.filter((r) => r.quality !== QUALITY.LIVE).length;
       const c = s.connection;
       const connTile = s.mode === 'demo' && connectionOk()
@@ -88,7 +90,7 @@ export default {
           : `<div class="tile tile-bad"><span class="label-caps">Comms</span><div class="tile-v">${icon('alarm')}${c.status === 'not-configured' ? 'Not connected' : 'Connection lost'}</div><span class="small">${c.lastOkAt ? `Last good read ${esc(time(c.lastOkAt))}` : esc(c.message)}</span></div>`;
       $('[data-summary]').innerHTML = `
         <div class="tile"><span class="label-caps">Units running</span><div class="tile-v"><span class="mono-v">${run()}</span><span class="of">/ ${units.length}</span></div>
-          <span class="small"><span class="type-dot hyb"></span>Hybrid ${run('hybrid')}/6 · <span class="type-dot rtu"></span>Rooftop ${run('rooftop')}/5</span></div>
+          <span class="small"><span class="type-dot hyb"></span>Hybrid ${run('hybrid')}/${count('hybrid')} · <span class="type-dot rtu"></span>Rooftop ${run('rooftop')}/${count('rooftop')}</span></div>
         <div class="tile ${crit ? 'tile-bad' : open.length ? 'tile-warn' : ''}"><span class="label-caps">Active alarms</span><div class="tile-v"><span class="mono-v">${open.length}</span></div>
           <span class="small">${crit} critical · ${open.length - crit} warning · <a href="#/alarms">Alarm register</a></span></div>
         <div class="tile ${offline ? 'tile-warn' : ''}"><span class="label-caps">Sensors offline</span><div class="tile-v"><span class="mono-v">${offline}</span><span class="of">/ ${sensors.length}</span></div>
@@ -161,13 +163,37 @@ export default {
     }
 
     const STATE_TEXT = { running: 'Running', stopped: 'Stopped', fault: 'Fault', unknown: 'No data' };
+    const dotOf = (type) => (type === 'hybrid' ? 'hyb' : type === 'sensor' ? 'sen' : 'rtu');
+    const bigVal = (r, unit, digits = 1) => (isGood(r) ? `${num(r.value, digits)}<small>${unit}</small>` : `<span class="v-none">—</span>`);
+
+    /** Room sensor: readings only (temperature, humidity, CO2). */
+    function sensorCard(e) {
+      const r = e.readings;
+      const live = Object.values(r).some((x) => isGood(x));
+      const tile = (x, label, unit, digits, cls) => `<div class="rd ${cls}"><span>${label}</span><b>${bigVal(x, unit, digits)}</b>${!isGood(x) ? qualityChip(x?.quality) : ''}</div>`;
+      return `<article class="ucard sensor" data-unit="${e.id}">
+        <header class="ucard-head">
+          <span class="sensor-ico" aria-hidden="true">${icon('environment')}</span>
+          <div class="ucard-title">
+            <button type="button" class="linkish" data-open="${e.id}" title="Details for ${esc(e.name)}"><strong>${esc(e.name)}</strong></button>
+            <span class="ucard-sub"><span class="type-dot sen"></span>${esc(e.id)} · ${esc(e.zoneName || '')}</span>
+          </div>
+          <span class="state-pill ${live ? 'st-running' : 'st-unknown'}"><i></i>${live ? 'Live' : 'No data'}</span>
+        </header>
+        <div class="ucard-readings three">
+          ${tile(r.temperature, 'Temperature', '°C', 1, 'temp')}${tile(r.humidity, 'Humidity', '%RH', 0, 'hum')}${tile(r.co2, 'CO₂', 'ppm', 0, 'co2')}
+        </div>
+      </article>`;
+    }
+
     function unitCard(e) {
+      if (e.type === 'sensor') return sensorCard(e);
       const t = EQUIPMENT_TYPES[e.type];
       const temp = e.readings.temperature;
       const second = e.type === 'rooftop'
         ? { r: e.readings.humidity, label: 'Humidity', digits: 0 }
         : { r: e.readings.fanSpeed, label: 'Fan speed', digits: 0 };
-      const big = (r, unit, digits = 1) => (isGood(r) ? `${num(r.value, digits)}<small>${unit}</small>` : `<span class="v-none">—</span>`);
+      const big = bigVal;
       return `<article class="ucard ${e.type} st-${e.runState}" data-unit="${e.id}">
         <header class="ucard-head">
           ${fanHTML(e, { size: 64 })}
@@ -192,8 +218,8 @@ export default {
         const units = s.equipment.filter((e) => e.type === type);
         const running = units.filter((e) => e.runState === 'running').length;
         return `<section class="ugroup ${type}" aria-labelledby="ug-${type}">
-          <div class="ugroup-head"><span class="type-dot ${type === 'hybrid' ? 'hyb' : 'rtu'}"></span><h2 id="ug-${type}">${esc(t.label)}</h2>
-            <span class="muted"><b class="mono-v">${running}</b> / ${units.length} running</span></div>
+          <div class="ugroup-head"><span class="type-dot ${dotOf(type)}"></span><h2 id="ug-${type}">${esc(t.label)}</h2>
+            <span class="muted">${type === 'sensor' ? `${units.length} sensors · temperature, humidity, CO₂` : `<b class="mono-v">${running}</b> / ${units.length} running`}</span></div>
           <div class="ugrid">${units.map(unitCard).join('')}</div></section>`;
       }).join('');
       const g = $('[data-groups]');
@@ -237,7 +263,7 @@ export default {
           ${bigReadingHTML(z.readings.temperature, { label: 'Temperature', cls: 'temp' })}
           ${bigReadingHTML(z.readings.humidity, { label: 'Humidity', cls: 'hum' })}
           <div class="zlimits small muted"><span>Limits ${esc(rangeText(z.limits.temperature, '°C'))} · ${esc(rangeText(z.limits.humidity, '%RH'))}</span><span>Sensor: <b>${esc(z.sourceUnit)}</b> (${esc(controllerName(z.sourceUnit))})</span></div>`;
-        el.querySelector('[data-zunits]').innerHTML = s.equipment.filter((e) => e.zoneId === z.id).map((e) => {
+        el.querySelector('[data-zunits]').innerHTML = s.equipment.filter((e) => e.zoneId === z.id && e.type !== 'sensor').map((e) => {
           const fanOff = isGood(e.readings.fanStatus) && e.readings.fanStatus.value === false;
           return `<button type="button" class="zunit ${e.type}" data-open="${e.id}"><span class="type-dot ${e.type === 'hybrid' ? 'hyb' : 'rtu'}"></span><b>${esc(e.id)}</b>${runChip(e.runState)}${fanOff ? '<span class="badge-fanoff">FAN OFF</span>' : ''}</button>`;
         }).join('');
@@ -263,8 +289,8 @@ export default {
         <td class="mono small">${esc(slotPath(e.id, role) || '—')}</td></tr>`).join('');
       const d = openDrawer({
         title: `${e.id} · ${e.name}`,
-        subtitle: `${esc(EQUIPMENT_TYPES[e.type].short)} unit · ${esc(e.zoneName || '')} · ${esc(controllerName(e.id))}${last.mode === 'demo' ? ' · SIMULATED DATA' : ''}`,
-        body: `<div class="toolbar">${runChip(e.runState)}${fanHTML(e)}<span class="muted small">Mode: ${esc(MODE_LABEL[e.mode] || e.mode)}</span></div>
+        subtitle: `${esc(EQUIPMENT_TYPES[e.type].short)}${e.type === 'sensor' ? '' : ' unit'} · ${esc(e.zoneName || '')} · ${esc(controllerName(e.id))}${last.mode === 'demo' ? ' · SIMULATED DATA' : ''}`,
+        body: `${e.type === 'sensor' ? '' : `<div class="toolbar">${runChip(e.runState)}${fanHTML(e)}<span class="muted small">Mode: ${esc(MODE_LABEL[e.mode] || e.mode)}</span></div>`}
           <div><div class="toolbar" style="justify-content:space-between"><h3>Space temperature</h3><div class="seg" role="group">${['1h', '24h', '7d'].map((k) => `<button type="button" data-drange="${k}" aria-pressed="${k === '1h'}">${RANGES[k].label}</button>`).join('')}</div></div>
             <div data-unit-trend></div></div>
           <div><h3>Points</h3><div class="table-wrap"><table class="data"><thead><tr><th>Reading</th><th>Value</th><th>Quality</th><th>Point</th></tr></thead><tbody>${rows}</tbody></table></div></div>`,
@@ -274,7 +300,7 @@ export default {
         measure: 'temperature', unit: '°C', yTitle: '°C',
         series: () => [{ unitId: e.id, role: 'temperature', label: `${e.id} space temperature`, color: MEASURE_COLORS.temperature }],
         limits: () => S.zones.find((z) => z.id === e.zoneId)?.limits?.temperature || null,
-        runUnits: () => [e.id], fanOffUnit: () => e.id,
+        runUnits: () => (e.type === 'sensor' ? [] : [e.id]), fanOffUnit: () => (e.type === 'sensor' ? null : e.id),
         markers: () => S.alarms.filter((a) => a.source?.id === e.id).map((a) => ({ ts: a.raisedAt, severity: a.severity })),
       });
       tr.load('1h');
