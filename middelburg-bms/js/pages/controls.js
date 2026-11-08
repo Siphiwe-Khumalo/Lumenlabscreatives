@@ -190,13 +190,15 @@ export default {
     function factsHTML(e) {
       const items = controlDefs(e.type).filter((d) => d.kind === 'status').map((d) => {
         const r = e.readings[d.role];
-        const v = d.derived === 'mode' ? `<b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`
+        const v = d.derived === 'mode' && isGood(r) ? `<b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`
+          : d.derived === 'mode' && e.type === 'hybrid' ? `<b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`
           : !isGood(r) ? `<span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`
           : d.role === 'enable' ? `<b>${r.value ? (e.type === 'hybrid' ? 'On' : 'Enabled') : (e.type === 'hybrid' ? 'Off' : 'Disabled')}</b>`
           : d.role === 'fanStatus' ? `<b>${r.value ? 'Running' : 'Off'}</b>`
           : `<b>${num(r.value, d.role === 'fanSpeed' ? 0 : 1)} ${esc(r.unit || '')}</b>`;
         return `<span class="fact"><span>${esc(d.label)}</span>${v}</span>`;
       });
+      if (e.type === 'rooftop') items.push('<span class="fact fact-note">Heating / cooling changes over automatically on the unit.</span>');
       if (e.type === 'hybrid') items.push('<span class="fact fact-note">Monitoring only: hybrid units are read, not controlled, from this dashboard.</span>');
       return items.length ? `<div class="facts">${items.join('')}</div>` : '';
     }

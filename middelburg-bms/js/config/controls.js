@@ -25,12 +25,8 @@ export const CONTROL_DEFS = Object.freeze({
       actualRole: 'fanStatus', actualLabel: 'Supply fan',
     },
     { id: 'enableStatus', kind: 'status', label: 'Unit enable', role: 'enable', note: 'Output from the unit — status only' },
-    // Heat / Cool: writes Unit{n}Mode. Shown only once APP_CONFIG.controls.rooftopModeWhenTrue says what TRUE means.
-    ((t) => ({
-      id: 'rtuMode', kind: 'toggle', label: 'Mode', commandRole: t ? 'operatingMode' : null, feedbackRole: 'operatingMode',
-      onLabel: t === 'cooling' ? 'Cool' : 'Heat', offLabel: t === 'cooling' ? 'Heat' : 'Cool',
-      todo: 'TODO: confirm with Aina what Unit{n}Mode = true means (heating or cooling), then set APP_CONFIG.controls.rooftopModeWhenTrue',
-    }))(APP_CONFIG.controls.rooftopModeWhenTrue),
+    // Mode: shown only (heating / cooling, decided automatically by the unit). Never written — see points.js operatingMode.
+    { id: 'modeStatus', kind: 'status', label: 'Mode', role: 'operatingMode', derived: 'mode' },
     {
       id: 'tempSetpoint', kind: 'setpoint', label: 'Temperature setpoint', unit: '°C',
       commandRole: 'temperatureSetpoint', feedbackRole: 'temperatureSetpoint', actualRole: 'temperature', actualLabel: 'Space',

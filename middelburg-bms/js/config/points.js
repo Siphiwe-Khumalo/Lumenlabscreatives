@@ -85,8 +85,10 @@ export const ROLE_POINTS = Object.freeze({
   remoteStatus: { label: 'Remote status', kind: 'boolean', points: { hybrid: 'REMOTE_STATUS' } },
   fanStatus: { label: 'Supply air fan', kind: 'boolean',
     points: { rooftop: (n) => `Unit${n}SAF`, hybrid: 'SUPPLY_AIR_FAN' } },
-  operatingMode: { label: 'Mode (heat/cool)', kind: 'boolean', controllable: true, controlTypes: ['rooftop'],
-    // Site: Unit{n}Mode is a writable true/false point. Its meaning is set in APP_CONFIG.controls.rooftopModeWhenTrue.
+  operatingMode: { label: 'Mode (heat/cool)', kind: 'boolean',
+    // Unit{n}Mode: true = heating, false = cooling (APP_CONFIG.controls.rooftopModeWhenTrue). READ-ONLY for the dashboard:
+    // the unit changes over between heating and cooling automatically (Aina, 2026-11-08). A priority-1 write here would
+    // lock the mode and stop the automatic changeover, so the dashboard never writes it.
     points: { rooftop: (n) => `Unit${n}Mode` } },
   coolMode: { label: 'Cool mode', kind: 'boolean', points: { hybrid: 'COOL_MODE' } },
   heatMode: { label: 'Heat mode', kind: 'boolean', points: { hybrid: 'HEAT_MODE' } },

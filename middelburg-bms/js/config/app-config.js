@@ -66,9 +66,7 @@ export const APP_CONFIG = Object.freeze({
     confirmTimeoutMs: 60000,      // no feedback within this time -> NOT CONFIRMED (red)
     setpointStep: 0.5,            // °C slider / step size
     setpointRange: [15, 35],
-    // Rooftop Unit{n}Mode is a writable true/false point (site test 2026-11-08: write accepted, reads "false").
-    // TODO(confirm with Aina): what TRUE means. Set to 'heating' or 'cooling'. Until set, the Heat/Cool buttons
-    // stay hidden (a wrong guess would heat when Cool is pressed).
+    // Rooftop Unit{n}Mode (true/false) is DISPLAYED only; the unit changes over automatically (Aina). What TRUE means:
     rooftopModeWhenTrue: 'heating', // confirmed by Aina 2026-11-08: Unit{n}Mode true = heating, false = cooling      // °C, every unit (site decision). Values outside are rejected.
   },
 

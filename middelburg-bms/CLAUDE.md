@@ -461,3 +461,8 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
    Heat / Cool buttons. **Hybrids are READ-ONLY** (monitoring only): no hybrid role is controllable, hybrid cards show
    BMS / mode / fan / setpoint as facts, and the gateway refuses any write outside the allowlist (`WRITABLE` in
    `jace-gateway.mjs`: 15 points = RTU start/stop, setpoint, mode). `npm run commission` does a read-only check on hybrids.
+9. **Aina, later on 2026-11-08: rooftop heating/cooling changes over AUTOMATICALLY.** `Unit{n}Mode` is now display-only
+   (true = heating). The Heat/Cool buttons were removed: a priority-1 write would lock the mode and stop the changeover.
+   Writable points are now 10: rooftop `Uni{n}StartCmd` and `Unit{n}Setpoint`. Earlier tests may have written
+   `Unit{n}Mode` at priority 1 (RTU-01 check-write, possibly RTU-02/03 via commission/dashboard): Aina must release
+   priority 1 on those points in Workbench, or the changeover stays locked.
