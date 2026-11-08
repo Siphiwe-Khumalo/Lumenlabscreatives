@@ -823,3 +823,13 @@ body.wall .content { max-width: none; zoom: 1.15; }
   .hero-text { padding: 20px; } .hero .hero-title { font-size: 21px; }
   .unit-photo { width: 76px; height: 56px; }
 }
+/* Short screens (wall touchscreens ~600–720 px high): compact banner so the unit controls are visible sooner. */
+@media (max-height: 760px) and (min-width: 721px) {
+  .hero { min-height: 0; }
+  .hero-text { padding: 14px 22px; gap: 4px; }
+  .hero .hero-title { font-size: 20px; }
+  .hero p, .hero-kicker { display: none; }
+  .hero-facts { margin-top: 4px; }
+  .tile { padding: 10px 14px; } .tile-v { font-size: 22px; } .tile .small { display: none; }
+}
+@media (max-height: 760px) and (min-width: 900px) { .summary-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
