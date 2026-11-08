@@ -69,7 +69,7 @@ export const APP_CONFIG = Object.freeze({
     // Rooftop Unit{n}Mode is a writable true/false point (site test 2026-11-08: write accepted, reads "false").
     // TODO(confirm with Aina): what TRUE means. Set to 'heating' or 'cooling'. Until set, the Heat/Cool buttons
     // stay hidden (a wrong guess would heat when Cool is pressed).
-    rooftopModeWhenTrue: null,      // °C, every unit (site decision). Values outside are rejected.
+    rooftopModeWhenTrue: 'heating', // confirmed by Aina 2026-11-08: Unit{n}Mode true = heating, false = cooling      // °C, every unit (site decision). Values outside are rejected.
   },
 
   /** Browser-recorded history used for the 1 h trend (with quality per sample). */

@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { ossConfig, fetchToken, pointSuffix, pointPath } from './oss-auth.mjs';
-import { EQUIPMENT_UNITS, slotPath, controllerName } from '../js/config/points.js';
+import { EQUIPMENT_UNITS, slotPath, controllerName, rolesForType } from '../js/config/points.js';
 import { APP_CONFIG } from '../js/config/app-config.js';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -91,6 +91,21 @@ async function testUnit(id) {
   row.feedback = t.ok && t.live ? 'COMMUNICATION VERIFIED' : 'FAILED';
   row.notes.push(`temperature ${t.ok ? `${t.value} (${t.status})` : t.error}`);
   console.log(`   Temperature: ${t.ok ? `${t.value} °C, status ${t.status}` : `not readable (${t.error})`}`);
+  if (u.type === 'hybrid') {
+    // Hybrids are READ-ONLY (Aina, 2026-11-08): read every point, send nothing.
+    const roles = rolesForType('hybrid');
+    let ok = 0; const bad = [];
+    const got = {};
+    for (const role of roles) { const r = await read(id, role); got[role] = r; if (r.ok && r.live) ok++; else bad.push(`${slotPath(id, role).split('/').pop()} (${r.ok ? r.status : r.error})`); }
+    const mode = got.coolMode?.value ? 'cooling' : got.heatMode?.value ? 'heating' : got.fanOnlyMode?.value ? 'fan only' : 'none';
+    console.log(`   Read-only: ${ok}/${roles.length} points live. BMS ${got.enable?.value}, mode ${mode}, supply fan ${got.fanStatus?.value}, setpoint ${got.temperatureSetpoint?.value}`);
+    if (bad.length) console.log(`   Not live: ${bad.join(', ')}`);
+    if (t.ok && t.value === 0 && got.temperatureSetpoint?.value === 0) { console.log('   WARNING: temperature AND setpoint read 0 — the Modbus link to this unit is probably not delivering data.'); row.feedback = 'FAILED'; row.notes.push('temperature and setpoint both 0: Modbus data suspect'); }
+    row.onoff = row.heating = row.cooling = row.setpoint = 'NOT SUPPORTED';
+    row.notes.push(`read-only by design (monitoring only); ${ok}/${roles.length} points live; reports BMS ${got.enable?.value}, mode ${mode}, fan ${got.fanStatus?.value}`);
+    if (ok < roles.length) row.feedback = 'FAILED';
+    return row;
+  }
   if (await ask(`   Authorised to test ${id} now (it will switch mode/state and then be restored)? [y/N] `) !== 'y') {
     row.notes.push('skipped: not authorised'); console.log('   Skipped.'); return row;
   }

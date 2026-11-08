@@ -103,8 +103,8 @@ dashboard open (`scripts/history.mjs`, no database server or install needed):
 | Rooftop | Start / stop | `UninStartCmd` | read-back of `UninStartCmd` — **TODO** | `UnitnSAF` (supply fan) |
 | Rooftop | Unit enable | — (output, status only) | — | `UnitnEnable` |
 | Rooftop | Temperature setpoint (slider) | `UnitnSetpoint` | read-back of `UnitnSetpoint` | space temperature |
-| Hybrid | BMS switch | `BMS_Enable` — **TODO vs BMSControl** | read-back — **TODO** | `SUPPLY_AIR_FAN` |
-| Hybrid | Mode Cool / Heat / Fan only | `COOL_MODE`, `HEAT_MODE`, `FAN_ONLY_MODE` (chosen ON, others OFF) | read-back of all three | `SUPPLY_AIR_FAN` |
+| Rooftop | Heat / Cool | `UnitnMode` (true = heating, false = cooling — confirmed by Aina) | read-back of `UnitnMode` | mode shown on the card |
+| Hybrid | — | **read-only: monitoring only** (Aina); the gateway refuses any hybrid write | — | BMS, mode, fan, setpoint shown |
 | Hybrid | Temperature setpoint, fan speed | read-only | — | — |
 | Both | Auto / manual, schedule | **NOT MAPPED** (no point supplied) | — | — |
 | Both | Humidity setpoint | not shown (no unit supplies one) | — | — |

@@ -62,7 +62,7 @@ const SUPPLIED = { rooftop: [1], hybrid: [1, 7], sensor: [1] };
  *
  * Controls (as specified by the project team):
  *   Rooftop: Unit enable (toggle), Start command (on/off), Setpoint (slider)
- *   Hybrid:  BMS switch (toggle) and Cool / Heat / Fan-only mode. Everything else is read-only.
+ *   Hybrid:  READ-ONLY (Aina, 2026-11-08): the dashboard only reads hybrid units, it never commands them.
  */
 export const ROLE_POINTS = Object.freeze({
   // --- temperatures / humidity --------------------------------------------------
@@ -77,7 +77,7 @@ export const ROLE_POINTS = Object.freeze({
     points: { sensor: 'C02' } }, // spelled with a zero, as supplied
 
   // --- run / enable / mode -------------------------------------------------------
-  enable: { label: 'Unit enable', kind: 'boolean', controllable: true, controlTypes: ['hybrid'], // rooftop enable is an output (status only)
+  enable: { label: 'Unit enable', kind: 'boolean', // read-only everywhere: rooftop enable is an output; hybrids are read-only (Aina, 2026-11-08)
     // Rooftop: "Unit enable" toggle. Hybrid: "BMS switch" toggle (BMS_Enable assumed; BMSControl is the alternative).
     points: { rooftop: (n) => `Unit${n}Enable`, hybrid: 'BMS_Enable' } },
   startCommand: { label: 'Start command', kind: 'boolean', controllable: true, points: { rooftop: (n) => `Uni${n}StartCmd` } },
@@ -88,9 +88,9 @@ export const ROLE_POINTS = Object.freeze({
   operatingMode: { label: 'Mode (heat/cool)', kind: 'boolean', controllable: true, controlTypes: ['rooftop'],
     // Site: Unit{n}Mode is a writable true/false point. Its meaning is set in APP_CONFIG.controls.rooftopModeWhenTrue.
     points: { rooftop: (n) => `Unit${n}Mode` } },
-  coolMode: { label: 'Cool mode', kind: 'boolean', controllable: true, points: { hybrid: 'COOL_MODE' } },
-  heatMode: { label: 'Heat mode', kind: 'boolean', controllable: true, points: { hybrid: 'HEAT_MODE' } },
-  fanOnlyMode: { label: 'Fan-only mode', kind: 'boolean', controllable: true, points: { hybrid: 'FAN_ONLY_MODE' } },
+  coolMode: { label: 'Cool mode', kind: 'boolean', points: { hybrid: 'COOL_MODE' } },
+  heatMode: { label: 'Heat mode', kind: 'boolean', points: { hybrid: 'HEAT_MODE' } },
+  fanOnlyMode: { label: 'Fan-only mode', kind: 'boolean', points: { hybrid: 'FAN_ONLY_MODE' } },
 
   // --- air side (hybrid) ---------------------------------------------------------
   fanSpeed: { label: 'Fan speed', unit: '%', unitConfirmed: false, kind: 'number', points: { hybrid: 'FAN_SPEED' } },

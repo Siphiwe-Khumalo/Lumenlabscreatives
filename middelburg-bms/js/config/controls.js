@@ -38,27 +38,12 @@ export const CONTROL_DEFS = Object.freeze({
     { id: 'autoManual', kind: 'toggle', label: 'Auto / manual', commandRole: null, todo: 'TODO: no Auto/Manual point supplied for rooftop units' },
     { id: 'schedule', kind: 'toggle', label: 'Schedule', commandRole: null, todo: 'TODO: no schedule point supplied' },
   ],
+  // Hybrids are READ-ONLY (Aina, 2026-11-08): the dashboard reads them and never sends commands.
   hybrid: [
-    {
-      id: 'bms', kind: 'toggle', label: 'BMS switch', onLabel: 'On', offLabel: 'Off',
-      // TODO(confirm): BMS_Enable is assumed to be the BMS toggle; BMSControl is the alternative.
-      commandRole: 'enable', feedbackRole: 'enable', feedbackTodo: true,
-      actualRole: 'fanStatus', actualLabel: 'Supply fan',
-    },
-    {
-      id: 'mode', kind: 'mode', label: 'Mode',
-      // Choosing a mode writes that flag ON and the other two OFF (agreed behaviour; confirm on site).
-      options: [
-        { value: 'cooling', role: 'coolMode', label: 'Cool' },
-        { value: 'heating', role: 'heatMode', label: 'Heat' },
-        { value: 'fan only', role: 'fanOnlyMode', label: 'Fan only' },
-      ],
-      actualRole: 'fanStatus', actualLabel: 'Supply fan',
-    },
-    { id: 'tempSetpoint', kind: 'status', label: 'Temperature setpoint', role: 'temperatureSetpoint', note: 'Read-only on hybrid units' },
-    // Fan speed is shown in the card's readings (read-only).
-    { id: 'autoManual', kind: 'toggle', label: 'Auto / manual', commandRole: null, todo: 'TODO: confirm whether BMSControl is the Auto/Manual point' },
-    { id: 'schedule', kind: 'toggle', label: 'Schedule', commandRole: null, todo: 'TODO: no schedule point supplied' },
+    { id: 'bmsStatus', kind: 'status', label: 'BMS', role: 'enable' },
+    { id: 'modeStatus', kind: 'status', label: 'Mode', role: 'coolMode', derived: 'mode' },
+    { id: 'fanStatus', kind: 'status', label: 'Supply fan', role: 'fanStatus' },
+    { id: 'tempSetpoint', kind: 'status', label: 'Setpoint', role: 'temperatureSetpoint' },
   ],
 });
 // Humidity setpoint: no unit supplies one, so it is not shown.

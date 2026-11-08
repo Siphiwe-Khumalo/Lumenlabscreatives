@@ -180,11 +180,14 @@ export default {
     function factsHTML(e) {
       const items = controlDefs(e.type).filter((d) => d.kind === 'status').map((d) => {
         const r = e.readings[d.role];
-        const v = !isGood(r) ? `<span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`
-          : d.role === 'enable' ? `<b>${r.value ? 'Enabled' : 'Disabled'}</b>` : `<b>${num(r.value, d.role === 'fanSpeed' ? 0 : 1)} ${esc(r.unit || '')}</b>`;
+        const v = d.derived === 'mode' ? `<b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`
+          : !isGood(r) ? `<span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`
+          : d.role === 'enable' ? `<b>${r.value ? (e.type === 'hybrid' ? 'On' : 'Enabled') : (e.type === 'hybrid' ? 'Off' : 'Disabled')}</b>`
+          : d.role === 'fanStatus' ? `<b>${r.value ? 'Running' : 'Off'}</b>`
+          : `<b>${num(r.value, d.role === 'fanSpeed' ? 0 : 1)} ${esc(r.unit || '')}</b>`;
         return `<span class="fact"><span>${esc(d.label)}</span>${v}</span>`;
       });
-      if (e.type === 'rooftop') items.push('<span class="fact fact-note">Heating or cooling is chosen by the unit itself: it heats when the room is below the setpoint and cools when it is above.</span>');
+      if (e.type === 'hybrid') items.push('<span class="fact fact-note">Monitoring only: hybrid units are read, not controlled, from this dashboard.</span>');
       return items.length ? `<div class="facts">${items.join('')}</div>` : '';
     }
 
@@ -234,7 +237,7 @@ export default {
           <div class="rd ${e.type === 'rooftop' ? 'hum' : ''}"><span>${second.label}</span><b>${big(second.r, second.r?.unit || '', second.digits)}</b>${!isGood(second.r) ? qualityChip(second.r?.quality) : ''}</div>
         </div>
         ${e.faults.length ? `<div class="faults">${e.faults.map((f) => `<span class="status-chip st-${f.severity === 'critical' ? 'critical' : 'warning'}">${icon('alarm')}${esc(f.label)}</span>`).join('')}</div>` : ''}
-        <div class="ctls">${controlDefs(e.type).filter((d) => d.kind !== 'status' && !isUnmapped(e, d)).map((d) => controlHTML(e, d)).join('')}</div>
+        ${(() => { const c = controlDefs(e.type).filter((d) => d.kind !== 'status' && !isUnmapped(e, d)); return c.length ? `<div class="ctls">${c.map((d) => controlHTML(e, d)).join('')}</div>` : ''; })()}
         ${factsHTML(e)}
       </article>`;
     }

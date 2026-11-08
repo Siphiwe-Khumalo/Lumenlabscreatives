@@ -11,6 +11,16 @@
 import http from 'node:http';
 import https from 'node:https';
 import { ossConfig, fetchToken, pointSuffix, pointPath, WRITE_STYLES, writeRequest } from './oss-auth.mjs';
+import { EQUIPMENT_UNITS, ROLE_POINTS, rolesForType, slotPath } from '../js/config/points.js';
+
+/** The only points this dashboard may write (controllable roles for that unit type). Everything else is refused here. */
+const WRITABLE = new Set();
+for (const [id, u] of Object.entries(EQUIPMENT_UNITS)) {
+  for (const role of rolesForType(u.type)) {
+    const d = ROLE_POINTS[role];
+    if (d.controllable && (!d.controlTypes || d.controlTypes.includes(u.type))) WRITABLE.add(slotPath(id, role));
+  }
+}
 
 export function createGateway(env) {
   const cfg = {
@@ -188,6 +198,11 @@ export function createGateway(env) {
       }
       if (sub.startsWith('/query/writePoint/') && req.method === 'PUT') {
         const slot = decodeURIComponent(sub.slice('/query/writePoint/'.length));
+        if (!WRITABLE.has(slot)) {
+          console.log(`[gateway] write REFUSED (read-only for this dashboard): ${slot}`);
+          send(res, 403, { status: 'error', message: 'This point is read-only for the dashboard (hybrid units and status points are never commanded)' });
+          return true;
+        }
         const value = url.searchParams.get('value');
         const priority = url.searchParams.get('priority');
         if (value == null || priority == null) { send(res, 400, { status: 'error', message: 'value and priority are required' }); return true; }

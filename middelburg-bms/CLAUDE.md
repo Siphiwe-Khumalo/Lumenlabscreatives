@@ -457,3 +457,7 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
    'cooling' (Aina to confirm). HYB-09 reads 0.0 °C / setpoint 0.0 / fan 0 with status ok → Modbus TCP link suspect.
 7. **False "overridden" warning removed** (our own priority-1 writes show status overridden); command refusals now show
    the JACE's reason; partial mode changes are rolled back automatically.
+8. **Aina, 2026-11-08: rooftop `Unit{n}Mode` true = HEATING** (`rooftopModeWhenTrue: 'heating'`) → rooftop cards have
+   Heat / Cool buttons. **Hybrids are READ-ONLY** (monitoring only): no hybrid role is controllable, hybrid cards show
+   BMS / mode / fan / setpoint as facts, and the gateway refuses any write outside the allowlist (`WRITABLE` in
+   `jace-gateway.mjs`: 15 points = RTU start/stop, setpoint, mode). `npm run commission` does a read-only check on hybrids.
