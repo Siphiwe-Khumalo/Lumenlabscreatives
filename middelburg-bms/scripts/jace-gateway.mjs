@@ -31,7 +31,8 @@ export function createGateway(env) {
     user: env.JACE_USER || '',
     password: env.JACE_PASSWORD || '',
     writeMethod: (env.OSS_WRITE_METHOD || 'PUT').toUpperCase(),
-    timeoutMs: Number(env.OSS_TIMEOUT_MS || 8000),
+    timeoutMs: Number(env.OSS_TIMEOUT_MS || 8000),       // writes / token
+    readTimeoutMs: Number(env.OSS_READ_TIMEOUT_MS || 4000), // point reads: fail fast so commands are not stuck behind them
     // JACEs usually have a self-signed certificate. Only for the JACE address, only on the site LAN.
     allowSelfSigned: /^(1|true|yes)$/i.test(env.JACE_ALLOW_SELF_SIGNED || ''),
   };
@@ -40,17 +41,17 @@ export function createGateway(env) {
   const missing = ['JACE_URL', 'OSS_CLIENT_ID', 'OSS_CLIENT_SECRET'].filter((k) => !env[k]);
 
   /* ---- HTTP to the JACE (no dependencies) ---- */
-  function request(url, { method = 'GET', headers = {}, body } = {}) {
+  function request(url, { method = 'GET', headers = {}, body, timeoutMs = cfg.timeoutMs } = {}) {
     return new Promise((resolve, reject) => {
       const u = new URL(url);
       const lib = u.protocol === 'https:' ? https : http;
       if (method !== 'GET') headers = { ...headers, 'Content-Length': body ? Buffer.byteLength(body) : 0 }; // no chunked uploads
-      const req = lib.request(u, { method, headers, rejectUnauthorized: !cfg.allowSelfSigned, timeout: cfg.timeoutMs }, (res) => {
+      const req = lib.request(u, { method, headers, rejectUnauthorized: !cfg.allowSelfSigned, timeout: timeoutMs }, (res) => {
         const chunks = [];
         res.on('data', (c) => chunks.push(c));
         res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, text: Buffer.concat(chunks).toString('utf8') }));
       });
-      req.on('timeout', () => req.destroy(new Error(`JACE did not answer within ${cfg.timeoutMs} ms`)));
+      req.on('timeout', () => req.destroy(new Error(`JACE did not answer within ${timeoutMs} ms`)));
       req.on('error', reject);
       if (body) req.write(body);
       req.end();
@@ -87,12 +88,30 @@ export function createGateway(env) {
     const n = normalise(r.text, slot);
     return n ? { code: 200, body: n } : { code: 502, body: { status: 'error', message: 'Unrecognised reply from the JACE' } };
   }
+  // Unit breaker: when 3 reads in a row from the same unit folder get NO ANSWER (timeout / connection error), skip that
+  // folder for 30 s instead of waiting for a timeout on every one of its points. One read is retried after 30 s.
+  const DOWN_MS = 30000;
+  const folders = new Map(); // folder -> { fails, downUntil, message }
+  const folderOf = (slot) => slot.replace(/\/[^/]*$/, '');
   function cachedRead(slot) {
+    const f = folders.get(folderOf(slot));
+    if (f && f.downUntil > Date.now()) return Promise.resolve({ code: 502, body: { status: 'error', message: `Unit not answering (${f.message}); retrying in ${Math.ceil((f.downUntil - Date.now()) / 1000)} s` } });
     const hit = cache.get(slot);
     if (hit && Date.now() - hit.at < cacheMs) return Promise.resolve(hit.out);
     if (reading.has(slot)) return reading.get(slot);
     const p = fetchPoint(slot)
-      .then((out) => { cache.set(slot, { at: Date.now(), out }); return out; })
+      .catch((e) => ({ code: 502, noAnswer: true, body: { status: 'error', message: e.message } }))
+      .then((out) => {
+        const key = folderOf(slot), st = folders.get(key) || { fails: 0, downUntil: 0, message: '' };
+        if (out.code === 200) st.fails = 0;
+        else if (out.noAnswer && ++st.fails >= 3) {
+          st.downUntil = Date.now() + DOWN_MS; st.message = out.body.message; st.fails = 0;
+          console.log(`[gateway] ${key}: not answering (${out.body.message}) — skipping for ${DOWN_MS / 1000} s`);
+        }
+        folders.set(key, st);
+        cache.set(slot, { at: Date.now(), out });
+        return out;
+      })
       .finally(() => reading.delete(slot));
     reading.set(slot, p);
     return p;
@@ -129,7 +148,7 @@ export function createGateway(env) {
   async function jace(method, path, attempt = 0, extra = {}) {
     const used = useUser ? null : await getToken();
     const auth = useUser ? 'Basic ' + Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64') : `Bearer ${used}`;
-    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json', ...(extra.headers || {}) }, body: extra.body });
+    const res = await request(cfg.jaceUrl + path, { method, headers: { Authorization: auth, Accept: 'application/json', ...(extra.headers || {}) }, body: extra.body, timeoutMs: method === 'GET' ? cfg.readTimeoutMs : cfg.timeoutMs });
     if (res.status === 401 && attempt === 0 && !useUser) {
       if (token === used) await getToken(true);
       return jace(method, path, 1, extra);

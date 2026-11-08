@@ -116,7 +116,7 @@ middelburg-bms/
       controls.js       CONTROL_DEFS per unit type (see §5.2).
       app-config.js     APP_CONFIG: demo:false, gatewayUrl '/gw', pollIntervalMs {demo 5000, connected 15000},
                         stale.factor 2, plausibleRanges, services {history:true, others false},
-                        controls {enabled:true, writePriority:8, confirmTimeoutMs:60000, setpointStep:0.5,
+                        controls {enabled:true, writePriority:1, confirmTimeoutMs:60000, setpointStep:0.5,
                         setpointRange:[15,35]}, live {windowMs 1h, keepMs 2h}.
       site.js           SITE, ZONES (main-store, dispatch, storage-b, receiving — ILLUSTRATIVE names), EQUIPMENT
                         (16 units + 6 sensors with zoneId — ILLUSTRATIVE allocation), EQUIPMENT_TYPES (hybrid, rooftop, sensor), isHvac(), equipmentForZone() (HVAC only), sensorsForZone().
@@ -272,7 +272,7 @@ government branding on a shared link without the Department's sign-off).
 4. **Write format = ARC's**: `PUT /ossRestApiServer/query/writePoint/<segment-encoded slot>?value=<v>&priority=<p>`,
    `Authorization: Bearer`, `Accept: application/json`, `Content-Length: 0` (no chunked bodies). Values: `true`/`false`,
    numbers like `21.5`. Default `OSS_WRITE_STYLE=put-query`; the other styles in `WRITE_STYLES` are diagnostic only.
-5. **Write priority 8** since 2026-11-08 (was 1, same as ARC) — see §11.10. Nothing at 2–16
+5. **Write priority 1** (tried 8 on 2026-11-08, reverted to 1 the same day by Siphiwe) — see §11.10/12. Nothing at 2–16
    (schedules, logic, Aina's Workbench overrides) can override a dashboard command. Tradeoff accepted; revert by
    changing that one constant (16 was tried first).
 6. **No optimistic UI**: a command is PENDING until the feedback point confirms it.
@@ -472,3 +472,7 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
 11. **Fire dampers** (Aina): `Drivers/BcpBacnetNetwork/FIRE$20DAMPERS/points/HYBRID_{n}_FireDamper`, n = 6…11 only.
     Role `fireDamper` (boolean, read-only, no alarm; meaning of true/false TODO). Uses `ROLE_POINTS[role].paths` (a point
     outside the unit's folder) and `rolesForUnit(id)` (roles that exist on that unit). Total points now 295.
+12. **Priority back to 1** (Siphiwe, 2026-11-08, after 8 left commands "Not confirmed" behind leftover priority-1 values).
+    Gateway: point reads time out after `OSS_READ_TIMEOUT_MS` (4 s); a unit folder that gives no answer 3 times is skipped
+    for 30 s (log: "not answering"), so a dead Modbus network no longer slows commands. All 11 hybrids read OFFLINE on
+    site at that time: check Modbus networks / `npm run check-points`.
