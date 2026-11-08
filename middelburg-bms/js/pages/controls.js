@@ -147,9 +147,11 @@ export default {
         const room = e.readings.temperature;
         let gap = '';
         if (isGood(sp) && isGood(room)) {
+          // Changeover per Aina: cooling above the setpoint, heating below setpoint − 1 °C, idle in between.
           const d = room.value - sp.value;
-          gap = Math.abs(d) < 0.5 ? ' · room is at the target'
-            : ` · room ${num(Math.abs(d))} °C ${d > 0 ? 'above' : 'below'} target, unit should be ${d > 0 ? 'cooling' : 'heating'} (takes time)`;
+          gap = d > 0.2 ? ` · room ${num(d)} °C above target, unit should be cooling (takes time)`
+            : d < -1 ? ` · room ${num(-d)} °C below target, unit should be heating (heats below ${num(sp.value - 1)} °C)`
+            : ' · room at target (no heating or cooling needed)';
         }
         return `Target (setpoint) ${isGood(sp) ? `<b>${num(sp.value)} °C</b>` : runText(sp, def)}${m}${gap}`;
       }
