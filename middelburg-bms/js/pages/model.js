@@ -5,7 +5,7 @@ import { EQUIPMENT_TYPES } from '../config/site.js';
 import { LAYOUT_LABEL, ZONE_RECTS, DOCKS, UNIT_POS } from '../config/layout.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, timeSec } from '../util/format.js';
-import { openDrawer, readingHTML, DEMO_TAG } from '../ui/components.js';
+import { openDrawer, readingHTML, unitPhotoHTML, DEMO_TAG } from '../ui/components.js';
 import { isGood, STATUS_LABEL } from '../data/quality.js';
 import { readJSON, writeJSON } from '../util/storage.js';
 
@@ -324,7 +324,7 @@ export default {
       openDrawer({
         title: `${e.name} · ${e.id}`,
         subtitle: `${esc(EQUIPMENT_TYPES[e.type].short)}${e.type === 'sensor' ? ' · in' : ' unit · serves'} ${esc(e.zoneName || '')}${last.mode === 'demo' ? ' · Demonstration data' : ''}`,
-        body: `<dl class="kv">
+        body: `${e.type === 'sensor' ? '' : unitPhotoHTML(e, { size: 'lg' })}<dl class="kv">
             ${e.type === 'sensor' ? '' : `<dt>State</dt><dd>${esc(UNIT_STATE_LABEL[e.runState])}</dd>`}
             <dt>Space temperature</dt><dd>${readingHTML(r.temperature)}</dd>
             ${e.type === 'sensor' ? '' : `<dt>Setpoint</dt><dd>${readingHTML(r.temperatureSetpoint)}</dd>`}

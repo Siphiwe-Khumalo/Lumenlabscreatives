@@ -6,7 +6,7 @@ import { ROLE_POINTS, controllerName, slotPath } from '../config/points.js';
 import { APP_CONFIG } from '../config/app-config.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, dateTime, time } from '../util/format.js';
-import { statusChip, bigReadingHTML, readingHTML, qualityChip, lastGoodHTML, ageHTML, runChip, fanHTML, openDrawer, confirmDialog, toast } from '../ui/components.js';
+import { heroHTML, unitPhotoHTML, statusChip, bigReadingHTML, readingHTML, qualityChip, lastGoodHTML, ageHTML, runChip, fanHTML, openDrawer, confirmDialog, toast } from '../ui/components.js';
 import { isGood, QUALITY, QUALITY_LABEL, rangeText } from '../data/quality.js';
 import {
   state as S, controlDefs, controlAvailability, commandedValue, getCommand, sendCommand, setpointLimits,
@@ -41,6 +41,7 @@ export default {
 
     let tab = 'units';
     root.innerHTML = `
+      <div data-hero></div>
       <div class="page-head">
         <div class="titles"><h1>Units</h1><p>Start, stop and set each unit. Changes are confirmed by the unit itself.</p></div>
         <div class="toolbar">
@@ -71,6 +72,27 @@ export default {
         <div class="zone-live-grid" data-zones></div>
       </section>`;
     const $ = (s) => root.querySelector(s);
+
+    /* ---- facility hero ---- */
+    function hero(s) {
+      const hvac = s.equipment.filter((e) => e.type !== 'sensor');
+      const running = hvac.filter((e) => e.runState === 'running').length;
+      const open = activeAlarms();
+      const sensors = s.equipment.filter((e) => e.type === 'sensor');
+      const sensorsLive = sensors.filter((e) => Object.values(e.readings).some((r) => isGood(r))).length;
+      const comms = s.mode === 'demo' ? { label: 'Simulated data', value: 'DEMO', tone: 'demo' }
+        : connectionOk() ? { label: 'JACE connected', value: '●', tone: 'ok' } : { label: 'JACE connection lost', value: '!', tone: 'bad' };
+      $('[data-hero]').innerHTML = heroHTML({
+        title: 'Middelburg Pharmaceutical Facility',
+        subtitle: `${hvac.length} HVAC units and ${sensors.length} room sensors, monitored and controlled through the site JACE.`,
+        facts: [
+          comms,
+          { label: 'units running', value: `${running}/${hvac.length}`, tone: running ? 'ok' : 'warn' },
+          { label: 'active alarms', value: String(open.length), tone: open.some((a) => a.severity === 'critical') ? 'bad' : open.length ? 'warn' : 'ok' },
+          { label: 'sensors live', value: `${sensorsLive}/${sensors.length}`, tone: sensorsLive === sensors.length ? 'ok' : 'warn' },
+        ],
+      });
+    }
 
     /* ---- summary strip ------------------------------------------------------- */
     function summary(s) {
@@ -196,7 +218,7 @@ export default {
       const big = bigVal;
       return `<article class="ucard ${e.type} st-${e.runState}" data-unit="${e.id}">
         <header class="ucard-head">
-          ${fanHTML(e, { size: 64 })}
+          ${unitPhotoHTML(e)}
           <div class="ucard-title">
             <button type="button" class="linkish" data-open="${e.id}" title="Details for ${esc(e.name)}"><strong>${esc(e.name)}</strong></button>
             <span class="ucard-sub"><span class="type-dot ${e.type === 'hybrid' ? 'hyb' : 'rtu'}"></span>${esc(e.id)} · ${esc(e.zoneName || '')}</span>
@@ -274,6 +296,7 @@ export default {
       last = s;
       if (s.loading) return;
       summary(s);
+      hero(s);
       $('[data-role-note]').innerHTML = canOperate() ? '' : `<div class="notice">${icon('lock')}<span><strong>Viewer role.</strong> Controls are read-only. Switch to Operator in the top bar to operate units.</span></div>`;
       groups(s);
       if (tab === 'readings') { zones(s); trends.forEach((t) => t.tick()); }
@@ -290,7 +313,7 @@ export default {
       const d = openDrawer({
         title: `${e.id} · ${e.name}`,
         subtitle: `${esc(EQUIPMENT_TYPES[e.type].short)}${e.type === 'sensor' ? '' : ' unit'} · ${esc(e.zoneName || '')} · ${esc(controllerName(e.id))}${last.mode === 'demo' ? ' · SIMULATED DATA' : ''}`,
-        body: `${e.type === 'sensor' ? '' : `<div class="toolbar">${runChip(e.runState)}${fanHTML(e)}<span class="muted small">Mode: ${esc(MODE_LABEL[e.mode] || e.mode)}</span></div>`}
+        body: `${e.type === 'sensor' ? '' : `${unitPhotoHTML(e, { size: 'lg' })}<div class="toolbar">${runChip(e.runState)}<span class="muted small">Mode: ${esc(MODE_LABEL[e.mode] || e.mode)}</span></div>`}
           <div><div class="toolbar" style="justify-content:space-between"><h3>Space temperature</h3><div class="seg" role="group">${['1h', '24h', '7d'].map((k) => `<button type="button" data-drange="${k}" aria-pressed="${k === '1h'}">${RANGES[k].label}</button>`).join('')}</div></div>
             <div data-unit-trend></div></div>
           <div><h3>Points</h3><div class="table-wrap"><table class="data"><thead><tr><th>Reading</th><th>Value</th><th>Quality</th><th>Point</th></tr></thead><tbody>${rows}</tbody></table></div></div>`,

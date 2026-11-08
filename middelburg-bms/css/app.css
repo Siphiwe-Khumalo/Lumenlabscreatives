@@ -794,3 +794,31 @@ body.wall .content { max-width: none; zoom: 1.15; }
 .logs-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 
 .print-logo { display: block; width: 220px; height: auto; margin-bottom: 8px; }
+
+/* ===== Unit photo + facility hero ======================================================= */
+.unit-photo { position: relative; flex: none; display: inline-block; width: 96px; height: 70px; border-radius: 12px; background: linear-gradient(180deg, #FFFFFF, #EEF2F7); border: 1px solid var(--border); }
+.unit-photo img { width: 100%; height: 100%; object-fit: contain; padding: 4px 6px; mix-blend-mode: multiply; }
+.unit-photo .fan { position: absolute; right: -8px; bottom: -8px; background: #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(11, 31, 58, 0.25); }
+.unit-photo.lg { width: 100%; max-width: 360px; height: 220px; display: block; margin: 0 auto 8px; }
+.unit-photo.lg .fan { right: 10px; bottom: 10px; }
+.hero { position: relative; overflow: hidden; border-radius: 18px; min-height: 196px; background: linear-gradient(100deg, #0B1F3A 0%, #10294B 46%, #163A63 100%); color: #fff;
+  box-shadow: 0 10px 30px -14px rgba(11, 31, 58, 0.55); isolation: isolate; }
+.hero-photo { position: absolute; top: 0; right: 0; bottom: 0; width: min(580px, 56%); z-index: -1; }
+.hero-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; display: block; }
+.hero-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #10294B 0%, rgba(16, 41, 75, 0.82) 22%, rgba(16, 41, 75, 0.25) 60%, rgba(16, 41, 75, 0.05) 100%); }
+.hero-text { position: relative; padding: 26px 30px; max-width: 640px; display: flex; flex-direction: column; gap: 6px; }
+.hero-kicker { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #7FD9D6; }
+.hero .hero-title { font-size: 26px; line-height: 1.2; color: #fff; }
+.hero p { color: #C9D4E5; font-size: 14px; }
+.hero-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.hero-fact { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.18); font-size: 12.5px; color: #DCE5F2; backdrop-filter: blur(4px); }
+.hero-fact b { font: 600 15px var(--mono); color: #fff; }
+.hero-fact.ok { border-color: rgba(31, 169, 113, 0.6); } .hero-fact.ok b { color: #7BE3B4; }
+.hero-fact.warn { border-color: rgba(242, 169, 0, 0.6); } .hero-fact.warn b { color: #FFD36B; }
+.hero-fact.bad { border-color: rgba(229, 72, 77, 0.7); background: rgba(229, 72, 77, 0.18); } .hero-fact.bad b { color: #FFB3B5; }
+.hero-fact.demo { border-color: rgba(242, 169, 0, 0.6); } .hero-fact.demo b { color: #FFD36B; }
+@media (max-width: 720px) {
+  .hero-photo { width: 100%; } .hero-photo::after { background: linear-gradient(180deg, rgba(16, 41, 75, 0.55), #10294B 85%); }
+  .hero-text { padding: 20px; } .hero .hero-title { font-size: 21px; }
+  .unit-photo { width: 76px; height: 56px; }
+}

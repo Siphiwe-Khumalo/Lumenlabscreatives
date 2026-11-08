@@ -3,7 +3,7 @@ import { ZONES, NAMES_ILLUSTRATIVE, EQUIPMENT_TYPES } from '../config/site.js';
 import { THRESHOLDS_LABEL } from '../config/thresholds.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, timeSec, dateTime, ago } from '../util/format.js';
-import { statusChip, severityChip, ackChip, readingHTML, tsHTML, createTable, DEMO_TAG } from '../ui/components.js';
+import { heroHTML, statusChip, severityChip, ackChip, readingHTML, tsHTML, createTable, DEMO_TAG } from '../ui/components.js';
 import { isGood, worst, rangeText, STATUS_RANK } from '../data/quality.js';
 import { state as storeState, getZoneSeries, RANGES } from '../data/store.js';
 import { mountTrendCard } from '../ui/trend-card.js';
@@ -22,6 +22,7 @@ export default {
     const deltas = {}; // `${zone}:${metric}` -> { value, at }
 
     root.innerHTML = `
+      <div data-hero></div>
       <div class="page-head">
         <div class="titles"><h1>Environmental Assurance</h1><p>Warehouse conditions and building systems</p></div>
         <div class="toolbar">
@@ -147,6 +148,19 @@ export default {
     }
 
     function update(s) {
+      if (!s.loading) {
+        const zonesOk = s.zones.filter((z) => z.status.overall === 'normal').length;
+        const open = s.alarms.filter((a) => a.status !== 'cleared');
+        root.querySelector('[data-hero]').innerHTML = heroHTML({
+          title: 'Middelburg Pharmaceutical Facility',
+          subtitle: 'Warehouse conditions, HVAC and alarms at a glance.',
+          facts: [
+            { label: 'zones within limits', value: `${zonesOk}/${s.zones.length}`, tone: zonesOk === s.zones.length ? 'ok' : 'warn' },
+            { label: 'active alarms', value: String(open.length), tone: open.some((a) => a.severity === 'critical') ? 'bad' : open.length ? 'warn' : 'ok' },
+            ...(s.mode === 'demo' ? [{ label: 'Simulated data', value: 'DEMO', tone: 'demo' }] : []),
+          ],
+        });
+      }
       if (s.loading) return;
       const zoneFilter = (a) => ui.zone === 'all' || a.zoneId === ui.zone;
       const open = s.alarms.filter((a) => a.status !== 'cleared' && zoneFilter(a));

@@ -109,6 +109,27 @@ export function fanHTML(e, { size = 56 } = {}) {
     </svg>${!known ? '<b class="fan-q">?</b>' : ''}</span>`;
 }
 
+/** Unit photo (HVAC units) with the live fan as a badge: the photo shows what the unit is, the fan shows its state. */
+export function unitPhotoHTML(e, { size = 'sm' } = {}) {
+  return `<span class="unit-photo ${size}"><img src="assets/hvac-unit.jpg" alt="" loading="lazy" width="523" height="382">${fanHTML(e, { size: size === 'lg' ? 52 : 34 })}</span>`;
+}
+
+/**
+ * Facility hero banner (building photo on the right, fading into navy). `facts` is a list of
+ * { label, value, tone } shown as chips; tone: ok | warn | bad | demo | ''.
+ */
+export function heroHTML({ title, subtitle, facts = [] }) {
+  return `<section class="hero" aria-label="${esc(title)}">
+    <div class="hero-photo" aria-hidden="true"><img src="assets/facility.jpg" alt="" width="580" height="573"></div>
+    <div class="hero-text">
+      <span class="hero-kicker">Mpumalanga · Facility Environmental Monitoring</span>
+      <h2 class="hero-title">${esc(title)}</h2>
+      ${subtitle ? `<p>${esc(subtitle)}</p>` : ''}
+      <div class="hero-facts">${facts.map((f) => `<span class="hero-fact ${f.tone || ''}"><b>${f.value}</b>${esc(f.label)}</span>`).join('')}</div>
+    </div>
+  </section>`;
+}
+
 export function tsHTML(ts) {
   if (ts == null) return '<span class="muted">No timestamp</span>';
   return `<span title="${esc(dateTime(ts))} SAST">${esc(dateTime(ts).slice(11, 19))}<span class="sub">${esc(ago(ts))}</span></span>`;
