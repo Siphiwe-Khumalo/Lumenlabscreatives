@@ -26,17 +26,18 @@ const rl = createInterface({ input: process.stdin, output: process.stdout });
 const ask = async (q) => (await rl.question(q)).trim().toLowerCase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function req(url, { method = 'GET', headers = {} } = {}) {
+function req(url, { method = 'GET', headers = {}, body } = {}) {
   return new Promise((done) => {
     const u = new URL(url);
     const h = { ...headers };
-    if (method !== 'GET') h['Content-Length'] = 0;
+    if (method !== 'GET') h['Content-Length'] = body ? Buffer.byteLength(body) : 0;
     const r = (u.protocol === 'https:' ? https : http).request(u, { method, headers: h, rejectUnauthorized: false, timeout: 8000 }, (res) => {
       const c = []; res.on('data', (d) => c.push(d));
       res.on('end', () => done({ status: res.statusCode, text: Buffer.concat(c).toString('utf8') }));
     });
     r.on('timeout', () => r.destroy(new Error('timeout')));
     r.on('error', (e) => done({ status: 0, text: e.message }));
+    if (body) r.write(body); // the token request has a body (grant_type=client_credentials&scope=...)
     r.end();
   });
 }
