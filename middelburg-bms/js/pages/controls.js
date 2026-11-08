@@ -127,7 +127,9 @@ export default {
       return `<b>${num(r.value)} ${esc(r.unit || '')}</b>`;
     };
     /** One short line under a control: what the unit itself reports now. */
+    const btnClass = (label, dflt) => (label === 'Heat' ? 'mode-heat' : label === 'Cool' ? 'mode-cool' : dflt);
     function nowLine(e, def) {
+      if (def.id === 'rtuMode') return `Unit reports <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`;
       if (def.kind === 'setpoint') {
         const sp = e.readings[def.commandRole];
         const m = e.type === 'rooftop' && isGood(e.readings.operatingMode) ? ` · unit mode <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>` : '';
@@ -146,8 +148,8 @@ export default {
       if (def.kind === 'toggle') {
         const cur = commandedValue(e, def);
         widget = `<div class="seg seg-cmd" role="group" aria-label="${esc(def.label)}">
-          <button type="button" class="on" data-cmd="${e.id}|${def.id}|1" aria-pressed="${cur === true}" ${dis}>${esc(def.onLabel)}</button>
-          <button type="button" class="off" data-cmd="${e.id}|${def.id}|0" aria-pressed="${cur === false}" ${dis}>${esc(def.offLabel)}</button></div>`;
+          <button type="button" class="${btnClass(def.onLabel, 'on')}" data-cmd="${e.id}|${def.id}|1" aria-pressed="${cur === true}" ${dis}>${esc(def.onLabel)}</button>
+          <button type="button" class="${btnClass(def.offLabel, 'off')}" data-cmd="${e.id}|${def.id}|0" aria-pressed="${cur === false}" ${dis}>${esc(def.offLabel)}</button></div>`;
       } else if (def.kind === 'mode') {
         widget = `<div class="seg seg-cmd" role="group" aria-label="Mode">${def.options.map((o) => `<button type="button" data-cmd="${e.id}|${def.id}|${o.value}" aria-pressed="${e.mode === o.value}" class="mode-${o.value === 'cooling' ? 'cool' : o.value === 'heating' ? 'heat' : 'fan'}" ${dis}>${esc(o.label)}</button>`).join('')}</div>`;
       } else if (def.kind === 'setpoint') {

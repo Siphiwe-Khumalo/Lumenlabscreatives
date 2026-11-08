@@ -150,7 +150,12 @@ function valueAt(eq, role, t) {
     case 'temperatureSetpoint': return setpointAt(eq, t);
     case 'startCommand': case 'enable': return eq.type === 'rooftop' && role === 'enable' ? true : commandedOn(eq, t);
     case 'fanStatus': return on;
-    case 'operatingMode': return on ? modeAt(eq, t) : 'standby';
+    case 'operatingMode': {
+      const w = wv(eq.id, 'operatingMode', t);
+      if (w !== undefined) return w;
+      const heat = modeAt(eq, t) === 'heating', tm = APP_CONFIG.controls.rooftopModeWhenTrue;
+      return tm === 'cooling' ? !heat : heat;
+    }
     case 'unitAlarm': return state === 'fault';
     case 'bmsControl': case 'remoteStatus': return true;
     case 'coolMode': return modeAt(eq, t) === 'cooling';

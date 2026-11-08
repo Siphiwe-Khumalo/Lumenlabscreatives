@@ -103,7 +103,13 @@ function deriveRunState(type, r) {
 
 function deriveMode(type, r) {
   if (type === 'sensor') return 'n/a';
-  if (type === 'rooftop') return isGood(r.operatingMode) ? r.operatingMode.value : 'unknown';
+  if (type === 'rooftop') {
+    const v = val(r.operatingMode);
+    if (v == null) return 'unknown';
+    const t = APP_CONFIG.controls.rooftopModeWhenTrue; // 'heating' | 'cooling' | null (not confirmed)
+    if (!t) return v ? 'mode flag ON' : 'mode flag OFF';
+    return v ? t : (t === 'heating' ? 'cooling' : 'heating');
+  }
   const flags = [val(r.coolMode), val(r.heatMode), val(r.fanOnlyMode)];
   if (flags.some((f) => f == null)) return 'unknown';
   if (flags[0]) return 'cooling';

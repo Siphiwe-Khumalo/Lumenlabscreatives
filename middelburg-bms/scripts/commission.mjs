@@ -136,8 +136,20 @@ async function testUnit(id) {
   } else if (u.type === 'rooftop') {
     const start = await read(id, 'startCommand'), sp = await read(id, 'temperatureSetpoint'), mode = await read(id, 'operatingMode');
     console.log(`   Now: start ${start.value}, setpoint ${sp.value}, mode point ${mode.ok ? mode.value : mode.error}`);
-    row.heating = 'NOT SUPPORTED'; row.cooling = 'NOT SUPPORTED';
-    row.notes.push(`heat/cool: no writable mode point on rooftop units (Unit${u.n}Mode is read-only, reads ${mode.ok ? mode.value : mode.error})`);
+    const whenTrue = APP_CONFIG.controls.rooftopModeWhenTrue; // 'heating' | 'cooling' | null
+    if (!whenTrue) {
+      row.heating = 'NOT VERIFIED'; row.cooling = 'NOT VERIFIED';
+      row.notes.push(`heat/cool: Unit${u.n}Mode is writable (true/false) but what TRUE means is not confirmed — set APP_CONFIG.controls.rooftopModeWhenTrue`);
+    } else if (mode.ok && typeof mode.value === 'boolean') {
+      for (const [key, v] of [['heating', whenTrue === 'heating'], ['cooling', whenTrue === 'cooling']]) {
+        console.log(`   -> ${key.toUpperCase()} (Unit${u.n}Mode = ${v})`);
+        const c = await command(id, 'operatingMode', v);
+        console.log(`      ${c.detail}`);
+        row[key] = !c.written ? 'FAILED' : !c.matches ? 'NOT VERIFIED' : await physical(`Is ${id} ${key === 'heating' ? 'blowing warm air / heating' : 'blowing cold air / cooling'}? (allow 1–3 min)`);
+      }
+      await write(id, 'operatingMode', mode.value);
+      console.log(`      Restored Unit${u.n}Mode = ${mode.value}.`);
+    }
     if (start.ok) {
       console.log('   -> STOP / START');
       const off = await command(id, 'startCommand', false);

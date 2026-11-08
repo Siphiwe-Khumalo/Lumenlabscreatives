@@ -85,9 +85,8 @@ export const ROLE_POINTS = Object.freeze({
   remoteStatus: { label: 'Remote status', kind: 'boolean', points: { hybrid: 'REMOTE_STATUS' } },
   fanStatus: { label: 'Supply air fan', kind: 'boolean',
     points: { rooftop: (n) => `Unit${n}SAF`, hybrid: 'SUPPLY_AIR_FAN' } },
-  operatingMode: { label: 'Operating mode', kind: 'enum',
-    // Rooftop mode is a single point. Map its numeric states here once known, e.g. { 1: 'cooling', 2: 'heating' }.
-    enumMap: {},
+  operatingMode: { label: 'Mode (heat/cool)', kind: 'boolean', controllable: true, controlTypes: ['rooftop'],
+    // Site: Unit{n}Mode is a writable true/false point. Its meaning is set in APP_CONFIG.controls.rooftopModeWhenTrue.
     points: { rooftop: (n) => `Unit${n}Mode` } },
   coolMode: { label: 'Cool mode', kind: 'boolean', controllable: true, points: { hybrid: 'COOL_MODE' } },
   heatMode: { label: 'Heat mode', kind: 'boolean', controllable: true, points: { hybrid: 'HEAT_MODE' } },

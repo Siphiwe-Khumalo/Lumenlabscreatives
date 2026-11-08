@@ -1,3 +1,4 @@
+import { APP_CONFIG } from './app-config.js';
 /* Unit controls shown on the Controls page.
  *
  * Each control names the point it WRITES (commandRole) and the point whose
@@ -24,6 +25,12 @@ export const CONTROL_DEFS = Object.freeze({
       actualRole: 'fanStatus', actualLabel: 'Supply fan',
     },
     { id: 'enableStatus', kind: 'status', label: 'Unit enable', role: 'enable', note: 'Output from the unit — status only' },
+    // Heat / Cool: writes Unit{n}Mode. Shown only once APP_CONFIG.controls.rooftopModeWhenTrue says what TRUE means.
+    ((t) => ({
+      id: 'rtuMode', kind: 'toggle', label: 'Mode', commandRole: t ? 'operatingMode' : null, feedbackRole: 'operatingMode',
+      onLabel: t === 'cooling' ? 'Cool' : 'Heat', offLabel: t === 'cooling' ? 'Heat' : 'Cool',
+      todo: 'TODO: confirm with Aina what Unit{n}Mode = true means (heating or cooling), then set APP_CONFIG.controls.rooftopModeWhenTrue',
+    }))(APP_CONFIG.controls.rooftopModeWhenTrue),
     {
       id: 'tempSetpoint', kind: 'setpoint', label: 'Temperature setpoint', unit: '°C',
       commandRole: 'temperatureSetpoint', feedbackRole: 'temperatureSetpoint', actualRole: 'temperature', actualLabel: 'Space',

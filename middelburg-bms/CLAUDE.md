@@ -450,3 +450,10 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
 4. **Partial mode-write failure was reported as a plain failure**; now says which points were already written.
 5. **Gateway**: commands jump the queue (`serial(fn, {priority:true})`); shared read cache `READ_CACHE_MS` (5 s) with
    in-flight de-duplication so several screens + the history logger don't multiply JACE load; cache cleared per point on write.
+6. **Site results 2026-11-08** (`npm run check-write`): hybrid `HYBRID_9/COOL_MODE` and `HEAT_MODE` refuse writes
+   (HTTP 400 → read-only on the JACE; hybrid mode change cannot work until Aina makes them writable or names the real
+   mode command point). Rooftop `RUT_1/Unit1Mode` is a writable **boolean** (reads "false", write HTTP 200). Rooftop
+   Heat/Cool buttons exist but stay hidden until `APP_CONFIG.controls.rooftopModeWhenTrue` is set to 'heating' or
+   'cooling' (Aina to confirm). HYB-09 reads 0.0 °C / setpoint 0.0 / fan 0 with status ok → Modbus TCP link suspect.
+7. **False "overridden" warning removed** (our own priority-1 writes show status overridden); command refusals now show
+   the JACE's reason; partial mode changes are rolled back automatically.
