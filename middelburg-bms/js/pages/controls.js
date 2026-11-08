@@ -18,11 +18,17 @@ import { MEASURE_COLORS } from '../ui/charts.js';
 const MODE_LABEL = { cooling: 'Cooling', heating: 'Heating', 'fan only': 'Fan only', standby: 'Standby', unknown: '—' };
 const boolText = (def, v) => (v == null ? '—' : v ? (def.onLabel || 'On').toUpperCase() : (def.offLabel || 'Off').toUpperCase());
 
-function cmdStatusHTML(rec, def) {
+function cmdStatusHTML(rec, def, e) {
   if (!rec) return '';
   const val = def.kind === 'setpoint' ? `${num(rec.value)} °C` : def.kind === 'mode' ? MODE_LABEL[rec.value] : boolText(def, rec.value);
   if (rec.status === 'pending') return `<div class="cmd cmd-pending" role="status"><span class="spinner sm" aria-hidden="true"></span><b>Sending</b> ${esc(val)} · waiting for the unit to confirm</div>`;
-  if (rec.status === 'confirmed') return `<div class="cmd cmd-ok" role="status">${icon('check')}<b>Confirmed</b> ${esc(val)} at ${esc(time(rec.resolvedAt))}</div>`;
+  if (rec.status === 'confirmed') {
+    // The command point reads back the new value. For start/stop, also check what the unit itself reports (supply fan).
+    const fan = e && def.actualRole === 'fanStatus' && def.kind === 'toggle' ? e.readings.fanStatus : null;
+    const mismatch = fan && isGood(fan) && fan.value !== rec.value && Date.now() - rec.resolvedAt > 20000;
+    if (mismatch) return `<div class="cmd cmd-bad" role="alert">${icon('alarm')}<b>Command accepted, unit not following</b> ${esc(val)} written at ${esc(time(rec.resolvedAt))}, but the unit still reports ${fan.value ? 'fan running' : 'fan off'}. Check the unit / its local controller.</div>`;
+    return `<div class="cmd cmd-ok" role="status">${icon('check')}<b>Confirmed</b> ${esc(val)} at ${esc(time(rec.resolvedAt))}${fan && isGood(fan) && fan.value !== rec.value ? ' · waiting for the unit to follow' : ''}</div>`;
+  }
   if (rec.status === 'not-confirmed') {
     const act = rec.actual == null ? '—' : def.kind === 'setpoint' ? `${num(rec.actual)} °C` : def.kind === 'mode' ? MODE_LABEL[rec.actual] || rec.actual : boolText(def, rec.actual);
     return `<div class="cmd cmd-bad" role="alert">${icon('alarm')}<b>Not confirmed</b> ${esc(val)}: the unit still reports ${esc(act)}${rec.override ? ` (overridden by ${esc(rec.override.source)})` : ''}</div>`;
@@ -34,6 +40,7 @@ function cmdStatusHTML(rec, def) {
 export default {
   mount(root) {
     const drafts = new Map();     // `${unitId}` -> setpoint draft
+    const notSent = new Map();    // `${unitId}|${controlId}` -> reason a command was not sent (kept on the card)
     let last = null;
     let typeFilter = 'all';
     const trends = [];
@@ -129,7 +136,10 @@ export default {
     /** One short line under a control: what the unit itself reports now. */
     const btnClass = (label, dflt) => (label === 'Heat' ? 'mode-heat' : label === 'Cool' ? 'mode-cool' : dflt);
     function nowLine(e, def) {
-      if (def.id === 'rtuMode') return `Unit reports <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`;
+      if (def.id === 'rtuMode') {
+        const r = e.readings.operatingMode;
+        return isGood(r) ? `Unit reports <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>` : `Mode point ${runText(r, def)}${r?.error ? ` <span class="muted">(${esc(r.error)})</span>` : ''}`;
+      }
       if (def.kind === 'setpoint') {
         const sp = e.readings[def.commandRole];
         const m = e.type === 'rooftop' && isGood(e.readings.operatingMode) ? ` · unit mode <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>` : '';
@@ -171,7 +181,7 @@ export default {
           <div class="ctl-r">${widget}</div>
         </div>
         ${ovr ? `<div class="cmd cmd-bad">${icon('alarm')}Overridden by ${esc(ovr.source)}: commands from here will not take effect</div>` : ''}
-        ${cmdStatusHTML(rec, def)}</div>`;
+        ${notSent.has(`${e.id}|${def.id}`) ? `<div class="cmd cmd-bad" role="alert">${icon('alarm')}<b>Not sent</b> ${esc(notSent.get(`${e.id}|${def.id}`))}</div>` : cmdStatusHTML(rec, def, e)}</div>`;
     }
 
     const isUnmapped = (e, d) => d.kind !== 'status' && controlAvailability(e, d).notMapped;
@@ -357,11 +367,19 @@ export default {
         confirmLabel: `Send ${show(value)}`, danger: value === false, withNote: true,
       });
       if (!ok) return;
+      const key = `${unitId}|${controlId}`;
       try {
+        notSent.delete(key);
         await sendCommand(unitId, controlId, value, note);
         if (def.kind === 'setpoint') drafts.delete(unitId);
-        toast(`${unitId} ${def.label}: sent — PENDING until the controller confirms`);
-      } catch (err) { toast(err.message, 'err'); }
+        toast(`${unitId} ${def.label}: sent — waiting for the unit to confirm`);
+      } catch (err) {
+        // A command refused by the JACE is recorded by the store (shown as Failed); anything stopped before
+        // sending (point not live, previous command pending, ...) is kept on the card here.
+        if (getCommand(unitId, controlId)?.status !== 'failed' || getCommand(unitId, controlId)?.error !== err.message) notSent.set(key, `${err.message} (${time(Date.now())})`);
+        toast(err.message, 'err');
+      }
+      if (last) render(last);
     }
 
     root.addEventListener('click', (ev) => {
