@@ -102,7 +102,7 @@ dashboard open (`scripts/history.mjs`, no database server or install needed):
 |---|---|---|---|---|
 | Rooftop | Start / stop | `UninStartCmd` | read-back of `UninStartCmd` — **TODO** | `UnitnSAF` (supply fan) |
 | Rooftop | Unit enable | — (output, status only) | — | `UnitnEnable` |
-| Rooftop | Temperature setpoint (slider) | `UnitnSetpoint` | read-back of `UnitnSetpoint` | space temperature |
+| Rooftop | Temperature setpoint | — **read-only** (site decision): shown only | — | space temperature |
 | Rooftop | Heat / Cool | — **automatic changeover on the unit** (`UnitnMode` shown only: true = heating) | — | mode shown on the card |
 | Hybrid | — | **read-only: monitoring only** (Aina); the gateway refuses any hybrid write | — | BMS, mode, fan, setpoint shown |
 | Hybrid | Temperature setpoint, fan speed | read-only | — | — |

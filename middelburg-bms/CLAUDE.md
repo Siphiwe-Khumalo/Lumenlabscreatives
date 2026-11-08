@@ -476,3 +476,6 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
     Gateway: point reads time out after `OSS_READ_TIMEOUT_MS` (4 s); a unit folder that gives no answer 3 times is skipped
     for 30 s (log: "not answering"), so a dead Modbus network no longer slows commands. All 11 hybrids read OFFLINE on
     site at that time: check Modbus networks / `npm run check-points`.
+13. **Site decision 2026-11-08: heating, cooling and temperature setpoint are READ, not commanded.** The only writable
+    points are the 5 rooftop start commands `Uni{n}StartCmd` (gateway `WRITABLE` allowlist). Rooftop setpoint shown as a
+    fact; the setpoint stepper is gone. `npm run commission` reports setpoint NOT SUPPORTED.

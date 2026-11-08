@@ -68,7 +68,7 @@ export const ROLE_POINTS = Object.freeze({
   // --- temperatures / humidity --------------------------------------------------
   temperature: { label: 'Space temperature', unit: '°C', kind: 'number',
     points: { rooftop: (n) => `SPACE_TEMP${n}`, hybrid: 'ROOM_TEMP_AVERAGE', sensor: 'SpaceTemp' } },
-  temperatureSetpoint: { label: 'Temperature setpoint', unit: '°C', kind: 'number', controllable: true, controlTypes: ['rooftop'],
+  temperatureSetpoint: { label: 'Temperature setpoint', unit: '°C', kind: 'number', // READ-ONLY (site, 2026-11-08): heating, cooling and setpoint are read, not commanded
     // Hybrid setpoint is read-only (only BMS switch and mode are controlled on hybrids).
     points: { rooftop: (n) => `Unit${n}Setpoint`, hybrid: 'ROOM_TEMP_SETPOINT' } },
   humidity: { label: 'Relative humidity', unit: '%RH', kind: 'number', monitoringOnly: true,

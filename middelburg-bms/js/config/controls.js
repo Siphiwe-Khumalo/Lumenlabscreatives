@@ -27,10 +27,7 @@ export const CONTROL_DEFS = Object.freeze({
     { id: 'enableStatus', kind: 'status', label: 'Unit enable', role: 'enable', note: 'Output from the unit — status only' },
     // Mode: shown only (heating / cooling, decided automatically by the unit). Never written — see points.js operatingMode.
     { id: 'modeStatus', kind: 'status', label: 'Mode', role: 'operatingMode', derived: 'mode' },
-    {
-      id: 'tempSetpoint', kind: 'setpoint', label: 'Temperature setpoint', unit: '°C',
-      commandRole: 'temperatureSetpoint', feedbackRole: 'temperatureSetpoint', actualRole: 'temperature', actualLabel: 'Space',
-    },
+    { id: 'tempSetpoint', kind: 'status', label: 'Setpoint', role: 'temperatureSetpoint' }, // read-only (site decision)
     { id: 'autoManual', kind: 'toggle', label: 'Auto / manual', commandRole: null, todo: 'TODO: no Auto/Manual point supplied for rooftop units' },
     { id: 'schedule', kind: 'toggle', label: 'Schedule', commandRole: null, todo: 'TODO: no schedule point supplied' },
   ],
