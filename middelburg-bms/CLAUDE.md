@@ -26,7 +26,7 @@ browser-only app; Middelburg deliberately is **not** (see §6, decision 1).
 
 It runs on a **host PC on the site LAN, 24/7** (`npm run dev`). Remote users reach it over the client's **VPN**.
 A **demo copy** with simulated data is published as a private claude.ai artifact:
-https://claude.ai/artifact/TCNuj5fU99CZYANgAhzZJS (version 6, built from `hosted.html`; no logo, no history logging).
+https://claude.ai/artifact/TCNuj5fU99CZYANgAhzZJS (version 7, built from `hosted.html`; no logo, no history logging; has the building banner and unit photos).
 
 Host PC project path: **`C:\Users\siphi\Lumenlabscreatives\middelburg-bms`**. Always `cd` there before
 `git pull` / `npm run …` (running `git pull` in `C:\Users\siphi` fails with "not a git repository").
@@ -227,7 +227,7 @@ Simplified "techy but pharmaceutical" look (Nov 2026 redesign): navy sidebar wit
 panel, short menu (Units, Overview, 3D Model, Conditions, Alarms, Trends | Audit Trail, Commissioning, Settings),
 soft white cards, large mono numbers, coloured reading tiles. Works at phone width (no horizontal scroll).
 
-### 5.8 Demo artifact — ✅ (version 6)
+### 5.8 Demo artifact — ✅ (version 7, 2026-11-08)
 Published with the Artifact tool from `hosted.html` with `root` = this folder and the changed files listed in `files`.
 Update by publishing to `url: https://claude.ai/artifact/TCNuj5fU99CZYANgAhzZJS` (read/list files first; the tool
 refuses overwriting unread files). It does **not** have the Stored-logs text or the logo (deliberately — no
@@ -374,7 +374,7 @@ limits (`thresholds.js`), model geometry (`layout.js`), facility address status 
    server-side). `HOST=0.0.0.0` exposes the dashboard to the whole VPN.
 6. 🟡 Audit trail and alarm acknowledgement are per-browser only.
 7. ❌ Phone alerts not built (§5.10).
-8. Demo artifact is at version 6 (no Stored-logs text). Update only if Siphiwe asks.
+8. Demo artifact is at version 7 (16 units + sensors, photos, banner; no Stored-logs text, no logo). Update only if Siphiwe asks.
 
 ---
 
