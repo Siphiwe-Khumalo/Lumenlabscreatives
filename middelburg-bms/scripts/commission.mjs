@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { ossConfig, fetchToken, pointSuffix, pointPath } from './oss-auth.mjs';
-import { EQUIPMENT_UNITS, slotPath, controllerName, rolesForType } from '../js/config/points.js';
+import { EQUIPMENT_UNITS, slotPath, controllerName, rolesForType, rolesForUnit } from '../js/config/points.js';
 import { APP_CONFIG } from '../js/config/app-config.js';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -93,7 +93,7 @@ async function testUnit(id) {
   console.log(`   Temperature: ${t.ok ? `${t.value} °C, status ${t.status}` : `not readable (${t.error})`}`);
   if (u.type === 'hybrid') {
     // Hybrids are READ-ONLY (Aina, 2026-11-08): read every point, send nothing.
-    const roles = rolesForType('hybrid');
+    const roles = rolesForUnit(id);
     let ok = 0; const bad = [];
     const got = {};
     for (const role of roles) { const r = await read(id, role); got[role] = r; if (r.ok && r.live) ok++; else bad.push(`${slotPath(id, role).split('/').pop()} (${r.ok ? r.status : r.error})`); }

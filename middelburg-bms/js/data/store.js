@@ -9,7 +9,7 @@
 import { APP_CONFIG } from '../config/app-config.js';
 import { ZONES, EQUIPMENT, equipmentById, zoneById } from '../config/site.js';
 import { getMode, getGatewayUrl, getThresholds, localAudit, appendLocalAudit, getUser, saveUser, getDemoScenario, ROLES } from '../config/settings-store.js';
-import { ROLE_POINTS, ZONE_SOURCES, ZONE_ROLES, rolesForType, alarmRoles, slotPath } from '../config/points.js';
+import { ROLE_POINTS, ZONE_SOURCES, ZONE_ROLES, rolesForType, rolesForUnit, alarmRoles, slotPath } from '../config/points.js';
 import { CONTROL_DEFS } from '../config/controls.js';
 import { createDemoProvider } from './demo-provider.js';
 import { createConnectedProvider } from './connected-provider.js';
@@ -136,7 +136,7 @@ function finalise(unitId, role, raw, now) {
 function buildEquipment(raw, now) {
   return EQUIPMENT.map((e) => {
     const readings = {};
-    for (const role of rolesForType(e.type)) readings[role] = finalise(e.id, role, raw?.[e.id]?.[role], now);
+    for (const role of rolesForUnit(e.id)) readings[role] = finalise(e.id, role, raw?.[e.id]?.[role], now);
     const runState = deriveRunState(e.type, readings);
     const mode = deriveMode(e.type, readings);
     const faults = alarmRoles(e.type).filter((role) => val(readings[role]) === true).map((role) => ({ role, label: ROLE_POINTS[role].label, severity: ROLE_POINTS[role].severity }));

@@ -188,13 +188,14 @@ export default {
 
     /** Read-only facts (unit enable, hybrid setpoint, fan speed) as small key/value pairs. */
     function factsHTML(e) {
-      const items = controlDefs(e.type).filter((d) => d.kind === 'status').map((d) => {
+      const items = controlDefs(e.type).filter((d) => d.kind === 'status' && (d.derived || (e.readings[d.role] && e.readings[d.role].quality !== 'not-mapped'))).map((d) => {
         const r = e.readings[d.role];
         const v = d.derived === 'mode' && isGood(r) ? `<b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`
           : d.derived === 'mode' && e.type === 'hybrid' ? `<b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`
           : !isGood(r) ? `<span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`
           : d.role === 'enable' ? `<b>${r.value ? (e.type === 'hybrid' ? 'On' : 'Enabled') : (e.type === 'hybrid' ? 'Off' : 'Disabled')}</b>`
           : d.role === 'fanStatus' ? `<b>${r.value ? 'Running' : 'Off'}</b>`
+          : typeof r.value === 'boolean' ? `<b>${r.value ? 'ON' : 'OFF'}</b>`
           : `<b>${num(r.value, d.role === 'fanSpeed' ? 0 : 1)} ${esc(r.unit || '')}</b>`;
         return `<span class="fact"><span>${esc(d.label)}</span>${v}</span>`;
       });

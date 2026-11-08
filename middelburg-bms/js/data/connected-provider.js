@@ -21,7 +21,7 @@
  *   - if every read in a cycle fails at network level, the cycle throws ConnectionLostError */
 import { APP_CONFIG } from '../config/app-config.js';
 import { EQUIPMENT } from '../config/site.js';
-import { ROLE_POINTS, slotPath, rolesForType } from '../config/points.js';
+import { ROLE_POINTS, slotPath, rolesForType, rolesForUnit } from '../config/points.js';
 import { RequestQueue } from './request-queue.js';
 import { notMapped, QUALITY } from './quality.js';
 
@@ -163,7 +163,7 @@ export function createConnectedProvider(gatewayUrl) {
       const equipment = {};
       for (const e of EQUIPMENT) {
         equipment[e.id] = {};
-        for (const role of rolesForType(e.type)) equipment[e.id][role] = await read(role, slotPath(e.id, role));
+        for (const role of rolesForUnit(e.id)) equipment[e.id][role] = await read(role, slotPath(e.id, role));
       }
       const all = [...cache.values()];
       const results = await Promise.all(all);

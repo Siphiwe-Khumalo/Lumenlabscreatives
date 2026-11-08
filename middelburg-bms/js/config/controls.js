@@ -40,6 +40,7 @@ export const CONTROL_DEFS = Object.freeze({
     { id: 'modeStatus', kind: 'status', label: 'Mode', role: 'coolMode', derived: 'mode' },
     { id: 'fanStatus', kind: 'status', label: 'Supply fan', role: 'fanStatus' },
     { id: 'tempSetpoint', kind: 'status', label: 'Setpoint', role: 'temperatureSetpoint' },
+    { id: 'fireDamper', kind: 'status', label: 'Fire damper', role: 'fireDamper' }, // hybrids 6–11 only
   ],
 });
 // Humidity setpoint: no unit supplies one, so it is not shown.

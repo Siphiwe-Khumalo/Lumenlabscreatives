@@ -116,7 +116,7 @@ middelburg-bms/
       controls.js       CONTROL_DEFS per unit type (see §5.2).
       app-config.js     APP_CONFIG: demo:false, gatewayUrl '/gw', pollIntervalMs {demo 5000, connected 15000},
                         stale.factor 2, plausibleRanges, services {history:true, others false},
-                        controls {enabled:true, writePriority:1, confirmTimeoutMs:60000, setpointStep:0.5,
+                        controls {enabled:true, writePriority:8, confirmTimeoutMs:60000, setpointStep:0.5,
                         setpointRange:[15,35]}, live {windowMs 1h, keepMs 2h}.
       site.js           SITE, ZONES (main-store, dispatch, storage-b, receiving — ILLUSTRATIVE names), EQUIPMENT
                         (16 units + 6 sensors with zoneId — ILLUSTRATIVE allocation), EQUIPMENT_TYPES (hybrid, rooftop, sensor), isHvac(), equipmentForZone() (HVAC only), sensorsForZone().
@@ -272,7 +272,7 @@ government branding on a shared link without the Department's sign-off).
 4. **Write format = ARC's**: `PUT /ossRestApiServer/query/writePoint/<segment-encoded slot>?value=<v>&priority=<p>`,
    `Authorization: Bearer`, `Accept: application/json`, `Content-Length: 0` (no chunked bodies). Values: `true`/`false`,
    numbers like `21.5`. Default `OSS_WRITE_STYLE=put-query`; the other styles in `WRITE_STYLES` are diagnostic only.
-5. **Write priority 1** (`APP_CONFIG.controls.writePriority`), Siphiwe's decision, same as ARC. Nothing at 2–16
+5. **Write priority 8** since 2026-11-08 (was 1, same as ARC) — see §11.10. Nothing at 2–16
    (schedules, logic, Aina's Workbench overrides) can override a dashboard command. Tradeoff accepted; revert by
    changing that one constant (16 was tried first).
 6. **No optimistic UI**: a command is PENDING until the feedback point confirms it.
@@ -466,3 +466,9 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
    Writable points are now 10: rooftop `Uni{n}StartCmd` and `Unit{n}Setpoint`. Earlier tests may have written
    `Unit{n}Mode` at priority 1 (RTU-01 check-write, possibly RTU-02/03 via commission/dashboard): Aina must release
    priority 1 on those points in Workbench, or the changeover stays locked.
+10. **Write priority is now 8** (manual operator; Siphiwe, 2026-11-08), was 1. Leftover priority-1 values from earlier
+    tests (RTU `Uni{n}StartCmd`, `Unit{n}Setpoint`, `Unit{n}Mode`) out-rank the dashboard until released (Workbench:
+    Actions > Auto, or `node scripts/release.mjs <unit> <role> 1`, experimental).
+11. **Fire dampers** (Aina): `Drivers/BcpBacnetNetwork/FIRE$20DAMPERS/points/HYBRID_{n}_FireDamper`, n = 6…11 only.
+    Role `fireDamper` (boolean, read-only, no alarm; meaning of true/false TODO). Uses `ROLE_POINTS[role].paths` (a point
+    outside the unit's folder) and `rolesForUnit(id)` (roles that exist on that unit). Total points now 295.

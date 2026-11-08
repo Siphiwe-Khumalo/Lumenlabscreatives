@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ossConfig, fetchToken, pointSuffix, pointPath } from './oss-auth.mjs';
-import { EQUIPMENT_UNITS, rolesForType, slotPath, controllerName } from '../js/config/points.js';
+import { EQUIPMENT_UNITS, rolesForType, rolesForUnit, slotPath, controllerName } from '../js/config/points.js';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const env = {};
@@ -43,7 +43,7 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
   for (const [id, u] of Object.entries(EQUIPMENT_UNITS)) {
     const bad = [], st = [];
     let good = 0;
-    const roles = rolesForType(u.type);
+    const roles = rolesForUnit(id);
     for (const role of roles) {
       const slot = slotPath(id, role);
       const r = await req(cfg.jaceUrl + pointPath(cfg.readPath, pointSuffix(slot, cfg.ordPrefix, cfg.pathEncoding)), { headers: auth });

@@ -18,7 +18,7 @@
 import { mkdir, appendFile, readFile, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { EQUIPMENT_UNITS, ROLE_POINTS, rolesForType, slotPath } from '../js/config/points.js';
+import { EQUIPMENT_UNITS, ROLE_POINTS, rolesForType, rolesForUnit, slotPath } from '../js/config/points.js';
 import { EQUIPMENT } from '../js/config/site.js';
 
 const TZ = 'Africa/Johannesburg';
@@ -51,7 +51,7 @@ export function createHistory({ readPoint, root, env }) {
   // Every point the dashboard knows, and a reverse map slot path -> point.
   const POINTS = [];
   for (const [unitId, u] of Object.entries(EQUIPMENT_UNITS)) {
-    for (const role of rolesForType(u.type)) {
+    for (const role of rolesForUnit(unitId)) {
       const slot = slotPath(unitId, role);
       if (slot) POINTS.push({ unitId, role, slot, label: ROLE_POINTS[role].label, units: ROLE_POINTS[role].unit || '' });
     }

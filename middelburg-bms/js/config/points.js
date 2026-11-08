@@ -101,6 +101,12 @@ export const ROLE_POINTS = Object.freeze({
   staticPressureSetpoint: { label: 'Static pressure setpoint', unit: 'Pa', unitConfirmed: false, kind: 'number', points: { hybrid: 'STATIC_PESSURE_SETPOINT' } },
   staticPressureStatus: { label: 'Static pressure status', kind: 'boolean', points: { hybrid: 'STATIC_PRESSURE_STATUS' } },
 
+  // --- fire dampers (Aina, 2026-11-08): only hybrids 6–11, in their own folder ----------------
+  fireDamper: { label: 'Fire damper', kind: 'boolean',
+    // TODO(confirm with Aina): what true/false means (open/closed, or tripped). Shown as reported, read-only, no alarm.
+    points: { hybrid: (n) => (n >= 6 ? `HYBRID_${n}_FireDamper` : null) },
+    paths: { hybrid: (n) => `Drivers/BcpBacnetNetwork/FIRE$20DAMPERS/points/HYBRID_${n}_FireDamper` } },
+
   // --- alarms / faults -------------------------------------------------------------
   unitAlarm: { label: 'Unit alarm', kind: 'boolean', alarm: true, severity: 'critical', points: { rooftop: (n) => `Unit${n}Alarm` } },
   fanTrip: { label: 'Supply air fan trip', kind: 'boolean', alarm: true, severity: 'critical', points: { hybrid: 'SUPPLY_AIR_FAN_TRIP' } },
@@ -149,7 +155,8 @@ export function slotPath(equipmentId, role) {
   const name = pointName(equipmentId, role);
   if (!name) return null;
   const u = EQUIPMENT_UNITS[equipmentId];
-  return BASE_PATHS[u.type](u.n, u) + name;
+  const own = ROLE_POINTS[role].paths?.[u.type]; // a point outside the unit's folder (e.g. fire dampers)
+  return own ? own(u.n, u) : BASE_PATHS[u.type](u.n, u) + name;
 }
 
 export const controllerName = (equipmentId) => {
@@ -161,13 +168,18 @@ export const controllerName = (equipmentId) => {
 export function rolesForType(type) {
   return Object.keys(ROLE_POINTS).filter((r) => ROLE_POINTS[r].points[type]);
 }
+/** Roles that actually have a point on this unit (e.g. fire dampers exist on hybrids 6–11 only). */
+export const rolesForUnit = (equipmentId) => {
+  const u = EQUIPMENT_UNITS[equipmentId];
+  return u ? rolesForType(u.type).filter((r) => slotPath(equipmentId, r)) : [];
+};
 export const alarmRoles = (type) => rolesForType(type).filter((r) => ROLE_POINTS[r].alarm);
 
 /** Rows for the Settings mapping table and the Commissioning checklist. */
 export function mappingRows() {
   const rows = [];
   for (const [id, u] of Object.entries(EQUIPMENT_UNITS)) {
-    for (const role of rolesForType(u.type)) {
+    for (const role of rolesForUnit(id)) {
       rows.push({
         kind: u.type === 'hybrid' ? 'Hybrid' : u.type === 'sensor' ? 'Sensor' : 'Rooftop', id, controller: controllerName(id), role,
         label: ROLE_POINTS[role].label, path: slotPath(id, role), ord: ORD_PREFIX + slotPath(id, role),

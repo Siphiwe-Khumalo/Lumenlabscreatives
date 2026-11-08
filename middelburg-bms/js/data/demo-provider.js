@@ -14,7 +14,7 @@
 import { ZONES, EQUIPMENT, zoneById, equipmentById } from '../config/site.js';
 import { getThresholds } from '../config/settings-store.js';
 import { APP_CONFIG } from '../config/app-config.js';
-import { ROLE_POINTS, ZONE_SOURCES, rolesForType } from '../config/points.js';
+import { ROLE_POINTS, ZONE_SOURCES, rolesForType, rolesForUnit } from '../config/points.js';
 import { QUALITY } from './quality.js';
 import { ConnectionLostError } from './connected-provider.js';
 
@@ -80,6 +80,7 @@ function signal(zoneId, metric, t) {
   }
   return v;
 }
+const EQUIPMENT_UNITS_N = (eq) => Number(eq.id.split('-')[1]);
 const round = (v, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
 const isZoneSource = (id) => Object.values(ZONE_SOURCES).includes(id);
 
@@ -166,6 +167,7 @@ function valueAt(eq, role, t) {
     case 'staticPressure': return on ? Math.round(250 + n * 12) : 0;
     case 'staticPressureSetpoint': return 250;
     case 'staticPressureStatus': return on;
+    case 'fireDamper': return EQUIPMENT_UNITS_N(eq) >= 6 ? true : null;
     case 'dirtyFilter': return scenario !== 'all-live' && eq.id === 'HYB-05';
     default: return ROLE_POINTS[role]?.alarm ? false : null;
   }
@@ -342,7 +344,7 @@ export function createDemoProvider(initialScenario = 'normal') {
       const equipment = {};
       for (const e of EQUIPMENT) {
         equipment[e.id] = {};
-        for (const role of rolesForType(e.type)) equipment[e.id][role] = reading(e, role, now);
+        for (const role of rolesForUnit(e.id)) equipment[e.id][role] = reading(e, role, now);
       }
       return { ts: now, equipment, alarms: alarms.map((a) => ({ ...a })), audit: audit.slice() };
     },

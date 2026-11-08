@@ -59,10 +59,10 @@ export const APP_CONFIG = Object.freeze({
   /** Unit controls (Controls page). */
   controls: {
     enabled: true,
-    // Niagara priority level for dashboard writes: 1 (highest), by site decision, same as ARC.
-    // Nothing else (schedules, logic, Workbench overrides at 2–16) can override a dashboard command;
-    // the value stays until the dashboard writes again.
-    writePriority: 1,
+    // Niagara priority level for dashboard writes: 8 = "manual operator" (site decision 2026-11-08, was 1).
+    // Above schedules/automatic logic (9–16), below life safety (1–2) and critical protection (5); Aina can still
+    // override from Workbench. Anything written at 1–7 out-ranks the dashboard (shown as Not confirmed).
+    writePriority: 8,
     confirmTimeoutMs: 60000,      // no feedback within this time -> NOT CONFIRMED (red)
     setpointStep: 0.5,            // °C slider / step size
     setpointRange: [15, 35],
