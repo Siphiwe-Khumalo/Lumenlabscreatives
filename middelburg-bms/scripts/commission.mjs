@@ -173,8 +173,15 @@ async function testUnit(id) {
       } else row.onoff = off.written ? 'NOT VERIFIED' : 'FAILED';
       await write(id, 'startCommand', start.value);
     }
-    row.setpoint = 'NOT SUPPORTED';
-    row.notes.push(`setpoint is read-only (site decision); unit reports ${sp.ok ? sp.value : sp.error}`);
+    if (sp.ok && typeof sp.value === 'number') {
+      const test = Math.min(35, Math.max(15, sp.value + (sp.value < 34 ? 1 : -1)));
+      console.log(`   -> SETPOINT ${sp.value} -> ${test}`);
+      const c = await command(id, 'temperatureSetpoint', test);
+      console.log(`      ${c.detail}`);
+      row.setpoint = !c.written ? 'FAILED' : !c.matches ? 'NOT VERIFIED' : await physical(`Does ${id}'s own controller/display show setpoint ${test}?`);
+      await write(id, 'temperatureSetpoint', sp.value);
+      console.log(`      Restored setpoint ${sp.value}.`);
+    }
   }
   return row;
 }
