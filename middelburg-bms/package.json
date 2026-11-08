@@ -12,7 +12,8 @@
     "serve:python": "python -m http.server 8080",
     "vendor": "node scripts/vendor.mjs",
     "check-write": "node scripts/check-write.mjs",
-    "check-points": "node scripts/check-points.mjs"
+    "check-points": "node scripts/check-points.mjs",
+    "commission": "node scripts/commission.mjs"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "5.3.0",

@@ -48,8 +48,45 @@ export function createGateway(env) {
   }
 
   /* ---- one request in flight (the JACE cannot take concurrent requests on one token) ---- */
-  let chain = Promise.resolve();
-  const serial = (fn) => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
+  // Commands (priority) go ahead of waiting reads, so a click never waits behind other screens' polling.
+  const jobs = [];
+  let busy = false;
+  function serial(fn, { priority = false } = {}) {
+    return new Promise((resolve, reject) => {
+      const job = { fn, resolve, reject };
+      if (priority) jobs.unshift(job); else jobs.push(job);
+      pump();
+    });
+  }
+  async function pump() {
+    if (busy) return;
+    const job = jobs.shift();
+    if (!job) return;
+    busy = true;
+    try { job.resolve(await job.fn()); } catch (e) { job.reject(e); } finally { busy = false; pump(); }
+  }
+
+  /* ---- shared read cache: every screen + the history logger share one read per point per READ_CACHE_MS ---- */
+  const cacheMs = Math.max(0, Number(env.READ_CACHE_MS ?? 5000));
+  const cache = new Map();    // slot -> { at, out }   out = { code, body }
+  const reading = new Map(); // slot -> Promise<out> (reads in flight, shared)
+  async function fetchPoint(slot) {
+    const r = await serial(() => jace('GET', pointUrl(cfg.readPath, slot)));
+    if (r.status === 404) return { code: 404, body: { status: 'error', message: 'Point not found on the JACE' } };
+    if (r.status !== 200) return { code: 502, body: { status: 'error', message: `JACE returned HTTP ${r.status}` } };
+    const n = normalise(r.text, slot);
+    return n ? { code: 200, body: n } : { code: 502, body: { status: 'error', message: 'Unrecognised reply from the JACE' } };
+  }
+  function cachedRead(slot) {
+    const hit = cache.get(slot);
+    if (hit && Date.now() - hit.at < cacheMs) return Promise.resolve(hit.out);
+    if (reading.has(slot)) return reading.get(slot);
+    const p = fetchPoint(slot)
+      .then((out) => { cache.set(slot, { at: Date.now(), out }); return out; })
+      .finally(() => reading.delete(slot));
+    reading.set(slot, p);
+    return p;
+  }
 
   /* ---- OAuth client-credentials token ----
    * The JACE's OAuth issuer invalidates the previous token as soon as a new one is minted (seen on
@@ -123,12 +160,10 @@ export function createGateway(env) {
 
   /** Reads one point for server-side use (the history logger). -> { value, status } or throws. */
   async function readPoint(slot) {
-    const r = await serial(() => jace('GET', pointUrl(cfg.readPath, slot)));
-    if (r.status === 404) throw Object.assign(new Error('Point not found on the JACE'), { notFound: true });
-    if (r.status !== 200) throw new Error(`JACE returned HTTP ${r.status}`);
-    const n = normalise(r.text, slot);
-    if (!n) throw new Error('Unrecognised reply from the JACE');
-    return n;
+    const out = await cachedRead(slot);
+    if (out.code === 404) throw Object.assign(new Error(out.body.message), { notFound: true });
+    if (out.code !== 200) throw new Error(out.body.message);
+    return out.body;
   }
 
   const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
@@ -147,12 +182,8 @@ export function createGateway(env) {
       }
       if (sub.startsWith('/query/readPoint/') && req.method === 'GET') {
         const slot = decodeURIComponent(sub.slice('/query/readPoint/'.length));
-        const r = await serial(() => jace('GET', pointUrl(cfg.readPath, slot)));
-        if (r.status === 404) { send(res, 404, { status: 'error', message: 'Point not found on the JACE' }); return true; }
-        if (r.status !== 200) { send(res, 502, { status: 'error', message: `JACE returned HTTP ${r.status}` }); return true; }
-        const n = normalise(r.text, slot);
-        if (!n) { send(res, 502, { status: 'error', message: 'Unrecognised reply from the JACE' }); return true; }
-        send(res, 200, n);
+        const out = await cachedRead(slot);
+        send(res, out.code, out.body);
         return true;
       }
       if (sub.startsWith('/query/writePoint/') && req.method === 'PUT') {
@@ -165,7 +196,8 @@ export function createGateway(env) {
         let r, style;
         for (style of styles) {
           const w = writeRequest(style, value, priority);
-          r = await serial(() => jace(w.method, pointUrl(cfg.writePath, slot, w.query), 0, { headers: w.headers, body: w.body }));
+          r = await serial(() => jace(w.method, pointUrl(cfg.writePath, slot, w.query), 0, { headers: w.headers, body: w.body }), { priority: true });
+          cache.delete(slot); // the next read of this point goes to the JACE
           const why = String(r.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
           console.log(`[gateway] write (${style}) ${slot} = ${value} @ priority ${priority} -> HTTP ${r.status}${why ? '  ' + why : ''}`);
           if (r.status >= 200 && r.status < 300) {

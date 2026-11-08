@@ -20,6 +20,7 @@ const listeners = new Set();
 let provider = null;
 let pollTimer = null, healthTimer = null, saveTimer = null;
 let polling = false;
+let refreshQueued = false; // a refresh asked for while a poll was running: poll again as soon as it ends
 let generation = 0;
 const firstSeen = new Map();  // derived condition id -> first observed ts
 const lastGood = new Map();   // `${unitId}|${role}` -> { value, ts }
@@ -389,16 +390,21 @@ export async function sendCommand(unitId, controlId, value, note = '') {
     if (lim.min == null || lim.max == null) throw new Error('No permitted setpoint range configured for this zone');
     if (value < lim.min || value > lim.max) throw new Error(`Rejected: setpoint must be between ${lim.min} and ${lim.max} °C`);
   }
-  const writes = def.kind === 'mode' ? def.options.map((o) => [o.role, o.value === value]) : [[def.commandRole, value]];
+  // Mode: switch the other flags OFF first, then the chosen one ON, so heating and cooling are never both ON.
+  const writes = def.kind === 'mode'
+    ? [...def.options.filter((o) => o.value !== value).map((o) => [o.role, false]), ...def.options.filter((o) => o.value === value).map((o) => [o.role, true])]
+    : [[def.commandRole, value]];
   const rec = {
     unitId, controlId, def, label: `${unitId} ${def.label}`, value, old: commandedValue(e, def), note,
     writes, points: writes.map(([role]) => slotPath(unitId, role)), sentAt: Date.now(), status: 'pending',
     by: state.user.name, byRole: state.user.role, override: def.kind !== 'mode' ? e.readings[def.commandRole]?.override || null : null,
   };
+  const done = [];
   try {
-    for (const [role, v] of writes) await provider.command(unitId, role, v);
+    for (const [role, v] of writes) { await provider.command(unitId, role, v); done.push(role); }
   } catch (err) {
-    rec.status = 'failed'; rec.error = err.message; rec.resolvedAt = Date.now();
+    rec.status = 'failed'; rec.resolvedAt = Date.now();
+    rec.error = done.length ? `${err.message}. Partly applied: ${done.map((r) => ROLE_POINTS[r]?.label || r).join(', ')} written before the failure — check the unit` : err.message;
     commands.set(cmdKey(unitId, controlId), rec);
     auditCommand(rec, 'FAILED', ` (${err.message})`);
     refreshView();
@@ -407,8 +413,25 @@ export async function sendCommand(unitId, controlId, value, note = '') {
   commands.set(cmdKey(unitId, controlId), rec);
   auditCommand(rec, 'SENT');
   refreshView(); // show PENDING immediately
-  refresh();     // then read back as soon as possible
+  verifyCommand(rec); // read the feedback points back directly (1.5 s, 5 s, 15 s); the regular poll carries on
   return rec;
+}
+
+/** Reads just the points that confirm a command, instead of waiting for the full poll cycle to reach them. */
+async function verifyCommand(rec) {
+  const roles = [...new Set([...(rec.def.kind === 'mode' ? rec.writes.map(([r]) => r) : [rec.def.feedbackRole]), rec.def.actualRole].filter(Boolean))];
+  for (const delay of [1500, 5000, 15000]) {
+    await new Promise((r) => setTimeout(r, delay));
+    if (rec.status !== 'pending' || !provider?.readOne || !lastSnapshot?.equipment) break;
+    for (const role of roles) {
+      try {
+        const raw = await provider.readOne(rec.unitId, role);
+        if (lastSnapshot?.equipment?.[rec.unitId]) lastSnapshot.equipment[rec.unitId][role] = raw;
+      } catch { /* the normal poll will pick it up */ }
+    }
+    refreshView();
+  }
+  // No full refresh here: the feedback points were just read, the regular poll does the rest.
 }
 
 /** Feedback check: every written point must read back the written value, LIVE, after the command. */
@@ -496,7 +519,9 @@ async function poll(gen) {
     polling = false;
     if (gen === generation) {
       emit();
-      pollTimer = setTimeout(() => poll(gen), pollInterval());
+      clearTimeout(pollTimer); // exactly one polling loop
+      pollTimer = setTimeout(() => poll(gen), refreshQueued ? 0 : pollInterval());
+      refreshQueued = false;
     }
   }
 }
@@ -548,7 +573,12 @@ export function stop() {
 }
 
 /** Poll now (after a command or threshold change). */
-export function refresh() { clearTimeout(pollTimer); polling = false; poll(generation); }
+/** Poll now. If a poll is already running, poll again right after it (never start a second loop). */
+export function refresh() {
+  if (polling) { refreshQueued = true; return; }
+  clearTimeout(pollTimer);
+  poll(generation);
+}
 
 export async function acknowledge(alarmId, note) {
   if (state.mode !== 'demo' || !provider?.capabilities.acknowledge) throw new Error('Acknowledgement service not configured');

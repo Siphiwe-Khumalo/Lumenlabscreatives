@@ -175,6 +175,8 @@ export function createConnectedProvider(gatewayUrl) {
     async acknowledge() { throw new NotConfiguredError('Acknowledgement service'); },
 
     /** Unit command. Refused unless controls are enabled AND the role is controllable for this unit type. */
+    /** Reads one point of one unit now (used to confirm a command quickly). */
+    async readOne(unitId, role) { return readPoint(role, unitPath(unitId, role)); },
     async command(unitId, role, value) {
       const c = APP_CONFIG.controls;
       const def = ROLE_POINTS[role];

@@ -58,6 +58,7 @@ Host PC project path: **`C:\Users\siphi\Lumenlabscreatives\middelburg-bms`**. Al
 | `npm run check` | `scripts/check-jace.mjs`: tests reachability, gets a token from `/ossRestApiServer/token`, lists points (`/query/listPoints`), reads `RUT_1/SPACE_TEMP1` trying path formats, saves the working `OSS_ORD_PREFIX`/`OSS_PATH_ENCODING` into `.env`, deletes legacy keys. Prints **WORKS** on success. Never prints the secret. |
 | `npm run check-write` | `scripts/check-write.mjs`: reads `RUT_1/Unit1Setpoint` and writes the **same value back at priority 16**, printing the JACE's full reply (headers + body) for three variants. Diagnostic only. |
 | `start-bms.cmd` | Windows start file for the host PC: runs `node scripts\serve.mjs` in a loop (restarts 10 s after a stop), output to `data\server.log`. Run at boot by the scheduled task "Middelburg BMS" (`schtasks /Create /TN "Middelburg BMS" /TR "C:\BMS\middelburg-bms\start-bms.cmd" /SC ONSTART /RU SYSTEM /RL HIGHEST`). |
+| `npm run commission [-- HYB-02 RTU-01]` | `scripts/commission.mjs`: guided on-site HVAC commissioning, one unit at a time, after an authorisation prompt. Hybrids: cooling, heating (others OFF first, then the chosen ON), BMS off/on; rooftops: stop/start, setpoint +1 °C. Each command is read back from the JACE, then you answer what the unit physically did (y/n/s). Original values are restored afterwards. Writes `data/commissioning-<time>.csv/.md` with VERIFIED / COMMUNICATION VERIFIED / NOT VERIFIED / FAILED / NOT SUPPORTED. |
 | `npm run check-points` | Reads every configured point once (read-only) and reports per unit what the JACE has; writes `data/check-points.csv`. |
 | `npm run vendor` | Re-copies vendored libs from `node_modules` (needs `npm install` first). |
 
@@ -433,3 +434,19 @@ limits (`thresholds.js`), model geometry (`layout.js`), facility address status 
 
 Commit style used so far: short imperative subject, body optional, ending with the Co-Authored-By / Claude-Session
 trailer lines the harness provides. Push with `git push -u origin claude/gifted-sagan-4ugtao`. Don't open a PR unless asked.
+
+---
+
+## 11. Final audit (2026-11-08) — fixes made
+
+Tested end-to-end against a simulated JACE (point store with priorities, 400 on writes to read-only points, controller
+logic: fan follows command, heat+cool overlap detected). Not yet re-tested on the real JACE.
+1. **Mode change briefly set heat AND cool ON** (`sendCommand` wrote the chosen flag first). Now: other flags OFF first,
+   then the chosen ON. Mock: 1 overlap event before, 0 after.
+2. **`refresh()` reset the `polling` flag mid-poll**, starting a second overlapping poll (temporary double JACE load,
+   older snapshot could be applied after a newer one). Now one loop only (`refreshQueued`).
+3. **Command confirmation waited for the full 289-point cycle** (6–11 s on the mock, longer on site). Now
+   `verifyCommand()` reads only the feedback points at 1.5 s / 5 s / 15 s (`provider.readOne`) → ~1.7 s.
+4. **Partial mode-write failure was reported as a plain failure**; now says which points were already written.
+5. **Gateway**: commands jump the queue (`serial(fn, {priority:true})`); shared read cache `READ_CACHE_MS` (5 s) with
+   in-flight de-duplication so several screens + the history logger don't multiply JACE load; cache cleared per point on write.
