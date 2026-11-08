@@ -56,7 +56,16 @@ function req(url, { method = 'GET', headers = {}, body } = {}) {
     const tag = bad.length === 0 ? 'OK  ' : good === 0 ? 'NONE' : 'PART';
     console.log(`${tag} ${id.padEnd(7)} ${controllerName(id).padEnd(20)} ${good}/${roles.length} found${st.length ? `, ${st.length} stale/down` : ''}`);
     if (bad.length && good) console.log(`       missing: ${bad.join(', ')}`);
-    if (!good) console.log(`       folder not found? ${slotPath(id, roles[0]).replace(/[^/]*$/, '')}`);
+    if (!good) {
+      console.log(`       folder not found? ${slotPath(id, roles[0]).replace(/[^/]*$/, '')}`);
+      if (u.type === 'hybrid') {
+        // Look for the same unit on the other Modbus network (units can be moved between networks in the station).
+        const here = slotPath(id, 'temperature');
+        const other = here.includes('ModbusAsyncNetwork') ? here.replace('ModbusAsyncNetwork', 'ModbusTcpNetwork') : here.replace('ModbusTcpNetwork', 'ModbusAsyncNetwork');
+        const r = await req(cfg.jaceUrl + pointPath(cfg.readPath, pointSuffix(other, cfg.ordPrefix, cfg.pathEncoding)), { headers: auth });
+        console.log(`       on the other network (${other.split('/')[1]})? ${r.status === 200 ? `YES — found there: ${r.text.slice(0, 60)}` : `no (HTTP ${r.status})`}`);
+      }
+    }
   }
   const out = join(root, 'data', 'check-points.csv');
   try { (await import('node:fs')).mkdirSync(join(root, 'data'), { recursive: true }); writeFileSync(out, 'unit,controller,role,slot,http,value,status\n' + report.join('\n') + '\n'); } catch { /* ignore */ }

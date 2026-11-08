@@ -88,7 +88,7 @@ export function createGateway(env) {
     const n = normalise(r.text, slot);
     return n ? { code: 200, body: n } : { code: 502, body: { status: 'error', message: 'Unrecognised reply from the JACE' } };
   }
-  // Unit breaker: when 3 reads in a row from the same unit folder get NO ANSWER (timeout / connection error), skip that
+  // Unit breaker: when 2 reads in a row from the same unit folder get NO ANSWER (timeout / connection error), skip that
   // folder for 30 s instead of waiting for a timeout on every one of its points. One read is retried after 30 s.
   const DOWN_MS = 30000;
   const folders = new Map(); // folder -> { fails, downUntil, message }
@@ -104,7 +104,7 @@ export function createGateway(env) {
       .then((out) => {
         const key = folderOf(slot), st = folders.get(key) || { fails: 0, downUntil: 0, message: '' };
         if (out.code === 200) st.fails = 0;
-        else if (out.noAnswer && ++st.fails >= 3) {
+        else if (out.noAnswer && ++st.fails >= 2) {
           st.downUntil = Date.now() + DOWN_MS; st.message = out.body.message; st.fails = 0;
           console.log(`[gateway] ${key}: not answering (${out.body.message}) — skipping for ${DOWN_MS / 1000} s`);
         }
