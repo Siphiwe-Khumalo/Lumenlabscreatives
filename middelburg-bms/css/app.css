@@ -833,3 +833,4 @@ body.wall .content { max-width: none; zoom: 1.15; }
   .tile { padding: 10px 14px; } .tile-v { font-size: 22px; } .tile .small { display: none; }
 }
 @media (max-height: 760px) and (min-width: 900px) { .summary-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.fact.fact-note { flex-basis: 100%; color: var(--text-3); font-size: 12px; }

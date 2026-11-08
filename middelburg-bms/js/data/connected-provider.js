@@ -109,8 +109,9 @@ export function createConnectedProvider(gatewayUrl) {
     let override = null;
     const lvl = Number(body?.activeLevel);
     const ours = ROLE_POINTS[role]?.writePriority ?? APP_CONFIG.controls.writePriority;
-    if (/overrid/.test(String(status).toLowerCase())) override = { source: body?.overrideSource || 'operator override on the JACE' };
-    else if (ROLE_POINTS[role]?.controllable && isFinite(lvl) && ours != null && lvl < ours) override = { source: body?.overrideSource || `priority ${lvl}` };
+    // Only a HIGHER priority than ours can stop our command. A plain "overridden" status without a priority level is
+    // ambiguous: it is also what the JACE reports for this dashboard's own priority-1 writes, so it is not a block.
+    if (ROLE_POINTS[role]?.controllable && isFinite(lvl) && body?.activeLevel != null && ours != null && lvl < ours) override = { source: body?.overrideSource || `priority ${lvl}` };
     return { value, unit: ROLE_POINTS[role].unit, ts, quality: QUALITY.LIVE, override };
   }
 
@@ -187,7 +188,10 @@ export function createConnectedProvider(gatewayUrl) {
       const priority = def.writePriority ?? c.writePriority;
       if (priority == null) throw new Error('Write priority not configured');
       const res = await queue.fetch(`${base}${paths.writePoint}${encodePath(path)}?value=${encodeURIComponent(value)}&priority=${priority}`, { method: 'PUT' });
-      if (!res.ok) throw new Error(`Gateway refused the command (HTTP ${res.status})`);
+      if (!res.ok) {
+        const msg = await res.json().then((j) => j?.message).catch(() => null);
+        throw new Error(`Command refused${msg ? `: ${msg}` : ` (HTTP ${res.status})`}`);
+      }
       return { accepted: true };
     },
     async release() { throw new NotConfiguredError('Return to auto'); },

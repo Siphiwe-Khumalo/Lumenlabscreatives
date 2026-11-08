@@ -130,7 +130,8 @@ export default {
     function nowLine(e, def) {
       if (def.kind === 'setpoint') {
         const sp = e.readings[def.commandRole];
-        return `Unit setpoint ${isGood(sp) ? `<b>${num(sp.value)} °C</b>` : runText(sp, def)}`;
+        const m = e.type === 'rooftop' && isGood(e.readings.operatingMode) ? ` · unit mode <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>` : '';
+        return `Unit setpoint ${isGood(sp) ? `<b>${num(sp.value)} °C</b>` : runText(sp, def)}${m}`;
       }
       if (def.kind === 'mode') return `Unit reports <b>${esc(MODE_LABEL[e.mode] || e.mode)}</b>`;
       return def.actualRole ? `Unit reports ${runText(e.readings[def.actualRole], def)}` : '';
@@ -181,6 +182,7 @@ export default {
           : d.role === 'enable' ? `<b>${r.value ? 'Enabled' : 'Disabled'}</b>` : `<b>${num(r.value, d.role === 'fanSpeed' ? 0 : 1)} ${esc(r.unit || '')}</b>`;
         return `<span class="fact"><span>${esc(d.label)}</span>${v}</span>`;
       });
+      if (e.type === 'rooftop') items.push('<span class="fact fact-note">Heating or cooling is chosen by the unit itself: it heats when the room is below the setpoint and cools when it is above.</span>');
       return items.length ? `<div class="facts">${items.join('')}</div>` : '';
     }
 

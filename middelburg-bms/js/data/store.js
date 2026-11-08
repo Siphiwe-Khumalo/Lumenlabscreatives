@@ -404,7 +404,17 @@ export async function sendCommand(unitId, controlId, value, note = '') {
     for (const [role, v] of writes) { await provider.command(unitId, role, v); done.push(role); }
   } catch (err) {
     rec.status = 'failed'; rec.resolvedAt = Date.now();
-    rec.error = done.length ? `${err.message}. Partly applied: ${done.map((r) => ROLE_POINTS[r]?.label || r).join(', ')} written before the failure — check the unit` : err.message;
+    // Roll back what was already written (e.g. the other mode flags switched OFF), so the unit is not left without a mode.
+    const undone = [], stuck = [];
+    for (const role of done.reverse()) {
+      const before = e.readings[role];
+      if (!isGood(before)) { stuck.push(role); continue; }
+      try { await provider.command(unitId, role, before.value); undone.push(role); } catch { stuck.push(role); }
+    }
+    const names = (list) => list.map((r) => ROLE_POINTS[r]?.label || r).join(', ');
+    rec.error = err.message
+      + (undone.length ? `. Restored: ${names(undone)}` : '')
+      + (stuck.length ? `. COULD NOT RESTORE: ${names(stuck)} — check the unit` : '');
     commands.set(cmdKey(unitId, controlId), rec);
     auditCommand(rec, 'FAILED', ` (${err.message})`);
     refreshView();
