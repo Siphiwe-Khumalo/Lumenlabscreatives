@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Restricted: BMS Server Cabinet</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 210mm; height: 297mm; }
+  body { font-family: Arial, 'Liberation Sans', 'Segoe UI', sans-serif; font-weight: 900; color: #111; background: #fff; }
+  .page { width: 210mm; height: 297mm; display: flex; flex-direction: column; border: 6mm solid #111; }
+  .stripes { height: 16mm; background: repeating-linear-gradient(-45deg, #FFC400 0 12mm, #111 12mm 24mm); flex: none; }
+  .head { background: #D7191C; color: #fff; text-align: center; padding: 8mm 6mm 7mm; }
+  .head .big { font-weight: 900; font-size: 25mm; line-height: 0.95; letter-spacing: 0.02em; }
+  .head .sub { font-size: 8.5mm; margin-top: 3mm; letter-spacing: 0.08em; font-family: Arial, sans-serif; font-weight: 800; }
+  .symbols { display: flex; justify-content: center; gap: 14mm; padding: 9mm 0 5mm; }
+  .symbols svg { width: 52mm; height: 52mm; }
+  .what { text-align: center; padding: 0 10mm; }
+  .what .t { font-weight: 900; font-size: 13mm; line-height: 1.05; }
+  .what .s { font-family: Arial, sans-serif; font-weight: 700; font-size: 5.2mm; color: #333; margin-top: 3mm; line-height: 1.35; }
+  .rules { margin: 7mm 14mm 0; border: 1.2mm solid #111; border-radius: 4mm; padding: 5mm 7mm; font-family: Arial, sans-serif; }
+  .rules h3 { font-weight: 900; font-size: 6mm; margin-bottom: 2.5mm; }
+  .rules ul { list-style: none; }
+  .rules li { font-size: 5.3mm; font-weight: 700; padding: 1.3mm 0 1.3mm 10mm; position: relative; }
+  .rules li::before { content: '✕'; position: absolute; left: 0; top: 0.6mm; width: 7mm; height: 7mm; border-radius: 50%; background: #D7191C; color: #fff; font-size: 4.4mm; line-height: 7mm; text-align: center; }
+  .contact { margin: 6mm 14mm 0; font-family: Arial, sans-serif; font-size: 5mm; font-weight: 700; }
+  .contact .row { display: flex; gap: 4mm; align-items: flex-end; margin-top: 3.5mm; }
+  .contact .row span { white-space: nowrap; }
+  .contact .line { flex: 1; border-bottom: 0.6mm solid #111; height: 6mm; }
+  .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding: 5mm 12mm 6mm; border-top: 1mm solid #111; }
+  .foot img { height: 22mm; mix-blend-mode: multiply; }
+  .foot .txt { font-family: Arial, sans-serif; font-size: 4mm; font-weight: 700; text-align: right; color: #222; line-height: 1.45; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="stripes"></div>
+  <div class="head">
+    <div class="big">RESTRICTED</div>
+    <div class="sub">AUTHORISED PERSONNEL ONLY</div>
+  </div>
+
+  <div class="symbols" aria-hidden="true">
+    <!-- Warning triangle -->
+    <svg viewBox="0 0 100 100"><path d="M50 6 L96 90 H4 Z" fill="#FFC400" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+      <rect x="45" y="34" width="10" height="32" rx="4" fill="#111"/><circle cx="50" cy="77" r="6" fill="#111"/></svg>
+    <!-- No entry -->
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#D7191C" stroke-width="11"/>
+      <path d="M50 26 a6 6 0 1 1 0.01 0 Z M43 38 h14 l5 22 h-6 l-2 22 h-8 l-2 -22 h-6 Z" fill="#111"/>
+      <line x1="19" y1="81" x2="81" y2="19" stroke="#D7191C" stroke-width="11"/></svg>
+  </div>
+
+  <div class="what">
+    <div class="t">BMS SERVER CABINET</div>
+    <div class="s">This cabinet contains the Building Management System that controls<br>and records temperature and humidity for pharmaceutical storage.</div>
+  </div>
+
+  <div class="rules">
+    <h3>DO NOT, WITHOUT AUTHORISATION:</h3>
+    <ul>
+      <li>Open this cabinet</li>
+      <li>Switch off, restart or unplug any equipment</li>
+      <li>Disconnect, move or add network cables or devices</li>
+      <li>Use the BMS computer for any other purpose</li>
+    </ul>
+  </div>
+
+  <div class="contact">
+    For access or faults, contact:
+    <div class="row"><span>Name:</span><div class="line"></div><span>Tel:</span><div class="line"></div></div>
+  </div>
+
+  <div class="foot">
+    <img src="spartcon-logo.png" alt="Spartcon Technologies">
+    <div class="txt">Installed and maintained by<br>Spartcon Technologies<br>Middelburg Pharmaceutical Facility</div>
+  </div>
+</div>
+</body>
+</html>
