@@ -265,6 +265,26 @@ export default {
       </article>`;
     }
 
+    /** Fire dampers (hybrids 6–11): read only (GET), never written. */
+    function dampersHTML(s) {
+      const list = s.equipment.filter((e) => e.readings.fireDamper);
+      if (!list.length) return '';
+      const tile = (e) => {
+        const r = e.readings.fireDamper;
+        const v = isGood(r) ? (r.value ? 'ON' : 'OFF') : '—';
+        return `<div class="damper ${isGood(r) ? (r.value ? 'on' : 'off') : 'none'}">
+          <span class="damper-name">${esc(e.id)} · ${esc(e.name)}</span>
+          <b>${v}</b>${isGood(r) ? ageHTML(r.ts) : qualityChip(r.quality)}
+        </div>`;
+      };
+      return `<section class="ugroup" aria-labelledby="ug-dampers">
+        <div class="ugroup-head"><span class="type-dot damper-dot"></span><h2 id="ug-dampers">Fire dampers</h2>
+          <span class="muted">${list.length} dampers · monitoring only</span></div>
+        <div class="damper-grid">${list.map(tile).join('')}</div>
+        <p class="muted small">Read from the JACE (FIRE DAMPERS network). The dashboard never writes to fire dampers.</p>
+      </section>`;
+    }
+
     function groups(s) {
       const html = Object.entries(EQUIPMENT_TYPES).filter(([type]) => typeFilter === 'all' || typeFilter === type).map(([type, t]) => {
         const units = s.equipment.filter((e) => e.type === type);
@@ -276,7 +296,7 @@ export default {
       }).join('');
       const g = $('[data-groups]');
       g.classList.toggle('single', typeFilter !== 'all');
-      g.innerHTML = html;
+      g.innerHTML = html + (typeFilter === 'all' || typeFilter === 'hybrid' ? dampersHTML(s) : '');
     }
 
     /* ---- zones: live readings ------------------------------------------------------- */
