@@ -205,6 +205,7 @@ export default {
           : !isGood(r) ? `<span class="q-label">${esc(QUALITY_LABEL[r?.quality] || 'NOT MAPPED')}</span>`
           : d.role === 'enable' ? `<b>${r.value ? (e.type === 'hybrid' ? 'On' : 'Enabled') : (e.type === 'hybrid' ? 'Off' : 'Disabled')}</b>`
           : d.role === 'fanStatus' ? `<b>${r.value ? 'Running' : 'Off'}</b>`
+          : d.role === 'fireDamper' ? `<b>${r.value ? 'Open' : 'Closed'}</b>`
           : typeof r.value === 'boolean' ? `<b>${r.value ? 'ON' : 'OFF'}</b>`
           : `<b>${num(r.value, d.role === 'fanSpeed' ? 0 : 1)} ${esc(r.unit || '')}</b>`;
         return `<span class="fact"><span>${esc(d.label)}</span>${v}</span>`;
@@ -296,7 +297,7 @@ export default {
       if (!list.length) return '';
       const tile = (e) => {
         const r = e.readings.fireDamper;
-        const v = isGood(r) ? (r.value ? 'ON' : 'OFF') : '—';
+        const v = isGood(r) ? (r.value ? 'OPEN' : 'CLOSED') : '—';
         return `<div class="damper ${isGood(r) ? (r.value ? 'on' : 'off') : 'none'}">
           <span class="damper-name">${esc(e.id)} · ${esc(e.name)}</span>
           <b>${v}</b>${isGood(r) ? ageHTML(r.ts) : qualityChip(r.quality)}
@@ -306,7 +307,7 @@ export default {
         <div class="ugroup-head"><span class="type-dot damper-dot"></span><h2 id="ug-dampers">Fire dampers</h2>
           <span class="muted">${list.length} dampers · monitoring only</span></div>
         <div class="damper-grid">${list.map(tile).join('')}</div>
-        <p class="muted small">Read from the JACE (FIRE DAMPERS network). The dashboard never writes to fire dampers.</p>
+        <p class="muted small">Read from the JACE (FIRE_DAMPERS). The dashboard never writes to fire dampers.</p>
       </section>`;
     }
 

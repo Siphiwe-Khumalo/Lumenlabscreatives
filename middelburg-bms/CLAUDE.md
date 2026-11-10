@@ -469,7 +469,7 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
 10. **Write priority is now 8** (manual operator; Siphiwe, 2026-11-08), was 1. Leftover priority-1 values from earlier
     tests (RTU `Uni{n}StartCmd`, `Unit{n}Setpoint`, `Unit{n}Mode`) out-rank the dashboard until released (Workbench:
     Actions > Auto, or `node scripts/release.mjs <unit> <role> 1`, experimental).
-11. **Fire dampers** (Aina): `Drivers/BcpBacnetNetwork/FIRE$20DAMPERS/points/HYBRID_{n}_FireDamper`, n = 6…11 only.
+11. **Fire dampers** (Aina): `Drivers/BcpBacnetNetwork/FIRE_DAMPERS/points/HYBRID_{n}_FireDamper` (corrected from FIRE$20DAMPERS), n = 6…11 only.
     Role `fireDamper` (boolean, read-only, no alarm; meaning of true/false TODO). Uses `ROLE_POINTS[role].paths` (a point
     outside the unit's folder) and `rolesForUnit(id)` (roles that exist on that unit). Total points now 295.
 12. **Priority back to 1** (Siphiwe, 2026-11-08, after 8 left commands "Not confirmed" behind leftover priority-1 values).
