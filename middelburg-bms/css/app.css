@@ -862,3 +862,17 @@ body.wall .content { max-width: none; zoom: 1.15; }
 .al.none b { color: var(--text-3); }
 @keyframes al-blink { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .al.bad i { animation: none; } }
+
+/* Cooling / heating animation on unit cards (only when running in that mode) */
+.ucard.mode-cool { animation: glow-cool 3s ease-in-out infinite; border-color: rgba(59, 140, 240, 0.45); }
+.ucard.mode-heat { animation: glow-heat 3s ease-in-out infinite; border-color: rgba(242, 140, 40, 0.5); }
+@keyframes glow-cool { 0%, 100% { box-shadow: 0 0 0 0 rgba(59, 140, 240, 0.0), 0 6px 18px -10px rgba(11, 31, 58, 0.12); } 50% { box-shadow: 0 0 0 3px rgba(59, 140, 240, 0.25), 0 10px 26px -10px rgba(59, 140, 240, 0.55); } }
+@keyframes glow-heat { 0%, 100% { box-shadow: 0 0 0 0 rgba(242, 140, 40, 0.0), 0 6px 18px -10px rgba(11, 31, 58, 0.12); } 50% { box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.22), 0 10px 26px -10px rgba(242, 100, 40, 0.6); } }
+.airflow { position: relative; height: 30px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-size: 220px 100%; animation: airflow 1.6s linear infinite; }
+.airflow.cool { background-image: repeating-linear-gradient(110deg, #2F6FED 0 22px, #5FA8FF 22px 44px, #9CCBFF 44px 55px, #5FA8FF 55px 77px, #2F6FED 77px 110px); }
+.airflow.heat { background-image: repeating-linear-gradient(110deg, #E5484D 0 22px, #F28C28 22px 44px, #FFC15E 44px 55px, #F28C28 55px 77px, #E5484D 77px 110px); }
+.airflow span { position: relative; z-index: 1; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+@keyframes airflow { to { background-position: 220px 0; } }
+.ucard.mode-cool .unit-photo { box-shadow: 0 0 0 2px rgba(59, 140, 240, 0.55); }
+.ucard.mode-heat .unit-photo { box-shadow: 0 0 0 2px rgba(242, 140, 40, 0.6); }
+@media (prefers-reduced-motion: reduce) { .ucard.mode-cool, .ucard.mode-heat, .airflow { animation: none; } }

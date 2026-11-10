@@ -268,7 +268,9 @@ export default {
         ? { r: e.readings.humidity, label: 'Humidity', digits: 0 }
         : { r: e.readings.fanSpeed, label: 'Fan speed', digits: 0 };
       const big = bigVal;
-      return `<article class="ucard ${e.type} st-${e.runState}" data-unit="${e.id}">
+      // Cooling / heating animation: only when the unit is running AND reports that mode (never guessed).
+      const act = e.runState === 'running' && (e.mode === 'cooling' || e.mode === 'heating') ? (e.mode === 'cooling' ? 'cool' : 'heat') : '';
+      return `<article class="ucard ${e.type} st-${e.runState}${act ? ` mode-${act}` : ''}" data-unit="${e.id}">
         <header class="ucard-head">
           ${unitPhotoHTML(e)}
           <div class="ucard-title">
@@ -277,6 +279,7 @@ export default {
           </div>
           <span class="state-pill st-${e.runState}"><i></i>${STATE_TEXT[e.runState] || 'No data'}</span>
         </header>
+        ${act ? `<div class="airflow ${act}" role="status"><span>${act === 'cool' ? '❄ COOLING' : '🔥 HEATING'}</span></div>` : ''}
         <div class="ucard-readings">
           <div class="rd temp"><span>Temperature</span><b>${big(temp, '°C')}</b>${!isGood(temp) ? qualityChip(temp?.quality) : ''}</div>
           <div class="rd ${e.type === 'rooftop' ? 'hum' : ''}"><span>${second.label}</span><b>${big(second.r, second.r?.unit || '', second.digits)}</b>${!isGood(second.r) ? qualityChip(second.r?.quality) : ''}</div>
