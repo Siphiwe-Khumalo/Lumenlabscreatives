@@ -2,7 +2,7 @@
  * Summary strip, one control card per unit (hybrid | rooftop), then LIVE READINGS per zone.
  * No optimistic UI: a command is PENDING until its feedback point confirms it. */
 import { ZONES, EQUIPMENT_TYPES, equipmentForZone } from '../config/site.js';
-import { ROLE_POINTS, controllerName, slotPath } from '../config/points.js';
+import { ROLE_POINTS, controllerName, slotPath, alarmRoles } from '../config/points.js';
 import { APP_CONFIG } from '../config/app-config.js';
 import { icon } from '../ui/icons.js';
 import { esc, num, dateTime, time } from '../util/format.js';
@@ -238,6 +238,28 @@ export default {
       </article>`;
     }
 
+    /** The unit's own alarm points: green OK / red ALARM (true = alarm). Dirty filter: Clean / Dirty — replace filter. */
+    function alarmsPanel(e) {
+      const roles = alarmRoles(e.type).filter((r) => e.readings[r]);
+      if (!roles.length) return '';
+      let active = 0;
+      const rows = roles.map((role) => {
+        const r = e.readings[role];
+        const live = isGood(r);
+        const on = live && r.value === true;
+        if (on) active++;
+        const filter = role === 'dirtyFilter';
+        const label = filter ? 'Filter' : ROLE_POINTS[role].label;
+        const state = !live ? `<span class="q-label">${esc(QUALITY_LABEL[r.quality] || 'NO DATA')}</span>`
+          : filter ? (on ? '<b>DIRTY — replace filter</b>' : '<b>Clean</b>')
+          : (on ? '<b>ALARM</b>' : '<b>OK</b>');
+        return `<li class="al ${!live ? 'none' : on ? 'bad' : 'ok'}"><i></i><span>${esc(label)}</span>${state}</li>`;
+      }).join('');
+      return `<div class="alarms-panel ${active ? 'has-alarm' : ''}">
+        <div class="ap-head">${icon('alarm')}<b>Alarms</b><span>${active ? `${active} active · ${esc(e.zoneName || '')}` : 'none active'}</span></div>
+        <ul>${rows}</ul></div>`;
+    }
+
     function unitCard(e) {
       if (e.type === 'sensor') return sensorCard(e);
       const t = EQUIPMENT_TYPES[e.type];
@@ -259,7 +281,7 @@ export default {
           <div class="rd temp"><span>Temperature</span><b>${big(temp, '°C')}</b>${!isGood(temp) ? qualityChip(temp?.quality) : ''}</div>
           <div class="rd ${e.type === 'rooftop' ? 'hum' : ''}"><span>${second.label}</span><b>${big(second.r, second.r?.unit || '', second.digits)}</b>${!isGood(second.r) ? qualityChip(second.r?.quality) : ''}</div>
         </div>
-        ${e.faults.length ? `<div class="faults">${e.faults.map((f) => `<span class="status-chip st-${f.severity === 'critical' ? 'critical' : 'warning'}">${icon('alarm')}${esc(f.label)}</span>`).join('')}</div>` : ''}
+        ${alarmsPanel(e)}
         ${(() => { const c = controlDefs(e.type).filter((d) => d.kind !== 'status' && !isUnmapped(e, d)); return c.length ? `<div class="ctls">${c.map((d) => controlHTML(e, d)).join('')}</div>` : ''; })()}
         ${factsHTML(e)}
       </article>`;

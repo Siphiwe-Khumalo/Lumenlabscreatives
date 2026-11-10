@@ -108,14 +108,15 @@ export const ROLE_POINTS = Object.freeze({
     paths: { hybrid: (n) => `Drivers/BcpBacnetNetwork/FIRE$20DAMPERS/points/HYBRID_${n}_FireDamper` } },
 
   // --- alarms / faults -------------------------------------------------------------
-  unitAlarm: { label: 'Unit alarm', kind: 'boolean', alarm: true, severity: 'critical', points: { rooftop: (n) => `Unit${n}Alarm` } },
+  unitAlarm: { label: 'Unit trip / alarm', kind: 'boolean', alarm: true, severity: 'critical', points: { rooftop: (n) => `Unit${n}Alarm` } },
   fanTrip: { label: 'Supply air fan trip', kind: 'boolean', alarm: true, severity: 'critical', points: { hybrid: 'SUPPLY_AIR_FAN_TRIP' } },
   noAirflow: { label: 'No airflow', kind: 'boolean', alarm: true, severity: 'critical', points: { hybrid: 'NO_AIRFLOW' } },
   staticPressureFailure: { label: 'Static pressure failure', kind: 'boolean', alarm: true, severity: 'warning', points: { hybrid: 'STATIC_PRESSURE_FAILURE' } },
   roomTemp1Failure: { label: 'Room temperature sensor 1 failure', kind: 'boolean', alarm: true, severity: 'warning', points: { hybrid: 'ROOM_TEMP1_FAILURE' } },
   roomTemp2Failure: { label: 'Room temperature sensor 2 failure', kind: 'boolean', alarm: true, severity: 'warning', points: { hybrid: 'ROOM_TEMP2_FAILURE' } },
   oncoilTempFailure: { label: 'On-coil temperature sensor failure', kind: 'boolean', alarm: true, severity: 'warning', points: { hybrid: 'ONCOIL_TEMP_FAILURE' } },
-  dirtyFilter: { label: 'Dirty filter', kind: 'boolean', alarm: true, severity: 'warning', points: { hybrid: 'DIRTY_FILTER' } },
+  // Dirty filter: red when dirty (replace filter), green when clean.
+  dirtyFilter: { label: 'Dirty filter', kind: 'boolean', alarm: true, severity: 'critical', points: { hybrid: 'DIRTY_FILTER' } },
 });
 
 /** Equipment -> controller (type + unit number). */

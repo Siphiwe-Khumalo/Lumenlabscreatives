@@ -843,3 +843,22 @@ body.wall .content { max-width: none; zoom: 1.15; }
 .damper-name { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
 .damper b { font: 600 24px var(--mono); }
 .damper .q-chip { align-self: flex-start; }
+
+/* Per-unit alarm panel: green OK / red ALARM */
+.alarms-panel { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface-2); }
+.alarms-panel.has-alarm { border-color: #F3A1A3; background: #FFF5F5; }
+.ap-head { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 6px; }
+.ap-head .ico { width: 15px; height: 15px; color: var(--text-3); }
+.alarms-panel.has-alarm .ap-head .ico { color: var(--crit); }
+.ap-head span { margin-left: auto; font-size: 12px; color: var(--text-2); }
+.alarms-panel.has-alarm .ap-head span { color: var(--crit-ink); font-weight: 700; }
+.alarms-panel ul { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 12px; }
+.al { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2); }
+.al i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--unk); }
+.al span { flex: 1; }
+.al b { font-size: 12px; }
+.al.ok i { background: var(--ok); box-shadow: 0 0 0 3px rgba(31, 169, 113, 0.18); } .al.ok b { color: #12784D; }
+.al.bad i { background: var(--crit); box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.25); animation: al-blink 1.2s ease-in-out infinite; } .al.bad b, .al.bad span { color: var(--crit-ink); }
+.al.none b { color: var(--text-3); }
+@keyframes al-blink { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .al.bad i { animation: none; } }
