@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Middelburg BMS Dashboard: Remote Access Setup Guide</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 210mm; height: 297mm; }
+  body { font-family: Arial, 'Liberation Sans', sans-serif; color: #0F1B2D; background: #fff; font-size: 3.35mm; line-height: 1.42; }
+  .page { width: 210mm; height: 297mm; display: flex; flex-direction: column; }
+  .hero { position: relative; height: 52mm; overflow: hidden; background: #10294B; color: #fff; flex: none; }
+  .hero img.photo { position: absolute; right: 0; top: 0; height: 100%; width: 62%; object-fit: cover; object-position: 50% 40%; }
+  .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #10294B 0%, #10294B 38%, rgba(16,41,75,0.85) 50%, rgba(16,41,75,0.15) 100%); }
+  .hero .txt { position: relative; z-index: 1; padding: 8mm 10mm; width: 60%; }
+  .hero .kick { font-size: 2.8mm; font-weight: 700; letter-spacing: 0.12em; color: #7FD9D6; text-transform: uppercase; }
+  .hero h1 { font-size: 7.4mm; line-height: 1.15; margin-top: 2mm; font-weight: 900; }
+  .hero p { font-size: 3.2mm; color: #D5DEEB; margin-top: 2.5mm; }
+  .logo { position: absolute; z-index: 2; right: 6mm; bottom: 5mm; background: #fff; border-radius: 2.5mm; padding: 2mm 3mm; }
+  .logo img { height: 13mm; display: block; }
+  .body { padding: 6mm 10mm 0; flex: 1; display: flex; flex-direction: column; gap: 3.6mm; }
+  .intro { font-size: 3.5mm; color: #33425A; }
+  .step { display: grid; grid-template-columns: 10mm 1fr; gap: 3mm; }
+  .num { width: 10mm; height: 10mm; border-radius: 50%; background: #14A3A0; color: #fff; font-weight: 900; font-size: 4.8mm; display: grid; place-items: center; }
+  .step h2 { font-size: 4.2mm; font-weight: 900; color: #0B1F3A; margin: 1.6mm 0 1mm; }
+  .step ol { padding-left: 5mm; }
+  .step li { margin: 0.5mm 0; }
+  .note { margin-top: 1mm; padding: 1.5mm 3mm; border-left: 1mm solid #F2A900; background: #FFF6DB; color: #6A4B00; font-size: 3.1mm; }
+  code, .addr { font-family: 'JetBrains Mono', Consolas, 'DejaVu Sans Mono', monospace; }
+  code { background: #EEF2F7; border-radius: 1mm; padding: 0.2mm 1.2mm; font-size: 3.2mm; }
+  .cmd { margin: 1.5mm 0; background: #0B1F3A; color: #E6EDF7; border-radius: 2mm; padding: 2.2mm 4mm; font-family: 'JetBrains Mono', Consolas, 'DejaVu Sans Mono', monospace; font-size: 3.6mm; }
+  .addr { display: inline-block; margin: 1.5mm 0; background: #E3F5F4; border: 0.5mm solid #14A3A0; color: #0B1F3A; border-radius: 2mm; padding: 2mm 5mm; font-size: 5mm; font-weight: 700; }
+  .trouble { border: 0.5mm solid #E3AE3C; background: #FFFAEB; border-radius: 3mm; padding: 3mm 4mm; }
+  .trouble h3 { font-size: 4mm; font-weight: 900; color: #8A6100; margin-bottom: 1.2mm; }
+  .trouble ul { padding-left: 5mm; }
+  .trouble li { margin: 0.8mm 0; }
+  .foot { margin-top: auto; padding: 3.5mm 10mm 5mm; border-top: 0.4mm solid #E1E7F0; display: flex; justify-content: space-between; align-items: center; font-size: 2.8mm; color: #56657C; }
+  .foot img { height: 9mm; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <img class="photo" src="../assets/facility.jpg" alt="">
+    <div class="txt">
+      <div class="kick">Middelburg Pharmaceutical Facility</div>
+      <h1>Middelburg BMS Dashboard:<br>Remote Access Setup Guide</h1>
+      <p>Secure access to the live monitoring dashboard from any location.</p>
+    </div>
+    <div class="logo"><img src="../assets/doh-logo.png" alt="Department of Health, Republic of South Africa"></div>
+  </div>
+
+  <div class="body">
+    <p class="intro">This guide explains how to access the live Middelburg BMS monitoring dashboard from any remote location using a secure, private network.</p>
+
+    <div class="step"><div class="num">1</div><div>
+      <h2>Accept the Tailscale invitation</h2>
+      <ol>
+        <li>Check your email inbox for an invitation from Tailscale to join the network.</li>
+        <li>Click the unique invite link inside that email.</li>
+        <li>Sign in to accept the invite. You can securely use your existing Google, Microsoft or Apple account.</li>
+      </ol>
+      <div class="note"><b>Note:</b> do not use the primary admin email; log in using your own credentials.</div>
+    </div></div>
+
+    <div class="step"><div class="num">2</div><div>
+      <h2>Install Tailscale on your device</h2>
+      <ol>
+        <li>Download the official app for your device from <code>https://tailscale.com</code></li>
+        <li>Install the application on the device you plan to use for monitoring (laptop, tablet or phone).</li>
+        <li>Open the Tailscale app and select <b>Log In</b>.</li>
+        <li>Authenticate using the exact same account you used to accept the email invitation in Step 1.</li>
+      </ol>
+    </div></div>
+
+    <div class="step"><div class="num">3</div><div>
+      <h2>Verify your connection</h2>
+      <ol>
+        <li>Make sure the Tailscale app is running and shows a <b>Connected</b> or <b>Active</b> status.</li>
+        <li>To test the connection, open a terminal window (PowerShell on Windows, or Terminal on Mac) and ping the host PC:
+          <div class="cmd">ping 100.103.134.56</div></li>
+        <li>If you get replies, your secure, encrypted network tunnel to the warehouse is working.</li>
+      </ol>
+    </div></div>
+
+    <div class="step"><div class="num">4</div><div>
+      <h2>Access the live BMS dashboard</h2>
+      <p>Once Tailscale is connected, you can view the live telemetry (room temperatures, fan speeds and JACE status) in your web browser.</p>
+      <ol>
+        <li>Open any modern web browser (Chrome, Edge, Firefox or Safari).</li>
+        <li>Type this address exactly into the address bar and press Enter:<br><span class="addr">http://100.103.134.56:8080</span></li>
+      </ol>
+    </div></div>
+
+    <div class="trouble">
+      <h3>⚠ Troubleshooting tips</h3>
+      <ul>
+        <li><b>Page cannot be reached:</b> check the Tailscale app. If it is disconnected or turned off, the dashboard address will not load.</li>
+        <li><b>No software required:</b> you do not need Python, Node.js or any project code on your computer. The warehouse host PC does the data processing; you only need a web browser and Tailscale.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Middelburg Pharmaceutical Facility · Building Management System · Remote access</span>
+    <img src="spartcon-logo.png" alt="Spartcon Technologies">
+  </div>
+</div>
+</body>
+</html>
