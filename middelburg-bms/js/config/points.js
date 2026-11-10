@@ -104,9 +104,9 @@ export const ROLE_POINTS = Object.freeze({
   // --- fire dampers (Aina, 2026-11-08): only hybrids 6–11, in their own folder ----------------
   fireDamper: { label: 'Fire damper', kind: 'boolean',
     // Shown as OPEN (true) / CLOSED (false), read-only, no alarm. TODO(confirm with Aina): true = open.
-    points: { hybrid: (n) => (n >= 6 ? `HYBRID_${n}_FireDamper` : null) },
+    points: { hybrid: (n) => (n >= 6 ? `HYBRID_${n}_FIREDAMPER` : null) },
     // Folder corrected on site 2026-11-10: FIRE_DAMPERS (underscore), not "FIRE DAMPERS" ($20).
-    paths: { hybrid: (n) => `Drivers/BcpBacnetNetwork/FIRE_DAMPERS/points/HYBRID_${n}_FireDamper` } },
+    paths: { hybrid: (n) => `Drivers/BcpBacnetNetwork/FIRE_DAMPERS/points/HYBRID_${n}_FIREDAMPER` } }, // name in capitals (site, 2026-11-10)
 
   // --- alarms / faults -------------------------------------------------------------
   unitAlarm: { label: 'Unit trip / alarm', kind: 'boolean', alarm: true, severity: 'critical', points: { rooftop: (n) => `Unit${n}Alarm` } },
