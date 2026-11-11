@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Middelburg BMS Dashboard: User Guide</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, 'Liberation Sans', sans-serif; color: #0F1B2D; font-size: 3.3mm; line-height: 1.45; }
+  .page { width: 210mm; height: 297mm; position: relative; display: flex; flex-direction: column; page-break-after: always; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+  .hdr { display: flex; align-items: center; justify-content: space-between; padding: 6mm 12mm 3.5mm; border-bottom: 0.6mm solid #14A3A0; flex: none; }
+  .hdr .t { font-size: 3mm; font-weight: 700; color: #56657C; letter-spacing: 0.06em; text-transform: uppercase; }
+  .hdr img { height: 9mm; }
+  .content { padding: 7mm 12mm 0; flex: 1; display: flex; flex-direction: column; gap: 3.6mm; }
+  h1 { font-size: 7.4mm; font-weight: 900; color: #0B1F3A; line-height: 1.15; }
+  h1 .n { display: inline-grid; place-items: center; width: 9.5mm; height: 9.5mm; border-radius: 50%; background: #14A3A0; color: #fff; font-size: 5mm; margin-right: 2.5mm; vertical-align: 1mm; }
+  h2 { font-size: 4.4mm; font-weight: 900; color: #0B1F3A; margin-top: 1mm; }
+  .lead { font-size: 3.6mm; color: #33425A; }
+  ol, ul { padding-left: 5.5mm; } li { margin: 0.7mm 0; }
+  .shot { border: 0.35mm solid #CBD4E1; border-radius: 2mm; overflow: hidden; box-shadow: 0 1mm 3mm rgba(11,31,58,0.12); background: #fff; }
+  .shot img { display: block; width: 100%; }
+  .cap { font-size: 2.8mm; color: #56657C; margin-top: 1.2mm; }
+  .row { display: flex; gap: 6mm; align-items: flex-start; }
+  .row > * { flex: 1; min-width: 0; }
+  .box { border-radius: 2.5mm; padding: 3mm 4mm; }
+  .tip { background: #E3F5F4; border-left: 1.2mm solid #14A3A0; }
+  .warn { background: #FFF6DB; border-left: 1.2mm solid #F2A900; }
+  .stop { background: #FDECEC; border-left: 1.2mm solid #E5484D; }
+  .box b.h { display: block; margin-bottom: 1mm; }
+  table { width: 100%; border-collapse: collapse; font-size: 3.1mm; }
+  th, td { text-align: left; padding: 1.6mm 2mm; border-bottom: 0.3mm solid #E1E7F0; vertical-align: top; }
+  th { background: #F1F4F9; font-size: 2.9mm; color: #33425A; }
+  .pill { display: inline-block; padding: 0.3mm 2mm; border-radius: 3mm; font-weight: 700; font-size: 2.8mm; }
+  .g { background: #E5F6EE; color: #12784D; } .r { background: #FDECEC; color: #B4232A; } .a { background: #FFF6DB; color: #8A6100; } .gr { background: #EEF1F5; color: #56657C; } .b { background: #EAF1FE; color: #1D4FB8; }
+  .foot { flex: none; display: flex; justify-content: space-between; padding: 3mm 12mm 5mm; font-size: 2.7mm; color: #8A94A6; }
+  .note-sample { font-size: 2.7mm; color: #8A94A6; font-style: italic; }
+  /* cover */
+  .cover { background: #0B1F3A; color: #fff; }
+  .cover .photo { position: absolute; inset: 0 0 auto 0; height: 150mm; }
+  .cover .photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
+  .cover .photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,31,58,0.15) 0%, rgba(11,31,58,0.55) 60%, #0B1F3A 100%); }
+  .cover .logos { position: absolute; top: 10mm; left: 12mm; right: 12mm; display: flex; justify-content: space-between; z-index: 2; }
+  .cover .logos div { background: #fff; border-radius: 3mm; padding: 3mm 4mm; }
+  .cover .logos img { height: 16mm; display: block; }
+  .cover .ttl { position: absolute; top: 140mm; left: 14mm; right: 14mm; z-index: 2; }
+  .cover .kick { color: #7FD9D6; font-weight: 700; letter-spacing: 0.14em; font-size: 3.4mm; text-transform: uppercase; }
+  .cover h1 { color: #fff; font-size: 13mm; margin-top: 3mm; line-height: 1.05; }
+  .cover .sub { font-size: 5mm; color: #C9D4E5; margin-top: 4mm; }
+  .cover .toc { margin-top: 12mm; display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 10mm; font-size: 3.6mm; color: #DCE5F2; }
+  .cover .toc span b { color: #7FD9D6; margin-right: 2mm; }
+  .cover .meta { position: absolute; bottom: 10mm; left: 14mm; right: 14mm; display: flex; justify-content: space-between; font-size: 3mm; color: #8FA3BD; z-index: 2; }
+</style>
+</head>
+<body>
+
+<!-- 1 COVER -->
+<div class="page cover">
+  <div class="photo"><img src="../assets/facility.jpg" alt=""></div>
+  <div class="logos"><div><img src="../assets/doh-logo.png" alt="Department of Health"></div><div><img src="spartcon-logo.png" alt="Spartcon Technologies"></div></div>
+  <div class="ttl">
+    <div class="kick">Middelburg Pharmaceutical Facility</div>
+    <h1>BMS Dashboard<br>User Guide</h1>
+    <div class="sub">How to monitor the warehouse and operate the HVAC units safely</div>
+    <div class="toc">
+      <span><b>2</b>Getting started</span><span><b>7</b>Alarms</span>
+      <span><b>3</b>The Units page</span><span><b>8</b>3D Model &amp; Overview</span>
+      <span><b>4</b>Start / stop a rooftop unit</span><span><b>9</b>Trends &amp; downloading logs</span>
+      <span><b>5</b>Change the temperature setpoint</span><span><b>10</b>Do's, don'ts &amp; help</span>
+      <span><b>6</b>Hybrids, sensors &amp; fire dampers</span>
+    </div>
+  </div>
+  <div class="meta"><span>Prepared by Spartcon Technologies for the Department of Health · Middelburg</span><span>Handover edition · 11 November 2026</span></div>
+</div>
+
+<!-- 2 GETTING STARTED -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">1</span>Getting started</h1>
+    <p class="lead">The BMS dashboard shows the live temperature, humidity and status of every HVAC unit and room sensor in the warehouse, records every reading, and lets authorised operators start/stop the rooftop units and adjust their temperature setpoints.</p>
+    <div class="row">
+      <div><h2>Open the dashboard</h2>
+        <ul>
+          <li><b>On site</b> (any PC on the site network): <b>http://192.168.1.90:8080</b></li>
+          <li><b>Remotely</b>: connect Tailscale first (see the Remote Access guide), then <b>http://100.103.134.56:8080</b></li>
+          <li>Use Chrome, Edge, Firefox or Safari. No software to install.</li>
+        </ul></div>
+      <div><h2>Who can do what</h2>
+        <ul>
+          <li><b>Viewer</b>: sees everything, cannot send commands.</li>
+          <li><b>Operator</b>: can start/stop rooftop units and change setpoints.</li>
+          <li><b>Admin</b>: Spartcon only (settings).</li>
+        </ul></div>
+    </div>
+    <div class="shot"><img src="guide-img/units-top.png" alt=""></div>
+    <div class="cap">The Units page (home). Left: menu. Top: connection status, your role, clock, wall-display mode and the alarm bell.</div>
+    <div class="shot"><img src="guide-img/topbar.png" alt=""></div>
+    <div class="row">
+      <div class="box tip"><b class="h">Green "JACE connected"</b>Readings are live from the building controller. The clock shows when it last read.</div>
+      <div class="box stop"><b class="h">Red "JACE connection lost"</b>Values are no longer live and controls are locked. Contact the IT administrator.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values</span><span>2</span></div>
+</div>
+
+<!-- 3 UNITS PAGE -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">2</span>The Units page</h1>
+    <p class="lead">Every HVAC unit has its own card. The tiles at the top summarise the whole site: units running, active alarms, sensors offline and the connection.</p>
+    <div class="row">
+      <div class="shot" style="flex:0 0 78mm"><img src="guide-img/rtu-card.png" alt=""></div>
+      <div>
+        <h2>Reading a unit card</h2>
+        <ol>
+          <li><b>Name and zone</b>, e.g. Rooftop unit 2 · Main Store.</li>
+          <li><b>State</b>: <span class="pill g">Running</span> <span class="pill gr">Stopped</span> <span class="pill r">Fault</span> <span class="pill gr">No data</span></li>
+          <li><b>Fan badge</b> on the photo spins only while the unit's fan is running.</li>
+          <li><b>Mode band</b>: blue <span class="pill b">COOLING</span> or amber <span class="pill a">HEATING</span> while the unit runs in that mode.</li>
+          <li><b>Temperature and humidity</b> measured by the unit.</li>
+          <li><b>Alarms</b>: each alarm point, green OK or red ALARM (page 7).</li>
+          <li><b>Start / stop</b> buttons (page 4).</li>
+          <li><b>Temperature setpoint</b> with − / + and Apply (page 5).</li>
+          <li><b>Facts</b>: unit enable and the mode reported by the unit.</li>
+        </ol>
+        <div class="box tip" style="margin-top:3mm"><b class="h">Filter the list</b>Use <b>All units / Hybrid / Rooftop / Sensors</b> above the cards. Click a unit's <b>name</b> for its detail panel with a 1-hour temperature trend.</div>
+        <div class="box warn" style="margin-top:3mm"><b class="h">A dash "—" means no live value</b>The grey label beside it says why (STALE, OFFLINE…). The dashboard never shows an old value as current.</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values</span><span>3</span></div>
+</div>
+
+<!-- 4 START / STOP -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">3</span>Start or stop a rooftop unit</h1>
+    <p class="lead">Only the 5 rooftop units can be started or stopped from the dashboard. You must be logged in as <b>Operator</b>.</p>
+    <div class="shot" style="width:120mm"><img src="guide-img/startstop-row.png" alt=""></div>
+    <ol>
+      <li>Find the unit on the <b>Units</b> page (filter <b>Rooftop</b>).</li>
+      <li>Click <b>Stop</b> (or <b>Start</b>). The highlighted button shows the current command.</li>
+      <li>A confirmation window opens. Check the unit and the change, add a reason if you like (it is saved in the Audit Trail), then click <b>Send</b>. Click <b>Cancel</b> if you are unsure.</li>
+      <li>Watch the message under the button until it turns green.</li>
+    </ol>
+    <div class="shot"><img src="guide-img/stop-dialog.png" alt=""></div>
+    <div class="cap">Every command asks for confirmation first.</div>
+    <table>
+      <tr><th style="width:42mm">Message</th><th>Meaning</th></tr>
+      <tr><td><span class="pill b">Sending…</span></td><td>Sent to the controller, waiting for it to confirm (normally a few seconds).</td></tr>
+      <tr><td><span class="pill g">Confirmed</span></td><td>The controller accepted the command.</td></tr>
+      <tr><td><span class="pill r">Command accepted, unit not following</span></td><td>The controller has the command but the unit's fan has not followed. Check the unit / its local controls and call the IT administrator.</td></tr>
+      <tr><td><span class="pill r">Not confirmed / Failed / Not sent</span></td><td>The command did not take effect. The message says why. Do not keep pressing the button; call the IT administrator.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values</span><span>4</span></div>
+</div>
+
+<!-- 5 SETPOINT -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">4</span>Change the temperature setpoint</h1>
+    <p class="lead">The setpoint is the <b>target temperature</b> for a rooftop unit (15–35 °C, steps of 0.5 °C). The unit then heats or cools by itself to reach it.</p>
+    <div class="row">
+      <div>
+        <ol>
+          <li>On the rooftop unit's card, press <b>−</b> or <b>+</b> until the new target shows.</li>
+          <li>Click <b>Apply</b>.</li>
+          <li>Check the change in the confirmation window (old → new) and click <b>Send</b>.</li>
+          <li>Wait for <span class="pill g">Confirmed</span> under the setpoint.</li>
+        </ol>
+        <div class="shot" style="margin-top:3mm"><img src="guide-img/setpoint-draft.png" alt=""></div>
+        <div class="cap">Step 1: the new target (23.0 °C) is chosen but not sent yet.</div>
+      </div>
+      <div>
+        <div class="shot"><img src="guide-img/setpoint-confirmed.png" alt=""></div>
+        <div class="cap">Step 4: the controller confirmed the new setpoint.</div>
+      </div>
+    </div>
+    <div class="box tip"><b class="h">How heating and cooling work (automatic)</b>
+      <ul>
+        <li>Room <b>above</b> the setpoint → the unit <b>cools</b>.</li>
+        <li>Room more than <b>1 °C below</b> the setpoint → the unit <b>heats</b>.</li>
+        <li>In between → neither (this stops it switching back and forth).</li>
+      </ul>
+      Example: room 25 °C, setpoint 18 °C → cooling. The card tells you which way the unit should be working.</div>
+    <div class="box warn"><b class="h">Be patient</b>The room temperature changes slowly, over minutes to hours. It will not jump to the new setpoint. Watch the trend instead of changing the setpoint again.</div>
+    <div class="box stop"><b class="h">Heating / cooling cannot be forced from the dashboard</b>The mode is chosen by the unit itself and is shown for information only.</div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values</span><span>5</span></div>
+</div>
+
+<!-- 6 MONITORING ONLY -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">5</span>Hybrid units, room sensors &amp; fire dampers</h1>
+    <p class="lead">These are <b>monitoring only</b>: the dashboard reads them but never sends them commands.</p>
+    <div class="row">
+      <div><div class="shot"><img src="guide-img/hybrid-heating.png" alt=""></div><div class="cap">Hybrid unit: temperature, fan speed, BMS on/off, mode, supply fan, setpoint and its alarms.</div></div>
+      <div>
+        <div class="shot"><img src="guide-img/sensor-card.png" alt=""></div><div class="cap">Room sensor: temperature, humidity and CO₂ (ppm).</div>
+        <h2 style="margin-top:4mm">What you see</h2>
+        <ul>
+          <li><b>11 hybrid units</b>: read only. The amber band shows this unit is heating.</li>
+          <li><b>6 room sensors</b> (East and West): temperature, humidity and CO₂.</li>
+          <li><b>6 fire dampers</b> (hybrids 6–11): <span class="pill g">OPEN</span> or <span class="pill a">CLOSED</span>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="shot"><img src="guide-img/dampers.png" alt=""></div>
+    <div class="cap">Fire dampers section at the bottom of the Units page.</div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values</span><span>6</span></div>
+</div>
+
+<!-- 7 ALARMS -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">6</span>Alarms</h1>
+    <div class="row">
+      <div class="shot" style="flex:0 0 74mm"><img src="guide-img/hybrid-card.png" alt=""></div>
+      <div>
+        <h2>On each unit card</h2>
+        <ul>
+          <li><b>Green dot + OK</b>: normal.</li>
+          <li><b>Red blinking dot + ALARM</b>: the alarm is active. The panel header shows how many and the zone.</li>
+          <li><b>Filter</b>: green <b>Clean</b>, or red <b>DIRTY – replace filter</b>.</li>
+          <li><b>Grey NO DATA</b>: the alarm point cannot be read right now. This is not the same as OK.</li>
+        </ul>
+        <h2 style="margin-top:3mm">Alarm points</h2>
+        <ul>
+          <li><b>Rooftop</b>: unit trip / alarm.</li>
+          <li><b>Hybrid</b>: supply air fan trip, no airflow, static pressure failure, room sensor 1/2 failure, on-coil sensor failure, dirty filter.</li>
+        </ul>
+        <div class="box warn" style="margin-top:3mm"><b class="h">When an alarm appears</b>Note the unit, zone and time, check the unit if it is safe to do so, and report it to the IT administrator / maintenance. For a dirty filter, arrange a filter replacement.</div>
+      </div>
+    </div>
+    <div class="shot"><img src="guide-img/alarms.png" alt=""></div>
+    <div class="cap">The Alarms page lists every active alarm for the whole site. The red number on the bell (top right) and next to "Alarms" in the menu counts them.</div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values</span><span>7</span></div>
+</div>
+
+<!-- 8 MODEL & OVERVIEW -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">7</span>3D Model &amp; Overview</h1>
+    <h2>3D Model: the warehouse at a glance</h2>
+    <div class="shot" style="height:96mm"><img src="guide-img/model.png" alt="" style="height:100%;object-fit:cover;object-position:top"></div>
+    <div class="cap">Zones are coloured by status (green normal, amber warning, red critical, grey no data). Rooftop units sit on the roof, hybrids on the floor, sensors as teal posts. Click a zone or a unit for details. "Plan" shows a top-down view.</div>
+    <h2>Overview: site summary</h2>
+    <div class="shot" style="height:96mm"><img src="guide-img/overview.png" alt="" style="height:100%;object-fit:cover;object-position:top"></div>
+    <div class="cap">Key numbers, temperature and humidity of every zone, recent events and the facility location.</div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values · layout illustrative</span><span>8</span></div>
+</div>
+
+<!-- 9 TRENDS -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">8</span>Trends &amp; downloading logs</h1>
+    <div class="shot"><img src="guide-img/trends.png" alt=""></div>
+    <div class="cap">Trends: choose a zone and a range (1 h, 24 h, 7 d, 30 d). Below the charts: period summary (min / max / mean / MKT), excursions and unit run history. <b>Print report</b> makes a printable report.</div>
+    <div class="row">
+      <div>
+        <h2>Download the recorded data (Excel)</h2>
+        <ol>
+          <li>Go to <b>Trends</b> and scroll to <b>Stored logs</b>.</li>
+          <li>Choose <b>From</b> and <b>To</b> dates.</li>
+          <li>Choose <b>All units</b> or one unit.</li>
+          <li>Click <b>Download logs (CSV)</b> and open the file in Excel.</li>
+        </ol>
+        <div class="box tip" style="margin-top:3mm">Every reading of every unit and sensor is recorded every 5 minutes on the host PC, from the day the system went live, as long as the host PC is running.</div>
+      </div>
+      <div><div class="shot"><img src="guide-img/stored-logs.png" alt=""></div></div>
+    </div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span class="note-sample">Screens shown with sample values</span><span>9</span></div>
+</div>
+
+<!-- 10 DOS & DONTS -->
+<div class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · User Guide</span><img src="../assets/doh-logo.png" alt=""></div>
+  <div class="content">
+    <h1><span class="n">9</span>Do's, don'ts &amp; getting help</h1>
+    <div class="row">
+      <div class="box tip"><b class="h">✔ Do</b>
+        <ul>
+          <li>Check the green <b>JACE connected</b> status before acting on readings.</li>
+          <li>Send one command at a time and wait for <b>Confirmed</b>.</li>
+          <li>Add a reason to commands; it is kept in the Audit Trail.</li>
+          <li>Give setpoint changes time to take effect.</li>
+          <li>Report red alarms and dirty filters promptly.</li>
+          <li>Use the <b>Viewer</b> role on screens that only need to show data.</li>
+        </ul></div>
+      <div class="box stop"><b class="h">✘ Do not</b>
+        <ul>
+          <li>Open the <b>server cabinet</b>, or switch off, restart or unplug the <b>host PC</b>, router or JACE.</li>
+          <li>Close the dashboard program on the host PC or change its settings.</li>
+          <li>Use the <b>Settings</b> or <b>Commissioning</b> pages, or switch the data source to DEMO.</li>
+          <li>Press Start/Stop repeatedly, or keep changing the setpoint while waiting for the room to respond.</li>
+          <li>Share the remote-access (Tailscale) invite or your login with others.</li>
+        </ul></div>
+    </div>
+    <h2>What the labels mean</h2>
+    <table>
+      <tr><th style="width:42mm">Label</th><th>Meaning</th></tr>
+      <tr><td><span class="pill g">LIVE / Updated n s ago</span></td><td>Current value from the building controller.</td></tr>
+      <tr><td><span class="pill gr">— STALE</span></td><td>No new value recently (or connection lost). The small "last good" shows the last valid value and time.</td></tr>
+      <tr><td><span class="pill gr">— OFFLINE</span></td><td>The sensor or unit is not communicating.</td></tr>
+      <tr><td><span class="pill gr">— NOT MAPPED / NO DATA</span></td><td>No reading available for this point.</td></tr>
+      <tr><td><span class="pill a">SIMULATED DATA banner</span></td><td>Demonstration mode, not real data. Contact the IT administrator.</td></tr>
+    </table>
+    <div class="box warn" style="margin-top:2mm"><b class="h">Help and faults</b>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:6mm">
+        <div>For access, faults or questions, contact the IT administrator:<br><b style="font-size:5mm">Siphiwe Khumalo</b><br><b style="color:#0B4F9C">siphiwek@spartcongroup.co.za</b></div>
+        <img src="spartcon-logo.png" alt="Spartcon Technologies" style="height:17mm">
+      </div></div>
+  </div>
+  <div class="foot"><span>Spartcon Technologies</span><span>Middelburg Pharmaceutical Facility · Department of Health</span><span>10</span></div>
+</div>
+
+</body>
+</html>
