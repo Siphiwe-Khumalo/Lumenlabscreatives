@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<title>Middelburg BMS: Project Documentation</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, 'Liberation Sans', sans-serif; color: #111827; font-size: 9.4pt; line-height: 1.45; }
+  .page { width: 210mm; height: 297mm; position: relative; overflow: hidden; page-break-after: always; display: flex; flex-direction: column; padding: 0 15mm; }
+  .page:last-child { page-break-after: auto; }
+  .hdr { display: flex; justify-content: space-between; align-items: center; padding: 8mm 0 3mm; border-bottom: 0.5mm solid #0B1F3A; flex: none; }
+  .hdr .t { font-size: 7.4pt; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #374151; }
+  .hdr img { height: 9mm; }
+  .hdr .logos { display: flex; gap: 4mm; align-items: center; }
+  .body { padding-top: 6mm; flex: 1; display: flex; flex-direction: column; gap: 3.4mm; }
+  .foot { flex: none; display: flex; justify-content: space-between; border-top: 0.3mm solid #9CA3AF; padding: 2.5mm 0 7mm; font-size: 7pt; color: #4B5563; }
+  h1 { font-size: 17pt; font-weight: 900; color: #0B1F3A; }
+  h1 .n { color: #0E7C7A; margin-right: 2mm; }
+  h2 { font-size: 11pt; font-weight: 900; color: #0B1F3A; margin-top: 1.5mm; }
+  h3 { font-size: 9.6pt; font-weight: 700; margin-top: 1mm; }
+  p { max-width: 178mm; }
+  ul, ol { padding-left: 5mm; } li { margin: 0.6mm 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
+  th, td { text-align: left; padding: 1.3mm 1.8mm; border: 0.3mm solid #9CA3AF; vertical-align: top; }
+  th { background: #E5E7EB; font-weight: 700; }
+  td.k { width: 46mm; font-weight: 700; background: #F3F4F6; }
+  code { font-family: 'DejaVu Sans Mono', Consolas, monospace; font-size: 7.8pt; }
+  pre { font-family: 'DejaVu Sans Mono', Consolas, monospace; font-size: 7.8pt; background: #F3F4F6; border: 0.3mm solid #9CA3AF; padding: 2mm 3mm; white-space: pre-wrap; }
+  .box { border: 0.3mm solid #9CA3AF; border-left: 1.4mm solid #0E7C7A; padding: 2.2mm 3mm; background: #F9FAFB; }
+  .warn { border-left-color: #B45309; background: #FFFBEB; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .shot { border: 0.3mm solid #9CA3AF; }
+  .shot img { display: block; width: 100%; }
+  .cap { font-size: 7.4pt; color: #4B5563; margin-top: 1mm; }
+  .conf { font-size: 7pt; font-weight: 700; color: #991B1B; letter-spacing: 0.08em; text-transform: uppercase; }
+  /* cover */
+  .cover { padding: 0; }
+  .cover .top { display: flex; justify-content: space-between; align-items: center; padding: 14mm 15mm 0; }
+  .cover .top img { height: 18mm; }
+  .cover .photo { margin: 12mm 15mm 0; height: 92mm; overflow: hidden; border: 0.3mm solid #9CA3AF; }
+  .cover .photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+  .cover .ttl { padding: 10mm 15mm 0; }
+  .cover .kick { font-size: 9pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #0E7C7A; }
+  .cover h1 { font-size: 27pt; line-height: 1.1; margin: 3mm 0 3mm; }
+  .cover .sub { font-size: 12pt; color: #374151; }
+  .cover table { margin: 9mm 15mm 0; width: calc(100% - 30mm); font-size: 9pt; }
+  .cover .bottom { margin-top: auto; padding: 0 15mm 10mm; display: flex; justify-content: space-between; align-items: end; }
+  .sign td { height: 13mm; }
+</style>
+</head>
+<body>
+
+<!-- 1 COVER -->
+<section class="page cover">
+  <div class="top"><img src="../assets/doh-logo.png" alt="Department of Health"><img src="spartcon-logo.png" alt="Spartcon Technologies"></div>
+  <div class="photo"><img src="../assets/facility.jpg" alt=""></div>
+  <div class="ttl">
+    <div class="kick">Project documentation</div>
+    <h1>Middelburg Pharmaceutical Facility<br>Building Management System</h1>
+    <div class="sub">HVAC monitoring and control dashboard on Tridium Niagara 4</div>
+  </div>
+  <table>
+    <tr><td class="k">Client</td><td>Department of Health, Middelburg pharmaceutical warehouse<br>Cnr Dr Mandela Drive &amp; Jaspis Street, Middelburg, Mpumalanga</td></tr>
+    <tr><td class="k">Contractor</td><td>Spartcon Technologies</td></tr>
+    <tr><td class="k">Prepared by</td><td>Siphiwe Khumalo, IT Administrator, Spartcon Technologies</td></tr>
+    <tr><td class="k">Handover date</td><td>11 November 2026</td></tr>
+    <tr><td class="k">Document</td><td>Version 1.0, 16 November 2026</td></tr>
+  </table>
+  <div class="bottom"><span class="conf">Confidential: contains site network details. Store securely.</span><span style="font-size:7.5pt;color:#4B5563">Page 1 of 14</span></div>
+</section>
+
+<!-- 2 CONTENTS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1>Contents</h1>
+    <table>
+      <tr><th style="width:12mm">#</th><th>Section</th><th style="width:16mm">Page</th></tr>
+      <tr><td>1</td><td>Project overview</td><td>3</td></tr>
+      <tr><td>2</td><td>System architecture</td><td>4</td></tr>
+      <tr><td>3</td><td>Equipment and points</td><td>5</td></tr>
+      <tr><td>4</td><td>Control philosophy</td><td>6</td></tr>
+      <tr><td>5</td><td>Dashboard software</td><td>7</td></tr>
+      <tr><td>6</td><td>Commissioning and testing</td><td>8</td></tr>
+      <tr><td>7</td><td>Issues found and how they were resolved</td><td>9</td></tr>
+      <tr><td>8</td><td>Host PC: installation, operation and updates</td><td>10</td></tr>
+      <tr><td>9</td><td>Remote access, data and backups</td><td>11</td></tr>
+      <tr><td>10</td><td>Handover, training and deliverables</td><td>12</td></tr>
+      <tr><td>11</td><td>Open items and recommendations</td><td>13</td></tr>
+      <tr><td>12</td><td>Handover acceptance (sign-off)</td><td>14</td></tr>
+    </table>
+    <h2>Document control</h2>
+    <table>
+      <tr><th>Version</th><th>Date</th><th>Author</th><th>Change</th></tr>
+      <tr><td>1.0</td><td>16 Nov 2026</td><td>Siphiwe Khumalo</td><td>First issue after handover on 11 Nov 2026</td></tr>
+      <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+    </table>
+    <h2>People and roles</h2>
+    <table>
+      <tr><th>Role</th><th>Name / organisation</th><th>Responsibility</th></tr>
+      <tr><td>IT Administrator (software, IT)</td><td>Siphiwe Khumalo, Spartcon Technologies</td><td>Dashboard and gateway software, host PC, network and remote access, commissioning support, user guide, training and handover</td></tr>
+      <tr><td>Niagara / JACE engineer</td><td>Aina (controls integrator)</td><td>JACE station, point configuration, API client and rights, Workbench changes</td></tr>
+      <tr><td>Client</td><td>Department of Health, Middelburg</td><td>Operation of the system by trained site staff</td></tr>
+    </table>
+    <h2>Related documents</h2>
+    <ul>
+      <li><b>User guide</b> (10 pages): operator training guide, <code>handover/user-guide.pdf</code></li>
+      <li><b>Remote access setup guide</b> (Tailscale), <code>handover/remote-access-guide.pdf</code></li>
+      <li><b>Server cabinet sign</b>, <code>handover/cabinet-sign.pdf</code></li>
+      <li>Technical handover notes for developers: <code>middelburg-bms/CLAUDE.md</code> and <code>README.md</code> (repository <code>Siphiwe-Khumalo/Lumenlabscreatives</code>)</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 2 of 14</span></div>
+</section>
+
+<!-- 3 OVERVIEW -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">1</span>Project overview</h1>
+    <h2>Purpose</h2>
+    <p>The warehouse stores pharmaceutical products, so temperature and humidity must be kept stable and recorded. The project delivered a web-based Building Management System (BMS) dashboard. Site staff use it to monitor every HVAC unit and room sensor, act on alarms, start and stop the rooftop units, adjust their temperature setpoints, and export recorded data.</p>
+    <h2>Scope</h2>
+    <div class="grid2">
+      <div><h3>Included</h3><ul>
+        <li>Live monitoring of 16 HVAC units: 5 rooftop and 11 hybrid.</li>
+        <li>6 room sensors (temperature, humidity, CO₂) and 6 fire damper statuses.</li>
+        <li>Start/stop and setpoint control of the 5 rooftop units.</li>
+        <li>Alarm display, including dirty-filter alarms.</li>
+        <li>History logging every 5 minutes, with CSV export.</li>
+        <li>Site host PC, on-site and remote access.</li>
+        <li>User guide, signage, staff training and handover.</li>
+      </ul></div>
+      <div><h3>Not included / by others</h3><ul>
+        <li>HVAC equipment, field wiring and electrical work.</li>
+        <li>JACE station configuration and point mapping (controls integrator).</li>
+        <li>Control of hybrid units (monitoring only, by agreement).</li>
+        <li>Phone/WhatsApp/SMS alarm notifications (not built).</li>
+        <li>Schedules and Auto/Manual selection (no points supplied).</li>
+        <li>Architectural floor plan. The 3D model layout is illustrative.</li>
+      </ul></div>
+    </div>
+    <h2>Key facts</h2>
+    <table>
+      <tr><td class="k">Controller</td><td>Tridium JACE, Niagara 4, accessed through its OSS REST API (HTTPS)</td></tr>
+      <tr><td class="k">Points configured</td><td>295 (289 unit and sensor points + 6 fire dampers)</td></tr>
+      <tr><td class="k">Writable points</td><td>10: rooftop start/stop and setpoint (units 1–5). Everything else is read-only.</td></tr>
+      <tr><td class="k">Write priority</td><td>1 (highest)</td></tr>
+      <tr><td class="k">Users</td><td>Viewer, Operator and Admin roles; operators send commands</td></tr>
+      <tr><td class="k">Runs on</td><td>Site host PC, 24/7, as a Node.js service with no database and no internet dependency</td></tr>
+    </table>
+    <h2>Milestones</h2>
+    <table>
+      <tr><th style="width:32mm">Date</th><th>Milestone</th></tr>
+      <tr><td>Before Nov 2026</td><td>ARC Glasshouse BMS (Spartcon) delivered; its JACE integration lessons were applied here.</td></tr>
+      <tr><td>8 Nov 2026</td><td>On-site commissioning tests: reads and writes confirmed, control rules agreed with the integrator.</td></tr>
+      <tr><td>8–10 Nov 2026</td><td>Fire damper points added, alarm panels and heating/cooling display completed, remote access set up.</td></tr>
+      <tr><td>11 Nov 2026</td><td>Handover to the Department of Health; staff trained using the user guide.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 3 of 14</span></div>
+</section>
+
+<!-- 4 ARCHITECTURE -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">2</span>System architecture</h1>
+    <svg viewBox="0 0 720 360" width="100%" style="border:0.3mm solid #9CA3AF" font-family="Arial" font-size="11">
+      <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#374151"/></marker></defs>
+      <text x="16" y="24" font-weight="700" fill="#0E7C7A" font-size="10">FIELD</text>
+      <g fill="#F3F4F6" stroke="#374151"><rect x="16" y="36" width="170" height="52" rx="4"/><rect x="16" y="100" width="170" height="52" rx="4"/><rect x="16" y="164" width="170" height="52" rx="4"/><rect x="16" y="228" width="170" height="52" rx="4"/></g>
+      <text x="26" y="58" font-weight="700">5 rooftop units</text><text x="26" y="76" fill="#374151">BACnet · RUT_1…5</text>
+      <text x="26" y="122" font-weight="700">11 hybrid units</text><text x="26" y="140" fill="#374151">Modbus · HYBRID_1…11</text>
+      <text x="26" y="186" font-weight="700">6 room sensors</text><text x="26" y="204" fill="#374151">Modbus TCP gateways E/W</text>
+      <text x="26" y="250" font-weight="700">6 fire dampers</text><text x="26" y="268" fill="#374151">BACnet · hybrids 6–11</text>
+      <text x="246" y="24" font-weight="700" fill="#0E7C7A" font-size="10">CONTROLLER</text>
+      <rect x="246" y="110" width="150" height="96" rx="4" fill="#E0F2F1" stroke="#0E7C7A" stroke-width="1.5"/>
+      <text x="258" y="136" font-weight="700">Tridium JACE</text><text x="258" y="154" fill="#374151">Niagara 4 station</text><text x="258" y="172" fill="#374151">OSS REST API (HTTPS)</text><text x="258" y="190" fill="#374151">192.168.1.140</text>
+      <g stroke="#374151" fill="none" marker-end="url(#a)"><path d="M186 62 H216 V140 H244"/><path d="M186 126 H216"/><path d="M186 190 H216 V160 H244"/><path d="M186 254 H216 V180"/></g>
+      <text x="456" y="24" font-weight="700" fill="#0E7C7A" font-size="10">SITE HOST PC (24/7)</text>
+      <rect x="456" y="36" width="248" height="200" rx="4" fill="#F9FAFB" stroke="#0B1F3A" stroke-width="1.5"/>
+      <text x="468" y="58" font-weight="700">Windows PC · 192.168.1.90:8080</text>
+      <g fill="#fff" stroke="#9CA3AF"><rect x="468" y="68" width="224" height="40" rx="3"/><rect x="468" y="116" width="224" height="40" rx="3"/><rect x="468" y="164" width="224" height="40" rx="3"/></g>
+      <text x="478" y="86" font-weight="700">JACE gateway</text><text x="478" y="101" fill="#374151" font-size="10">credentials, write allowlist, queue, cache</text>
+      <text x="478" y="134" font-weight="700">Dashboard web app</text><text x="478" y="149" fill="#374151" font-size="10">Units, Overview, 3D, Alarms, Trends, Audit</text>
+      <text x="478" y="182" font-weight="700">History logger</text><text x="478" y="197" fill="#374151" font-size="10">all points every 5 min → CSV files</text>
+      <text x="468" y="226" fill="#374151" font-size="10">Node.js · scheduled task "Middelburg BMS"</text>
+      <path d="M396 158 H454" stroke="#374151" marker-end="url(#a)" marker-start="url(#a)" fill="none"/><text x="402" y="150" font-size="9" fill="#374151">HTTPS</text>
+      <g fill="#F3F4F6" stroke="#374151"><rect x="456" y="272" width="118" height="70" rx="4"/><rect x="586" y="272" width="118" height="70" rx="4"/></g>
+      <text x="466" y="294" font-weight="700">On-site users</text><text x="466" y="311" fill="#374151" font-size="10">browser on site LAN</text><text x="466" y="326" fill="#374151" font-size="10">192.168.1.90:8080</text>
+      <text x="596" y="294" font-weight="700">Remote users</text><text x="596" y="311" fill="#374151" font-size="10">Tailscale (encrypted)</text><text x="596" y="326" fill="#374151" font-size="10">100.103.134.56:8080</text>
+      <g stroke="#374151" marker-start="url(#a)" fill="none"><path d="M515 238 V270"/><path d="M645 238 V270"/></g>
+      <text x="16" y="330" fill="#374151" font-size="10">Browsers never talk to the JACE directly and never see its credentials.</text>
+      <text x="16" y="346" fill="#374151" font-size="10">Only the gateway on the host PC holds them (.env file).</text>
+    </svg>
+    <h2>Components</h2>
+    <table>
+      <tr><th style="width:38mm">Component</th><th>Description</th></tr>
+      <tr><td>Field equipment</td><td>Rooftop units on the BACnet network (station folder <code>Drivers/BcpBacnetNetwork/OFFICES/points/RUT_n</code>). Hybrid units 1–5 on <code>ModbusAsyncNetwork</code>, 6–11 on <code>ModbusTcpNetwork</code>. Room sensors via Modbus TCP gateways (<code>TempEast</code>, <code>TempWest</code>). Fire dampers on <code>FIRE_DAMPERS</code>.</td></tr>
+      <tr><td>JACE controller</td><td>Tridium JACE running the Niagara 4 station, configured by the controls integrator. It exposes points through the OSS REST API at <code>https://192.168.1.140/ossRestApiServer</code> (OAuth client credentials, self-signed certificate).</td></tr>
+      <tr><td>Gateway</td><td><code>scripts/jace-gateway.mjs</code>: obtains and caches the token, serialises all JACE requests, times out unresponsive reads after 4 s, and only writes points on its allowlist.</td></tr>
+      <tr><td>Dashboard</td><td>Plain HTML/CSS/JavaScript served by <code>scripts/serve.mjs</code>. Libraries are stored locally, so it works without internet.</td></tr>
+      <tr><td>History logger</td><td><code>scripts/history.mjs</code>: reads every point every 5 minutes and appends to CSV files on the host PC.</td></tr>
+      <tr><td>Remote access</td><td>Tailscale private network to the host PC. No ports are opened to the internet.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 4 of 14</span></div>
+</section>
+
+<!-- 5 EQUIPMENT & POINTS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">3</span>Equipment and points</h1>
+    <table>
+      <tr><th>Equipment</th><th>IDs</th><th>Network / station folder</th><th>Points each</th><th>Access</th></tr>
+      <tr><td>Rooftop units</td><td>RTU-01…05</td><td>BACnet · <code>…/OFFICES/points/RUT_1…5</code></td><td>8</td><td>Start/stop and setpoint writable; rest read-only</td></tr>
+      <tr><td>Hybrid units</td><td>HYB-01…05</td><td>Modbus async · <code>…/ModbusAsyncNetwork/HYBRID_1…5</code></td><td>21</td><td>Read-only</td></tr>
+      <tr><td>Hybrid units</td><td>HYB-06…11</td><td>Modbus TCP · <code>…/ModbusTcpNetwork/HYBRID_6…11</code></td><td>21</td><td>Read-only</td></tr>
+      <tr><td>Room sensors</td><td>SEN-E1…E3, SEN-W1…W3</td><td>Modbus TCP gateway · <code>Drivers/TempEast|TempWest</code></td><td>3</td><td>Read-only</td></tr>
+      <tr><td>Fire dampers</td><td>Hybrids 6–11</td><td>BACnet · <code>…/FIRE_DAMPERS/points/HYBRID_n_FIREDAMPER</code></td><td>1</td><td>Read-only</td></tr>
+    </table>
+    <h2>Rooftop unit points (per unit, n = 1…5)</h2>
+    <table>
+      <tr><th style="width:42mm">Point</th><th style="width:40mm">Meaning</th><th>Notes</th></tr>
+      <tr><td><code>SPACE_TEMP{n}</code></td><td>Space temperature</td><td>Zone temperature source</td></tr>
+      <tr><td><code>R_Humidity{n}</code></td><td>Relative humidity</td><td>Monitoring</td></tr>
+      <tr><td><code>Unit{n}Alarm</code></td><td>Unit trip / alarm</td><td>true = alarm (assumed)</td></tr>
+      <tr><td><code>Unit{n}SAF</code></td><td>Supply air fan status</td><td>Used to show "running" and to check commands</td></tr>
+      <tr><td><code>Unit{n}Mode</code></td><td>Heating / cooling</td><td>true = heating. <b>Read-only</b> (automatic changeover)</td></tr>
+      <tr><td><code>Uni{n}StartCmd</code></td><td>Start / stop command</td><td><b>Written</b> by the dashboard (name spelled as in the station)</td></tr>
+      <tr><td><code>Unit{n}Enable</code></td><td>Unit enable</td><td>Output, shown as status only</td></tr>
+      <tr><td><code>Unit{n}Setpoint</code></td><td>Temperature setpoint</td><td><b>Written</b> by the dashboard, 15–35 °C, 0.5 °C steps</td></tr>
+    </table>
+    <h2>Hybrid unit points (per unit, all read-only)</h2>
+    <p><code>BMS_Enable</code>, <code>BMSControl</code>, <code>REMOTE_STATUS</code>, <code>COOL_MODE</code>, <code>HEAT_MODE</code>, <code>FAN_ONLY_MODE</code>, <code>SUPPLY_AIR_FAN</code>, <code>FAN_SPEED</code>, <code>CALCULATED_AIRFLOW</code>, <code>STATIC_AIR_PRESSURE</code>, <code>STATIC_PESSURE_SETPOINT</code> (spelled as in the station), <code>STATIC_PRESSURE_STATUS</code>, <code>ROOM_TEMP_AVERAGE</code>, <code>ROOM_TEMP_SETPOINT</code>.<br>
+    Alarms: <code>SUPPLY_AIR_FAN_TRIP</code>, <code>NO_AIRFLOW</code>, <code>STATIC_PRESSURE_FAILURE</code>, <code>ROOM_TEMP1_FAILURE</code>, <code>ROOM_TEMP2_FAILURE</code>, <code>ONCOIL_TEMP_FAILURE</code>, <code>DIRTY_FILTER</code>.</p>
+    <h2>Room sensor points</h2>
+    <p><code>SpaceTemp</code> (°C), <code>RelativeHumidity</code> (%RH), <code>C02</code> (CO₂ in ppm, spelled with a zero in the station). Path: <code>Drivers/TempEast/Modbus$20Tcp$20Gateway$20Device{1…3}/points/</code>, and the same under <code>TempWest</code>.</p>
+    <div class="box warn"><b>Note:</b> point names for units 2–n were derived from the unit 1 names supplied by the integrator. Any point the JACE does not answer shows as NOT MAPPED or OFFLINE on the dashboard. The Commissioning page and <code>npm run check-points</code> list every point's status.</div>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 5 of 14</span></div>
+</section>
+
+<!-- 6 CONTROL PHILOSOPHY -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">4</span>Control philosophy</h1>
+    <p>The rules below were agreed on site with the controls integrator on 8 November 2026.</p>
+    <table>
+      <tr><th style="width:40mm">Function</th><th>Rule</th></tr>
+      <tr><td>Rooftop start / stop</td><td>Commanded from the dashboard (<code>Uni{n}StartCmd</code>, true = start). Confirmed by reading the command back. The card shows whether the supply fan follows.</td></tr>
+      <tr><td>Rooftop setpoint</td><td>Commanded from the dashboard (<code>Unit{n}Setpoint</code>), range 15–35 °C in 0.5 °C steps.</td></tr>
+      <tr><td>Rooftop heating / cooling</td><td><b>Automatic changeover in the unit</b>, not commanded. It cools when the space is above the setpoint and heats when the space is below (setpoint − 1 °C). Between the two it does neither, which prevents hunting. <code>Unit{n}Mode</code> true = heating, displayed only. Writing it would lock the mode.</td></tr>
+      <tr><td>Hybrid units</td><td><b>Monitoring only.</b> BMS state, mode, fan, setpoint and alarms are displayed. The JACE refuses writes to hybrid mode points, and the gateway allowlist blocks all hybrid writes.</td></tr>
+      <tr><td>Fire dampers</td><td><b>Read-only</b>, shown as OPEN / CLOSED (true = OPEN assumed, to be confirmed by the integrator).</td></tr>
+      <tr><td>Alarms</td><td>Each unit card shows each alarm point as green OK or red ALARM. The dirty filter shows "Clean" or "DIRTY – replace filter". The Alarms page lists all active alarms. Limit-based conditions use illustrative thresholds until approved limits are supplied.</td></tr>
+    </table>
+    <h2>Command priority</h2>
+    <p>Niagara points have a 16-level priority array. The value in force is the highest-priority (lowest number) non-empty slot, not the last write. The dashboard writes at <b>priority 1</b>, so its commands cannot be overridden by schedules or logic at lower priorities. This also means:</p>
+    <ul>
+      <li>A value written at priority 1 stays in force until it is <b>released</b> (Workbench: Actions → Auto, or "relinquish"). Leftover priority-1 values from early tests on <code>Unit{n}Mode</code> must be released, or the automatic changeover stays locked (see section 11).</li>
+      <li>Every command is <b>verified by reading the point back</b> from the controller at 1.5, 5 and 15 seconds. The operator sees <i>Sending…</i>, then <i>Confirmed</i>, or a clear failure message.</li>
+    </ul>
+    <h2>Safety measures in the software</h2>
+    <ul>
+      <li>Write allowlist on the host PC: only the 10 rooftop start/stop and setpoint points can be written, whatever a browser sends.</li>
+      <li>A confirmation dialog for every command (old value → new value, optional reason), recorded in the Audit Trail.</li>
+      <li>Viewers cannot send commands. Controls are disabled while the JACE connection is lost.</li>
+      <li>Only live values are displayed. Values that are stale, offline or not mapped show "—" with a label, never an old number presented as current.</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 6 of 14</span></div>
+</section>
+
+<!-- 7 SOFTWARE -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">5</span>Dashboard software</h1>
+    <div class="shot"><img src="guide-img/units-top.png" alt="" style="height:74mm;object-fit:cover;object-position:top left"></div><div class="cap">Units page (sample values from a test environment).</div>
+    <h2>Pages</h2>
+    <table>
+      <tr><th style="width:34mm">Page</th><th>Function</th></tr>
+      <tr><td>Units (home)</td><td>Summary tiles. One card per unit: state, temperature/humidity or fan speed, heating/cooling band, alarm panel, rooftop controls. Room sensors and fire dampers.</td></tr>
+      <tr><td>Overview</td><td>Environmental assurance summary, zone trends, recent events, facility location.</td></tr>
+      <tr><td>3D Model</td><td>Warehouse model with zones and units coloured by status (layout illustrative).</td></tr>
+      <tr><td>Conditions</td><td>Readings and limits per zone, and mean kinetic temperature.</td></tr>
+      <tr><td>Alarms</td><td>All active alarms on site.</td></tr>
+      <tr><td>Trends</td><td>1 h / 24 h / 7 d / 30 d charts, period summary, excursions, run history, print report, and <b>Stored logs</b> CSV download.</td></tr>
+      <tr><td>Audit Trail</td><td>Commands sent from this browser (per browser, not central).</td></tr>
+      <tr><td>Commissioning, Settings</td><td>Engineering pages, for Spartcon use only.</td></tr>
+    </table>
+    <h2>Technology</h2>
+    <table>
+      <tr><td class="k">Languages</td><td>HTML, CSS, JavaScript (ES modules). Node.js for the server. No framework and no build step.</td></tr>
+      <tr><td class="k">Runtime dependencies</td><td>None (Node built-ins only). Chart.js, Leaflet and fonts are stored locally in <code>vendor/</code>.</td></tr>
+      <tr><td class="k">Source code</td><td>GitHub <code>Siphiwe-Khumalo/Lumenlabscreatives</code>, folder <code>middelburg-bms</code>, branch <code>claude/gifted-sagan-4ugtao</code></td></tr>
+      <tr><td class="k">Configuration</td><td>Point names: <code>js/config/points.js</code>. Controls: <code>js/config/controls.js</code>. Settings (priority 1, setpoint 15–35 °C, poll 15 s): <code>js/config/app-config.js</code>. Writable allowlist: <code>scripts/jace-gateway.mjs</code>.</td></tr>
+      <tr><td class="k">Polling</td><td>All points every 15 s through a shared 5 s read cache, one JACE request at a time. Commands go ahead of reads in the queue.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 7 of 14</span></div>
+</section>
+
+<!-- 8 COMMISSIONING -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">6</span>Commissioning and testing</h1>
+    <h2>Tools used</h2>
+    <table>
+      <tr><th style="width:40mm">Command</th><th>Purpose</th></tr>
+      <tr><td><code>npm run check</code></td><td>Tests JACE reachability, token and point reads; saves the working settings to <code>.env</code>. Never prints the secret.</td></tr>
+      <tr><td><code>npm run check-points</code></td><td>Reads every configured point once and reports found / missing / stale per unit (<code>data/check-points.csv</code>).</td></tr>
+      <tr><td><code>npm run check-write</code></td><td>Diagnostic write test: writes a point's current value back and prints the JACE reply.</td></tr>
+      <tr><td><code>npm run commission</code></td><td>Guided test, one unit at a time. Rooftops: stop/start and setpoint +1 °C, each read back from the JACE and checked physically; original values restored. Hybrids: read-only check. Writes a CSV/Markdown report to <code>data/</code>.</td></tr>
+    </table>
+    <h2>Results (on site, 8 November 2026)</h2>
+    <table>
+      <tr><th style="width:52mm">Test</th><th style="width:22mm">Result</th><th>Remarks</th></tr>
+      <tr><td>JACE token and point reads</td><td>Pass</td><td>Readings received in JSON with status.</td></tr>
+      <tr><td>Writes to rooftop points</td><td>Pass</td><td>Required the API client to be given write (admin) rights by the integrator.</td></tr>
+      <tr><td>Rooftop start/stop and setpoint</td><td>Pass</td><td>Read-back confirmation working, at priority 1.</td></tr>
+      <tr><td>Rooftop heating/cooling write</td><td>Not used</td><td>Mode changes over automatically; writes would lock it. Made read-only.</td></tr>
+      <tr><td>Hybrid mode writes</td><td>Refused by JACE</td><td>HTTP 400 (read-only in the station). Hybrids are monitoring only by agreement.</td></tr>
+      <tr><td>Hybrid readings</td><td>Partly</td><td>Hybrids read OFFLINE while the Modbus networks were down; hybrids 1–5 folders still to be completed by the integrator.</td></tr>
+      <tr><td>Fire dampers</td><td>Pass</td><td>Read after the path was corrected to <code>FIRE_DAMPERS/points/HYBRID_n_FIREDAMPER</code>.</td></tr>
+      <tr><td>Room sensors</td><td>Pass</td><td>Temperature, humidity and CO₂ read through the Modbus TCP gateways.</td></tr>
+      <tr><td>Remote access (Tailscale)</td><td>Pass</td><td>Dashboard reachable at the host PC's Tailscale address.</td></tr>
+      <tr><td>Operator acceptance</td><td>Pass</td><td>System demonstrated and staff trained on 11 Nov 2026. Client reported everything working.</td></tr>
+    </table>
+    <div class="box"><b>Before site work</b>, the software was tested against a simulated JACE: a point store with priorities, refused writes and controller behaviour. Those tests found and fixed overlapping polls, slow command confirmation, and a brief heat-and-cool overlap during mode changes, which no longer applies because the mode is now read-only.</div>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 8 of 14</span></div>
+</section>
+
+<!-- 9 ISSUES -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">7</span>Issues found and how they were resolved</h1>
+    <table>
+      <tr><th style="width:8mm">#</th><th style="width:62mm">Issue</th><th>Cause and resolution</th></tr>
+      <tr><td>1</td><td>Gateway could not log in although the check tool could.</td><td>The gateway used an outdated token path from <code>.env</code>. All API paths now come from one shared module (<code>oss-auth.mjs</code>), and outdated keys are ignored and removed.</td></tr>
+      <tr><td>2</td><td>Writes returned HTTP 400 with no message.</td><td>The API client had no write rights. The integrator granted rights, after which writes succeeded.</td></tr>
+      <tr><td>3</td><td>Some unit folders and point names did not exist on the JACE (hybrids 1–5, damper paths).</td><td>Diagnostic scripts probed each expected path. The damper path was corrected twice on site (<code>FIRE_DAMPERS</code>, then <code>HYBRID_n_FIREDAMPER</code>). The hybrid 1–5 folders remain open with the integrator.</td></tr>
+      <tr><td>4</td><td>Rooftop units did not change between heating and cooling automatically.</td><td>Priority-1 values left from early mode tests were overriding the automatic changeover. Mode was made read-only in the dashboard; the integrator must release the leftover values (open item).</td></tr>
+      <tr><td>5</td><td>Commands at priority 8 were "Not confirmed".</td><td>Leftover priority-1 values out-ranked them. Write priority was set back to 1.</td></tr>
+      <tr><td>6</td><td>Dashboard showed "overridden" for its own commands.</td><td>The JACE reports status <i>overridden</i> for any priority write. The warning now appears only when a higher priority than ours is active.</td></tr>
+      <tr><td>7</td><td>Dead Modbus networks slowed every poll and command.</td><td>Reads now time out after 4 s, and a unit folder that does not answer is skipped for 30 s.</td></tr>
+      <tr><td>8</td><td>Mistaken change: setpoint made read-only.</td><td>Only heating/cooling was meant to be read-only. The change was reverted the same day, so the setpoint stays adjustable.</td></tr>
+      <tr><td>9</td><td>Handover day: "address already in use :8080" and an old version showing.</td><td>The scheduled task kept an old copy running as SYSTEM after the folders were replaced. Stopped from an Administrator prompt (<code>taskkill /IM node.exe /F</code>, <code>schtasks /end</code>), then restarted from the new folder. See section 8.</td></tr>
+    </table>
+    <h2>Lessons applied from the ARC Glasshouse project</h2>
+    <ul>
+      <li>Credentials stay on the server, never in browser code.</li>
+      <li>One token and one JACE request at a time: the JACE's login invalidates older tokens, and parallel reads overload it.</li>
+      <li>Every write is verified by reading it back, because a write can succeed (HTTP 200) yet be overridden by a higher priority.</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 9 of 14</span></div>
+</section>
+
+<!-- 10 HOST PC -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">8</span>Host PC: installation, operation and updates</h1>
+    <table>
+      <tr><td class="k">Location</td><td>Server cabinet on site (signed "restricted")</td></tr>
+      <tr><td class="k">Operating system</td><td>Windows, with Node.js installed</td></tr>
+      <tr><td class="k">Project folder</td><td><code>C:\Users\Admin\OneDrive\Desktop\middelburg-bms</code> (at handover; moving it to <code>C:\middelburg-bms</code> is recommended)</td></tr>
+      <tr><td class="k">Address</td><td><code>http://192.168.1.90:8080</code> on site</td></tr>
+      <tr><td class="k">Credentials</td><td><code>.env</code> in the project folder holds the JACE address and API client ID/secret. It exists only on this PC: it is not in GitHub and not on USB copies. Never print or e-mail it.</td></tr>
+      <tr><td class="k">Auto start</td><td>Scheduled task <b>"Middelburg BMS"</b> runs <code>scripts\start-bms.cmd</code> at start-up, which restarts the server 10 s after any stop.</td></tr>
+    </table>
+    <h2>Start / restart (Administrator Command Prompt)</h2>
+    <pre>taskkill /IM node.exe /F
+schtasks /end /tn "Middelburg BMS"
+cd C:\Users\Admin\OneDrive\Desktop\middelburg-bms
+npm.cmd run dev</pre>
+    <p>Then press <b>Ctrl + F5</b> in the browser. Use <code>npm.cmd</code>, because PowerShell blocks <code>npm</code> scripts on this PC. Run <b>either</b> the scheduled task <b>or</b> <code>npm.cmd run dev</code>, never both (port 8080 clash).</p>
+    <h2>Recreate the scheduled task (if the folder moves)</h2>
+    <pre>schtasks /create /tn "Middelburg BMS" /tr "C:\middelburg-bms\scripts\start-bms.cmd" /sc onstart /ru SYSTEM /f</pre>
+    <h2>Install an update</h2>
+    <ol>
+      <li>Copy the new <code>middelburg-bms</code> folder to a USB drive. Leave out <code>data</code>, <code>node_modules</code> and <code>.env</code>.</li>
+      <li>Check the copy is the new version, for example: <code>findstr /c:"Fire dampers" E:\middelburg-bms\js\pages\controls.js</code></li>
+      <li>Stop the server (commands above).</li>
+      <li>Copy over the existing folder, keeping data and credentials:<br><code>robocopy E:\middelburg-bms C:\…\middelburg-bms /E /XD data node_modules /XF .env</code></li>
+      <li>Start the server and press Ctrl + F5 in the browser.</li>
+    </ol>
+    <div class="box warn"><b>OneDrive:</b> keeping the project on a OneDrive Desktop can lock history files during sync, and the SYSTEM account used by the scheduled task may not be able to read it. Move the folder to <code>C:\middelburg-bms</code> and recreate the task.</div>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 10 of 14</span></div>
+</section>
+
+<!-- 11 REMOTE + DATA -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">9</span>Remote access, data and backups</h1>
+    <h2>Remote access (Tailscale)</h2>
+    <p>The site has no public IP address, so remote access uses <b>Tailscale</b>, an encrypted private network between the host PC and approved devices. No firewall ports are opened to the internet.</p>
+    <ol>
+      <li>The administrator invites the user to the Tailscale network by e-mail.</li>
+      <li>The user accepts, installs Tailscale on their device and signs in with the same account.</li>
+      <li>With Tailscale connected, the user opens <code>http://100.103.134.56:8080</code>. Test with <code>ping 100.103.134.56</code>.</li>
+    </ol>
+    <p>Remove devices of people who leave from the Tailscale admin console. Step-by-step instructions for staff: <code>handover/remote-access-guide.pdf</code>.</p>
+    <h2>Recorded data (history)</h2>
+    <table>
+      <tr><td class="k">What</td><td>Every point of every unit and sensor, every 5 minutes, while the server is running</td></tr>
+      <tr><td class="k">Where</td><td><code>data\history\daily\YYYY-MM-DD.csv</code> (one file per day) and <code>data\history\points\&lt;unit&gt;\&lt;reading&gt;\YYYY-MM.csv</code></td></tr>
+      <tr><td class="k">Size</td><td>About 4–5 MB per day</td></tr>
+      <tr><td class="k">Export</td><td>Dashboard → <b>Trends → Stored logs</b>: choose the date range and unit, then <b>Download logs (CSV)</b>. Opens in Excel.</td></tr>
+      <tr><td class="k">Gaps</td><td>No data is recorded while the host PC or server is off. Failed reads are written as "down" rows, so gaps are visible.</td></tr>
+    </table>
+    <h2>Backups</h2>
+    <table>
+      <tr><th>Item</th><th>Why</th><th>How often</th></tr>
+      <tr><td><code>data\history</code></td><td>The only copy of the recorded readings</td><td>Monthly at least (copy to USB or network share)</td></tr>
+      <tr><td><code>.env</code></td><td>Needed to reconnect to the JACE after a PC rebuild</td><td>Once, then after any credential change. Store offline and securely.</td></tr>
+      <tr><td>Source code</td><td>Already in GitHub</td><td>No action needed</td></tr>
+    </table>
+    <div class="box"><b>Restore after a PC failure:</b> install Node.js, copy the project folder, restore <code>.env</code> and <code>data\history</code>, recreate the scheduled task, and run <code>npm.cmd run check</code> to confirm the JACE connection.</div>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 11 of 14</span></div>
+</section>
+
+<!-- 12 HANDOVER -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">10</span>Handover, training and deliverables</h1>
+    <h2>Deliverables</h2>
+    <table>
+      <tr><th style="width:8mm">#</th><th>Item</th><th style="width:30mm">Status</th></tr>
+      <tr><td>1</td><td>BMS dashboard running on the site host PC (monitoring, alarms, rooftop control, trends, stored logs)</td><td>Delivered</td></tr>
+      <tr><td>2</td><td>Remote access via Tailscale, with setup guide for staff</td><td>Delivered</td></tr>
+      <tr><td>3</td><td>User guide (10 pages, illustrated): start/stop, setpoints, alarms, trends, do's and don'ts</td><td>Delivered</td></tr>
+      <tr><td>4</td><td>Server cabinet "restricted" sign with IT administrator contact</td><td>Delivered</td></tr>
+      <tr><td>5</td><td>On-site operator training</td><td>Done, 11 Nov 2026</td></tr>
+      <tr><td>6</td><td>Source code and technical notes (GitHub)</td><td>Delivered</td></tr>
+      <tr><td>7</td><td>This project documentation</td><td>Version 1.0</td></tr>
+    </table>
+    <h2>Training content (11 November 2026)</h2>
+    <ul>
+      <li>Opening the dashboard on site and remotely; user roles.</li>
+      <li>Reading unit cards: states, heating/cooling bands, alarms, "—" with STALE/OFFLINE labels.</li>
+      <li>Starting and stopping a rooftop unit, and the meaning of Sending / Confirmed / Not confirmed.</li>
+      <li>Changing a setpoint and how the automatic heating/cooling responds.</li>
+      <li>Hybrid units, room sensors and fire dampers (monitoring only).</li>
+      <li>Alarms and dirty filters: what to record and whom to call.</li>
+      <li>Trends and downloading stored logs to Excel.</li>
+      <li>What not to touch: server cabinet, host PC, Settings/Commissioning pages, DEMO mode.</li>
+    </ul>
+    <div class="grid2">
+      <div><div class="shot"><img src="guide-img/rtu-card.png" alt="" style="height:66mm;object-fit:cover;object-position:top"></div><div class="cap">Rooftop unit card with controls.</div></div>
+      <div><div class="shot"><img src="guide-img/alarms.png" alt="" style="height:66mm;object-fit:cover;object-position:top left"></div><div class="cap">Alarms page.</div></div>
+    </div>
+    <h2>Support contact</h2>
+    <p>IT Administrator: <b>Siphiwe Khumalo</b>, Spartcon Technologies, <b>siphiwek@spartcongroup.co.za</b></p>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 12 of 14</span></div>
+</section>
+
+<!-- 13 OPEN ITEMS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">11</span>Open items and recommendations</h1>
+    <h2>Open items (controls integrator)</h2>
+    <table>
+      <tr><th style="width:8mm">#</th><th>Item</th><th style="width:44mm">Effect until done</th><th style="width:22mm">Done (date)</th></tr>
+      <tr><td>1</td><td>Release leftover priority-1 values on rooftop <code>Unit{n}Mode</code> (Workbench: Actions → Auto).</td><td>Automatic heat/cool changeover may stay locked</td><td></td></tr>
+      <tr><td>2</td><td>Complete hybrid 1–5 folders and check the Modbus links.</td><td>Hybrids show OFFLINE / NOT MAPPED</td><td></td></tr>
+      <tr><td>3</td><td>Confirm the RTU-05 space temperature point name (<code>SPACE_TEMP5</code>).</td><td>RTU-05 temperature may not read</td><td></td></tr>
+      <tr><td>4</td><td>Confirm static-pressure point names on hybrids 6–11.</td><td>Those readings may not show</td><td></td></tr>
+      <tr><td>5</td><td>Confirm the fire damper meaning (true = OPEN?).</td><td>OPEN/CLOSED could be inverted</td><td></td></tr>
+      <tr><td>6</td><td>Supply approved temperature/humidity limits and the zone/unit allocation.</td><td>Limits and zone names are illustrative</td><td></td></tr>
+    </table>
+    <h2>Recommendations</h2>
+    <table>
+      <tr><th style="width:8mm">#</th><th>Recommendation</th><th style="width:22mm">Priority</th></tr>
+      <tr><td>1</td><td>Rotate the JACE API client secret (it was shared during setup), then update <code>.env</code> with <code>npm.cmd run setup</code>.</td><td>High</td></tr>
+      <tr><td>2</td><td>Reduce the API client from admin to write access on the required networks only.</td><td>High</td></tr>
+      <tr><td>3</td><td>Move the project out of OneDrive to <code>C:\middelburg-bms</code> and recreate the scheduled task.</td><td>High</td></tr>
+      <tr><td>4</td><td>Start regular backups of <code>data\history</code>; keep an offline copy of <code>.env</code>.</td><td>High</td></tr>
+      <tr><td>5</td><td>Add a real login on the server. Role selection is currently on the page, so anyone who can open it can operate.</td><td>Medium</td></tr>
+      <tr><td>6</td><td>Move the Audit Trail and alarm acknowledgement to the host PC (currently per browser).</td><td>Medium</td></tr>
+      <tr><td>7</td><td>Alarm notifications by WhatsApp with SMS fallback, from the host PC.</td><td>Optional</td></tr>
+      <tr><td>8</td><td>Replace the illustrative 3D layout with the real floor plan.</td><td>Optional</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 13 of 14</span></div>
+</section>
+
+<!-- 14 SIGN-OFF -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Project documentation</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">12</span>Handover acceptance</h1>
+    <p>The parties below confirm that the Middelburg Building Management System dashboard described in this document was demonstrated and handed over on <b>11 November 2026</b>, that site staff received operator training, and that the open items in section 11 are noted.</p>
+    <h2>Handed over by: Spartcon Technologies</h2>
+    <table class="sign">
+      <tr><td class="k">Name</td><td></td></tr>
+      <tr><td class="k">Position</td><td></td></tr>
+      <tr><td class="k">Signature</td><td></td></tr>
+      <tr><td class="k">Date</td><td></td></tr>
+    </table>
+    <h2>Accepted by: Department of Health, Middelburg</h2>
+    <table class="sign">
+      <tr><td class="k">Name</td><td></td></tr>
+      <tr><td class="k">Position</td><td></td></tr>
+      <tr><td class="k">Signature</td><td></td></tr>
+      <tr><td class="k">Date</td><td></td></tr>
+    </table>
+    <h2>Staff trained</h2>
+    <table class="sign">
+      <tr><th style="width:60mm">Name</th><th>Position</th><th style="width:40mm">Signature</th></tr>
+      <tr><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="conf">Confidential</span><span>Spartcon Technologies · Version 1.0</span><span>Page 14 of 14</span></div>
+</section>
+</body>
+</html>

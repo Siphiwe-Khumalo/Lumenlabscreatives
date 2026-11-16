@@ -503,6 +503,7 @@ were trained on site the same day.
   (start/stop, setpoint, hybrids/sensors/dampers, alarms, 3D/overview, trends + CSV download, do's and don'ts).
   Screenshots come from a mock JACE with sample values (`guide-img/`). Rebuild: render the HTML to A4 with Playwright, 0 margins.
 - `remote-access-guide.html/.pdf`: Tailscale setup for client staff.
+- `project-documentation.html/.pdf`: **14-page printable project documentation** (overview, architecture, points, control philosophy, software, commissioning results, issues, host PC operation, remote access/data/backups, handover, open items, sign-off page). Marked confidential (contains IPs; no secrets).
 - `cabinet-sign.html/.pdf`: "restricted" sign for the server cabinet, with the IT administrator's contact (Siphiwe asked for it).
 
 ### 12.3 Incident on handover day: "port already in use" / old version showing
