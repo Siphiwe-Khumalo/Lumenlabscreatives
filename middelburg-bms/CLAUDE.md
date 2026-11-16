@@ -1,7 +1,7 @@
 # CLAUDE.md — Middelburg BMS dashboard (handover for Claude Code)
 
 Read this first. It records everything decided and built so far, so a new session can carry on.
-Last updated: 2026-11-04 (commit after `0807d37`). Branch: **`claude/gifted-sagan-4ugtao`**
+Last updated: 2026-11-16 (system **handed over 2026-11-11**, see §12 first). Branch: **`claude/gifted-sagan-4ugtao`**
 in `Siphiwe-Khumalo/Lumenlabscreatives` (subfolder `middelburg-bms/`). No pull request has been opened.
 
 The person you work with is **Siphiwe** (Spartcon Technologies). Siphiwe works on **Windows, PowerShell**,
@@ -24,7 +24,7 @@ It is modelled on Siphiwe's earlier **ARC Glasshouse** build (repo `Siphiwe-Khum
 file `ARC FINAL DEPLOYMENT/api.js`), which talks to the same kind of JACE OSS REST API. ARC is a
 browser-only app; Middelburg deliberately is **not** (see §6, decision 1).
 
-It runs on a **host PC on the site LAN, 24/7** (`npm run dev`). Remote users reach it over the client's **VPN**.
+It runs on a **host PC on the site LAN, 24/7** (`npm run dev`). Remote users reach it over **Tailscale** (the Omada VPN was not used; see §12).
 A **demo copy** with simulated data is published as a private claude.ai artifact:
 https://claude.ai/artifact/TCNuj5fU99CZYANgAhzZJS (version 7, built from `hosted.html`; no logo, no history logging; has the building banner and unit photos).
 
@@ -416,6 +416,8 @@ limits (`thresholds.js`), model geometry (`layout.js`), facility address status 
 
 ## 10. Next steps, in order
 
+> Written before the handover. §12 has the current state; items 1–2 are done, the rest still apply.
+
 1. On the host PC: `cd C:\Users\siphi\Lumenlabscreatives\middelburg-bms` → `git pull` → stop and restart
    `npm run dev` → Ctrl+Shift+R. Confirm the logo, the new UI, and the `History: logging 289 points…` line.
 2. After 10–15 min: check `data\history\daily\<today>.csv` opens in Excel, and Trends → 24 h shows recorded data and
@@ -478,3 +480,58 @@ logic: fan follows command, heat+cool overlap detected). Not yet re-tested on th
     site at that time: check Modbus networks / `npm run check-points`.
 13. (Corrected) Rooftop **setpoint stays adjustable** (15–35 °C). Only **heating/cooling mode** is read-only. Writable points:
     rooftop `Uni{n}StartCmd` and `Unit{n}Setpoint` (10). A short-lived commit made the setpoint read-only by mistake; reverted.
+
+---
+
+## 12. Handover and current state (2026-11-11 → 2026-11-16)
+
+**Status: handed over to the Department of Health on 2026-11-11.** Siphiwe: "everything works perfectly". Client staff
+were trained on site the same day.
+
+### 12.1 What runs where
+- **On-site host PC** (Windows, Node v26): project at `C:\Users\Admin\OneDrive\Desktop\middelburg-bms`, started with
+  `npm.cmd run dev` (PowerShell blocks `npm.ps1`; use `npm.cmd` or cmd). Address on site: **http://192.168.1.90:8080**.
+  The `.env` with the JACE OAuth secret exists **only** on this PC (never in git, never on the USB copies).
+- **Remote access: Tailscale**, host PC at **http://100.103.134.56:8080** (no public IP on site, so the Omada VPN idea was
+  dropped). Users accept the Tailscale invite, install the app, sign in, then browse to that address.
+- **Updates reach the host PC by USB**, not `git pull`: `robocopy <USB>\middelburg-bms <target> /E /XD data node_modules /XF .env`.
+- Write priority **1**. Writable points: rooftop `Uni{n}StartCmd` and `Unit{n}Setpoint` only. Rooftop heat/cool is
+  automatic (read-only, `Unit{n}Mode` true = heating). Hybrids, sensors and fire dampers are read-only.
+
+### 12.2 Handover documents (`handover/`)
+- `user-guide.html/.pdf`: **10-page operator training guide** with screenshots and the DoH + Spartcon logos
+  (start/stop, setpoint, hybrids/sensors/dampers, alarms, 3D/overview, trends + CSV download, do's and don'ts).
+  Screenshots come from a mock JACE with sample values (`guide-img/`). Rebuild: render the HTML to A4 with Playwright, 0 margins.
+- `remote-access-guide.html/.pdf`: Tailscale setup for client staff.
+- `cabinet-sign.html/.pdf`: "restricted" sign for the server cabinet, with the IT administrator's contact (Siphiwe asked for it).
+
+### 12.3 Incident on handover day: "port already in use" / old version showing
+Cause: the scheduled task **"Middelburg BMS"** (running `scripts\start-bms.cmd`, as SYSTEM) kept an **old copy** running
+on port 8080 after the folders were deleted and recopied. `npm run dev` then failed with `EADDRINUSE :8080`, and the
+browser showed the old UI (no fire-damper section). A normal cmd gets "Access denied" killing a SYSTEM process.
+Fix, in an **Administrator** Command Prompt, one command per line:
+```
+taskkill /IM node.exe /F
+schtasks /end /tn "Middelburg BMS"
+cd C:\Users\Admin\OneDrive\Desktop\middelburg-bms
+npm.cmd run dev
+```
+then Ctrl+F5 in the browser. Never run the scheduled task **and** `npm run dev` together. To auto-start the new copy:
+`schtasks /create /tn "Middelburg BMS" /tr "<folder>\scripts\start-bms.cmd" /sc onstart /ru SYSTEM /f`.
+Recommended: move the folder out of OneDrive (for example to `C:\middelburg-bms`). OneDrive syncing can lock
+`data\history` files, and the SYSTEM account may not be able to read a user's OneDrive Desktop.
+
+### 12.4 Data
+History is logged every 5 min to `data\history` on the host PC and exported from **Trends → Stored logs** (CSV for any date
+range since go-live). If the old folders were deleted on handover day, history restarts from then. **Back up
+`data\history` and `.env`** regularly; nothing else holds them.
+
+### 12.5 Still open (owner: Aina, the site Niagara engineer)
+1. Release leftover **priority-1** values on rooftop `Unit{n}Mode` (Workbench: Actions → Auto), or the automatic
+   heat/cool changeover stays locked.
+2. Hybrids 1–5 (`ModbusAsyncNetwork`) folders / Modbus link; hybrids read OFFLINE when the network is down.
+3. RTU-05 space temperature point name (`SPACE_TEMP5`).
+4. Static-pressure point names on `HYBRID_6`…`HYBRID_11`.
+5. Fire damper boolean meaning (the dashboard assumes **true = OPEN**).
+Also still recommended: rotate the OAuth secret that was shared in chat; a real server-side login (§10.5).
+
