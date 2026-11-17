@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<title>Middelburg BMS: Control Philosophy and Environmental Monitoring</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, 'Liberation Sans', sans-serif; color: #111827; font-size: 9.2pt; line-height: 1.42; }
+  .page { width: 210mm; height: 297mm; position: relative; overflow: hidden; page-break-after: always; display: flex; flex-direction: column; padding: 0 15mm; }
+  .page:last-child { page-break-after: auto; }
+  .hdr { display: flex; justify-content: space-between; align-items: center; padding: 8mm 0 3mm; border-bottom: 0.5mm solid #0B1F3A; flex: none; }
+  .hdr .t { font-size: 7.2pt; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #374151; }
+  .hdr .logos { display: flex; gap: 4mm; align-items: center; }
+  .hdr img { height: 9mm; }
+  .body { padding-top: 5mm; flex: 1; display: flex; flex-direction: column; gap: 3mm; }
+  .foot { flex: none; display: flex; justify-content: space-between; border-top: 0.3mm solid #9CA3AF; padding: 2.5mm 0 7mm; font-size: 7pt; color: #4B5563; }
+  h1 { font-size: 16pt; font-weight: 900; color: #0B1F3A; }
+  h1 .n { color: #0E7C7A; margin-right: 2mm; }
+  h2 { font-size: 10.6pt; font-weight: 900; color: #0B1F3A; margin-top: 1mm; }
+  h2 .n { color: #0E7C7A; margin-right: 1.5mm; }
+  p { max-width: 180mm; }
+  ul, ol { padding-left: 5mm; } li { margin: 0.5mm 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.2pt; }
+  th, td { text-align: left; padding: 1.2mm 1.7mm; border: 0.3mm solid #9CA3AF; vertical-align: top; }
+  th { background: #E5E7EB; font-weight: 700; }
+  td.k { width: 44mm; font-weight: 700; background: #F3F4F6; }
+  code { font-family: 'DejaVu Sans Mono', Consolas, monospace; font-size: 7.6pt; }
+  .tbc { background: #FEF08A; font-weight: 700; padding: 0 0.8mm; }
+  .box { border: 0.3mm solid #9CA3AF; border-left: 1.4mm solid #0E7C7A; padding: 2mm 3mm; background: #F9FAFB; }
+  .warn { border-left-color: #B45309; background: #FFFBEB; }
+  .shot { border: 0.3mm solid #9CA3AF; }
+  .shot img { display: block; width: 100%; }
+  .cap { font-size: 7.2pt; color: #4B5563; margin-top: 0.8mm; }
+  .draft { font-size: 7pt; font-weight: 700; color: #991B1B; letter-spacing: 0.08em; text-transform: uppercase; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .cover { padding: 0; }
+  .cover .top { display: flex; justify-content: space-between; align-items: center; padding: 14mm 15mm 0; }
+  .cover .top img { height: 18mm; }
+  .cover .band { margin: 14mm 15mm 0; border-top: 1.4mm solid #0E7C7A; padding-top: 8mm; }
+  .cover .kick { font-size: 9pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #0E7C7A; }
+  .cover h1 { font-size: 26pt; line-height: 1.12; margin: 4mm 0 4mm; }
+  .cover .sub { font-size: 12pt; color: #374151; }
+  .cover table { margin: 10mm 15mm 0; width: calc(100% - 30mm); font-size: 9pt; }
+  .cover .stamp { margin: 10mm 15mm 0; border: 0.6mm solid #991B1B; color: #991B1B; padding: 3mm 4mm; font-weight: 700; font-size: 9pt; }
+  .cover .bottom { margin-top: auto; padding: 0 15mm 10mm; display: flex; justify-content: space-between; font-size: 7.5pt; color: #4B5563; }
+  .sign td { height: 12mm; }
+</style>
+</head>
+<body>
+
+<!-- 1 COVER -->
+<section class="page cover">
+  <div class="top"><img src="../assets/doh-logo.png" alt="Department of Health"><img src="spartcon-logo.png" alt="Spartcon Technologies"></div>
+  <div class="band">
+    <div class="kick">Middelburg Pharmaceutical Warehouse · Building Management System</div>
+    <h1>BMS Control Philosophy and<br>Environmental Monitoring &amp; Reporting</h1>
+    <div class="sub">HVAC control, temperature and humidity monitoring, alarms, and the screens and reports used to demonstrate storage conditions</div>
+  </div>
+  <table>
+    <tr><td class="k">Client</td><td>Department of Health, Middelburg pharmaceutical warehouse, Cnr Dr Mandela Drive &amp; Jaspis Street, Middelburg, Mpumalanga</td></tr>
+    <tr><td class="k">Prepared by</td><td>Spartcon Technologies (Siphiwe Khumalo, IT Administrator)</td></tr>
+    <tr><td class="k">Document status</td><td>Draft for client review, Revision A</td></tr>
+    <tr><td class="k">Date</td><td>18 November 2026</td></tr>
+  </table>
+  <div class="stamp">DRAFT FOR REVIEW. Items highlighted <span class="tbc">[TO CONFIRM]</span> need a decision or information from the client before this document is approved. Limit values shown are proposals only, until the client's Quality Assurance approves them.</div>
+  <div class="bottom"><span>Spartcon Technologies</span><span>Page 1 of 16</span></div>
+</section>
+
+<!-- 2 INTRO -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">1</span>Introduction</h1>
+    <h2><span class="n">1.1</span>Purpose</h2>
+    <p>This document defines how the BMS controls the warehouse HVAC plant and how it monitors, alarms and reports warehouse temperature and relative humidity. It describes each screen and report used to show that pharmaceutical products are stored within approved conditions. It is intended for the client's management and Quality Assurance, and as a reference for inspections.</p>
+    <h2><span class="n">1.2</span>Scope</h2>
+    <ul>
+      <li>HVAC control philosophy: 5 rooftop units and 11 hybrid units, plus fire damper status.</li>
+      <li>Environmental monitoring: temperature and relative humidity measurement, logging, limits and evaluation.</li>
+      <li>Alarm philosophy, and the recommended response.</li>
+      <li>Screen-by-screen details of what is displayed and reported, and the proposed reporting schedule.</li>
+      <li>Data integrity, retention, temperature/humidity mapping and calibration.</li>
+    </ul>
+    <p>Out of scope: the design and installation of the HVAC plant, the JACE station programming (by the controls integrator), and the mapping study itself (section 9).</p>
+    <h2><span class="n">1.3</span>Reference documents</h2>
+    <table>
+      <tr><th style="width:62mm">Document</th><th>Relevance</th></tr>
+      <tr><td>WHO Technical Report Series No. 961 (2011), Annex 9: Model guidance for the storage and transport of time- and temperature-sensitive pharmaceutical products, and its technical supplements</td><td>Storage conditions, monitoring, alarms, temperature mapping</td></tr>
+      <tr><td>SAHPRA Good Wholesaling / Distribution Practice guideline (current edition) <span class="tbc">[TO CONFIRM by client QA]</span></td><td>South African regulatory requirements for storage areas</td></tr>
+      <tr><td>Product storage conditions (product labels / registration)</td><td>Defines the limits the warehouse must maintain</td></tr>
+      <tr><td>Middelburg BMS Project Documentation (Spartcon, 16 Nov 2026) and BMS User Guide</td><td>System architecture, points, operation</td></tr>
+    </table>
+    <h2><span class="n">1.4</span>Definitions</h2>
+    <table>
+      <tr><th style="width:42mm">Term</th><th>Meaning in this document</th></tr>
+      <tr><td>Setpoint</td><td>Target space temperature given to a rooftop unit (adjustable 15–35 °C).</td></tr>
+      <tr><td>Acceptable range (alert limits)</td><td>The range the storage area must normally stay within. Outside it = <b>Warning</b>.</td></tr>
+      <tr><td>Action limits</td><td>Wider limits beyond which product quality may be at risk. Outside them = <b>Critical</b>.</td></tr>
+      <tr><td>Excursion</td><td>A continuous period during which a recorded value is outside the acceptable range.</td></tr>
+      <tr><td>MKT</td><td>Mean kinetic temperature: a single temperature that expresses the overall thermal stress on product over a period (section 4.5).</td></tr>
+      <tr><td>Mapping study</td><td>A documented study that measures temperature/humidity at many points in a storage area to find hot, cold and humid spots (section 9).</td></tr>
+      <tr><td>LIVE / STALE / OFFLINE</td><td>Data quality states. Only LIVE values are shown as current readings (section 4.2).</td></tr>
+      <tr><td>JACE</td><td>The Tridium Niagara 4 controller that connects the field equipment to the BMS.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 2 of 16</span></div>
+</section>
+
+<!-- 3 SYSTEM -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">2</span>System description</h1>
+    <p>The HVAC equipment is connected to a Tridium JACE controller (Niagara 4). A host PC on site runs the BMS dashboard 24/7. It reads all points from the JACE, records them, raises alarms, and sends the limited operator commands described in section 3. Users open the dashboard in a web browser on site, or remotely over an encrypted private network (Tailscale).</p>
+    <table>
+      <tr><th>Equipment</th><th style="width:22mm">Quantity</th><th>Measured / monitored</th><th style="width:32mm">BMS control</th></tr>
+      <tr><td>Rooftop units (RTU-01…05)</td><td>5</td><td>Space temperature, relative humidity, supply fan, heating/cooling, enable, unit alarm, setpoint</td><td>Start/stop, setpoint</td></tr>
+      <tr><td>Hybrid units (HYB-01…11)</td><td>11</td><td>Room temperature average, setpoint, mode, fan speed, airflow, static pressure, 7 alarm points incl. dirty filter</td><td>None (monitoring)</td></tr>
+      <tr><td>Room sensors (SEN-E1…E3, SEN-W1…W3)</td><td>6</td><td>Temperature, relative humidity, CO₂</td><td>None</td></tr>
+      <tr><td>Fire dampers (hybrids 6–11)</td><td>6</td><td>Open / closed status</td><td>None</td></tr>
+    </table>
+    <h2><span class="n">2.1</span>Storage zones and measuring points</h2>
+    <p>The dashboard currently groups the warehouse into four zones. The zone temperature and humidity are taken from one rooftop unit's space sensor per zone:</p>
+    <table>
+      <tr><th>Zone (current name)</th><th>Description</th><th>Zone reading taken from</th><th>Units serving the zone</th></tr>
+      <tr><td>Main Store</td><td>Bulk ambient storage</td><td>RTU-01 space sensor</td><td>HYB-01, 05, 07, 08 · RTU-01, 02</td></tr>
+      <tr><td>Dispatch</td><td>Order picking and dispatch bay</td><td>RTU-03 space sensor</td><td>HYB-02, 09 · RTU-03</td></tr>
+      <tr><td>Storage Zone B</td><td>Secondary ambient storage</td><td>RTU-05 space sensor</td><td>HYB-03, 06, 10 · RTU-05</td></tr>
+      <tr><td>Receiving</td><td>Goods receiving and quarantine</td><td>RTU-04 space sensor</td><td>HYB-04, 11 · RTU-04</td></tr>
+    </table>
+    <div class="box warn"><b>Decision required <span class="tbc">[TO CONFIRM]</span></b>
+      <ol>
+        <li>The zone names and the allocation of units to zones are provisional. Please confirm the real storage areas and which units serve each one.</li>
+        <li><b>Which sensors are the official storage-condition records?</b> The 6 dedicated room sensors (East and West) are monitored and logged, but they are not yet assigned to zones. Spartcon <b>recommends</b> using the room sensors, positioned according to the mapping study and calibrated, as the official monitoring points. The rooftop unit space sensors are control sensors.</li>
+        <li>The location of each room sensor (SEN-E1…E3, SEN-W1…W3) in the building.</li>
+      </ol></div>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 3 of 16</span></div>
+</section>
+
+<!-- 4 HVAC CONTROL -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">3</span>HVAC control philosophy</h1>
+    <h2><span class="n">3.1</span>General principle</h2>
+    <p>Each HVAC unit regulates temperature with its own controller and the JACE station logic. The BMS dashboard is <b>supervisory</b>: it gives visibility of all plant and conditions, records them, raises alarms, and lets authorised operators start/stop the rooftop units and change their setpoints. The BMS does not replace the units' own safety and regulation functions.</p>
+    <h2><span class="n">3.2</span>Rooftop units (RTU-01…05)</h2>
+    <table>
+      <tr><th style="width:36mm">Function</th><th>Philosophy</th></tr>
+      <tr><td>Start / stop</td><td>Commanded by an operator from the BMS (point <code>Uni{n}StartCmd</code>). The supply fan status (<code>Unit{n}SAF</code>) confirms that the unit runs. A command the unit does not follow is shown as "Command accepted, unit not following".</td></tr>
+      <tr><td>Temperature setpoint</td><td>Set by an operator from the BMS (<code>Unit{n}Setpoint</code>), 15–35 °C in 0.5 °C steps. The setpoint must be chosen to keep the zone inside the approved acceptable range. Proposed normal setpoint: <span class="tbc">[TO CONFIRM, e.g. 20–22 °C]</span>.</td></tr>
+      <tr><td>Heating / cooling</td><td><b>Automatic changeover</b> within the unit. It <b>cools</b> when the space temperature is above the setpoint and <b>heats</b> when it is below (setpoint − 1 °C). Between the two is a 1 °C dead band where the unit neither heats nor cools, which prevents rapid switching. The mode (<code>Unit{n}Mode</code>, true = heating) is displayed only and not commanded from the BMS.</td></tr>
+      <tr><td>Humidity</td><td>Relative humidity is <b>monitored only</b>; there is no humidity control (humidifier/dehumidifier) point on this site. High humidity is managed through HVAC operation and building measures. <span class="tbc">[TO CONFIRM whether dehumidification is required]</span></td></tr>
+      <tr><td>Unit alarm</td><td><code>Unit{n}Alarm</code> is displayed as a unit trip / alarm (true = alarm, <span class="tbc">[TO CONFIRM]</span>).</td></tr>
+    </table>
+    <h2><span class="n">3.3</span>Hybrid units (HYB-01…11)</h2>
+    <p>Hybrid units operate under their own controllers. The BMS <b>monitors only</b>: BMS enable, mode (cool/heat/fan only), supply fan, fan speed, airflow, static pressure and setpoint, room temperature average, and the alarms for supply fan trip, no airflow, static pressure failure, room sensor 1/2 failure, on-coil sensor failure and dirty filter. No hybrid point can be written from the BMS (enforced on the host PC).</p>
+    <h2><span class="n">3.4</span>Fire dampers</h2>
+    <p>The six fire dampers on hybrids 6–11 are shown as OPEN or CLOSED, read-only (true = OPEN, <span class="tbc">[TO CONFIRM]</span>). Fire damper operation is the responsibility of the fire system. The BMS does not command dampers.</p>
+    <h2><span class="n">3.5</span>Operator commands</h2>
+    <ul>
+      <li>Only users with the <b>Operator</b> role can send commands; <b>Viewers</b> can only monitor.</li>
+      <li>Every command is confirmed in a dialog (old value → new value, optional reason) and recorded in the Audit Trail.</li>
+      <li>Commands are written at priority 1 and <b>verified by reading the value back</b> from the controller. The result is shown as Confirmed, or as a clear failure.</li>
+      <li>Only 10 points can be written (rooftop start/stop and setpoint). This is enforced on the host PC, whatever a browser sends.</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 4 of 16</span></div>
+</section>
+
+<!-- 5 FAILURE MODES -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h2><span class="n">3.6</span>Abnormal and failure conditions</h2>
+    <table>
+      <tr><th style="width:38mm">Condition</th><th>BMS behaviour</th><th style="width:52mm">Plant behaviour / action</th></tr>
+      <tr><td>Communication with the JACE lost</td><td>Red banner "JACE connection lost". All values change to STALE, controls are locked, and a communication alarm is raised. No old value is shown as current.</td><td>Units continue under their own and the JACE's control. Restore the network/host PC connection.</td></tr>
+      <tr><td>One unit or sensor not responding</td><td>Its values show "—" with OFFLINE / STALE and the last good value and time. A communication alarm is raised.</td><td>Check the unit's controller and its network (BACnet / Modbus).</td></tr>
+      <tr><td>Host PC switched off or dashboard stopped</td><td>No display and <b>no logging</b> while it is off. The gap is visible in the history afterwards.</td><td>Units continue operating. Restart the PC; the dashboard starts automatically. A UPS for the host PC is recommended <span class="tbc">[TO CONFIRM]</span>.</td></tr>
+      <tr><td>Unit trip / alarm</td><td>Red ALARM on the unit card and the Alarms page.</td><td>Investigate the unit (maintenance).</td></tr>
+      <tr><td>Sensor fault / implausible value</td><td>Value flagged OUT OF RANGE or OFFLINE and excluded from evaluation.</td><td>Check or replace the sensor; record it in the deviation log.</td></tr>
+      <tr><td>Mains power failure and restore</td><td>Logging resumes when the host PC restarts.</td><td>Unit restart behaviour after power restore is set in the units/JACE <span class="tbc">[TO CONFIRM by integrator]</span>.</td></tr>
+      <tr><td>Fire alarm</td><td>Damper status displayed.</td><td>By the fire system: HVAC shutdown and damper closure as per the fire design <span class="tbc">[TO CONFIRM]</span>.</td></tr>
+    </table>
+    <h1 style="margin-top:4mm"><span class="n">4</span>Environmental monitoring philosophy</h1>
+    <h2><span class="n">4.1</span>Monitored parameters</h2>
+    <table>
+      <tr><th>Parameter</th><th>Unit</th><th>Source</th><th>Display resolution</th></tr>
+      <tr><td>Space temperature</td><td>°C</td><td>Rooftop space sensors (zone value); room sensors; hybrid room average</td><td>0.1 °C</td></tr>
+      <tr><td>Relative humidity</td><td>%RH</td><td>Rooftop humidity sensors (zone value); room sensors</td><td>0.1 %RH</td></tr>
+      <tr><td>CO₂</td><td>ppm</td><td>Room sensors (information only)</td><td>1 ppm</td></tr>
+    </table>
+    <h2><span class="n">4.2</span>Measurement, logging and data quality</h2>
+    <table>
+      <tr><td class="k">Display update</td><td>All points read every 15 seconds.</td></tr>
+      <tr><td class="k">Recording</td><td>Every point of every unit and sensor is recorded <b>every 5 minutes</b>, aligned to the clock, in files on the host PC (one file per day, plus one per point per month).</td></tr>
+      <tr><td class="k">Time base</td><td>South African Standard Time (SAST, UTC+2), from the host PC clock. The host PC clock must be synchronised to an internet or network time source <span class="tbc">[TO CONFIRM]</span>.</td></tr>
+      <tr><td class="k">Data quality states</td><td><b>LIVE</b> = current. <b>STALE</b> = no new value within twice the read interval. <b>OFFLINE</b> = no response. <b>NOT MAPPED</b> = point does not exist. <b>OUT OF RANGE</b> = implausible value. Only LIVE values are displayed as readings and used in evaluations.</td></tr>
+      <tr><td class="k">Gaps</td><td>Failed reads are recorded with the reason, so gaps are explicit. Trend lines break at gaps, and a gap ends an excursion.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 5 of 16</span></div>
+</section>
+
+<!-- 6 LIMITS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h2><span class="n">4.3</span>Storage condition limits</h2>
+    <p>The limits must be approved by the client's Quality Assurance, based on the storage conditions of the products held. The values below are the <b>proposed placeholders</b> currently configured in the BMS. They are not approved values.</p>
+    <table>
+      <tr><th>Zone</th><th>Parameter</th><th>Action low</th><th>Alert low</th><th>Alert high</th><th>Action high</th><th>Approved by QA</th></tr>
+      <tr><td rowspan="2">All ambient storage zones (current)</td><td>Temperature</td><td>13 °C</td><td>15 °C</td><td>25 °C</td><td>27 °C</td><td><span class="tbc">[TO CONFIRM]</span></td></tr>
+      <tr><td>Relative humidity</td><td>—</td><td>—</td><td>60 %RH</td><td>65 %RH</td><td><span class="tbc">[TO CONFIRM]</span></td></tr>
+      <tr><td>Other areas (e.g. cool room), if any</td><td>Temperature / RH</td><td colspan="4"><span class="tbc">[TO CONFIRM: are there any 2–8 °C or other special storage areas?]</span></td><td></td></tr>
+    </table>
+    <h2><span class="n">4.4</span>Evaluation of conditions</h2>
+    <table>
+      <tr><th style="width:30mm">State</th><th>Rule</th><th style="width:28mm">Colour</th></tr>
+      <tr><td><b>Normal</b></td><td>LIVE value within the acceptable range (alert limits)</td><td>Green</td></tr>
+      <tr><td><b>Warning</b></td><td>LIVE value outside the alert limits, but within the action limits</td><td>Amber</td></tr>
+      <tr><td><b>Critical</b></td><td>LIVE value outside the action limits</td><td>Red</td></tr>
+      <tr><td><b>Unknown</b></td><td>No LIVE value (stale, offline, not mapped). Never treated as normal.</td><td>Grey</td></tr>
+    </table>
+    <h2><span class="n">4.5</span>Calculated values</h2>
+    <table>
+      <tr><td class="k">Min / max / mean</td><td>Over the selected period, per zone and parameter, from recorded values only.</td></tr>
+      <tr><td class="k">Outside range</td><td>Percentage of recorded samples beyond the alert limits.</td></tr>
+      <tr><td class="k">Samples with data</td><td>Number of samples received out of the number expected, which shows data completeness (for example 288 / 288 for 24 h at 5-minute intervals).</td></tr>
+      <tr><td class="k">Mean kinetic temperature (MKT)</td><td>MKT = (ΔH/R) / −ln( (1/n) Σ e<sup>−ΔH/(R·T<sub>i</sub>)</sup> ), with T<sub>i</sub> in kelvin, ΔH = 83.144 kJ/mol and R = 8.3144 J/(mol·K), so ΔH/R = 10 000 K. This is the conventional activation energy used in WHO guidance. It is calculated per zone from the recorded temperatures (on the Conditions screen over the last 30 days from hourly values; on Trends over the selected period).</td></tr>
+      <tr><td class="k">Excursion</td><td>A continuous run of recorded values outside the alert limits, reported with start, end, duration, direction, peak value and severity. A data gap ends an excursion.</td></tr>
+    </table>
+    <div class="box"><b>Note:</b> MKT and excursion figures are calculations on the recorded data. Whether a product is affected by an excursion is a quality decision, made using the product's stability data.</div>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 6 of 16</span></div>
+</section>
+
+<!-- 7 ALARMS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">5</span>Alarm philosophy</h1>
+    <h2><span class="n">5.1</span>Alarm classes</h2>
+    <table>
+      <tr><th style="width:34mm">Class</th><th>Raised when</th><th style="width:22mm">Severity</th></tr>
+      <tr><td>Environmental: warning</td><td>Zone temperature or humidity outside the alert limits</td><td>Warning</td></tr>
+      <tr><td>Environmental: critical</td><td>Zone temperature or humidity outside the action limits</td><td>Critical</td></tr>
+      <tr><td>Equipment</td><td>Rooftop unit alarm; hybrid supply fan trip, no airflow, static pressure failure, room temperature sensor 1/2 failure, on-coil sensor failure; dirty filter</td><td>Warning / Critical</td></tr>
+      <tr><td>Communication</td><td>JACE connection lost (critical); a unit or sensor not reporting (warning)</td><td>Warning / Critical</td></tr>
+    </table>
+    <h2><span class="n">5.2</span>Alarm presentation</h2>
+    <ul>
+      <li>An alarm counter on the bell in the top bar and next to "Alarms" in the menu, on every screen.</li>
+      <li>On the unit card, each alarm point is shown as green OK or red ALARM. The filter shows "Clean" or "DIRTY – replace filter".</li>
+      <li>The Alarm Register (section 6.6) lists all alarms, with severity, time raised, source, description, current reading, threshold and status.</li>
+      <li>Zone cards on the Conditions screen and the 3D model are coloured by the worst state.</li>
+    </ul>
+    <h2><span class="n">5.3</span>Proposed alarm response <span class="tbc">[TO CONFIRM by client]</span></h2>
+    <table>
+      <tr><th style="width:30mm">Severity</th><th>Response</th><th style="width:30mm">Respond within</th><th style="width:30mm">Responsible</th></tr>
+      <tr><td>Critical (environmental)</td><td>Check the area and the HVAC immediately, inform QA, protect product, and record the excursion and actions. QA assesses product impact.</td><td><span class="tbc">[e.g. 30 min]</span></td><td><span class="tbc">[name / role]</span></td></tr>
+      <tr><td>Warning (environmental)</td><td>Check the trend and HVAC status. Adjust the setpoint if appropriate, and monitor until it returns to normal. Record it if it lasts longer than <span class="tbc">[x]</span> min.</td><td><span class="tbc">[e.g. 2 h]</span></td><td><span class="tbc">[name / role]</span></td></tr>
+      <tr><td>Equipment</td><td>Log a maintenance call (for example a filter replacement or unit trip).</td><td><span class="tbc">[e.g. same day]</span></td><td><span class="tbc">[maintenance]</span></td></tr>
+      <tr><td>Communication</td><td>Contact the IT administrator. Monitoring of the affected point is not available until it is restored.</td><td><span class="tbc">[e.g. 4 h]</span></td><td>Spartcon IT administrator</td></tr>
+    </table>
+    <h2><span class="n">5.4</span>Current limitations and options</h2>
+    <table>
+      <tr><th>Item</th><th>Current state</th><th>Option</th></tr>
+      <tr><td>Alarm acknowledgement</td><td>Not recorded centrally</td><td>Central alarm log on the host PC, with who acknowledged, when, and comments</td></tr>
+      <tr><td>Out-of-hours notification</td><td>Not implemented. Alarms are visible only on the dashboard.</td><td>WhatsApp / SMS / e-mail notification with escalation, from the host PC <span class="tbc">[TO CONFIRM if required]</span></td></tr>
+      <tr><td>Alarm delay</td><td>Alarms raise immediately</td><td>Delay before raising environmental alarms (for example 10–15 min) to avoid alarms from short door openings <span class="tbc">[TO CONFIRM]</span></td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 7 of 16</span></div>
+</section>
+
+<!-- 8 SCREEN: CONDITIONS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">6</span>Screen details: what is reported</h1>
+    <p>The screens below are shown with <b>simulated demonstration data</b> (the dashboard's demo mode). Values, calibration dates and limits in the images are examples. On the live system every screen shows recorded site data.</p>
+    <h2><span class="n">6.1</span>Conditions screen: warehouse temperature and humidity per zone</h2>
+    <div class="shot"><img src="philosophy-img/conditions-zone.png" alt=""></div><div class="cap">Conditions screen, one zone (Main Store). Demonstration data.</div>
+    <table>
+      <tr><th style="width:44mm">Field</th><th>What it reports</th></tr>
+      <tr><td>Zone header</td><td>Zone name, description, the sensor used for the zone reading, the units serving the zone, overall status (Normal / Warning / Critical / Unknown), and the time of the last update.</td></tr>
+      <tr><td>Measured / Setpoint</td><td>Current LIVE temperature and the unit setpoint, with the age of each value ("Updated 4 s ago").</td></tr>
+      <tr><td>Range bar</td><td>Where the measured value sits against the acceptable range (green), the alert band (amber) and beyond the action limits (red). The setpoint is also marked.</td></tr>
+      <tr><td>Acceptable range / action limits</td><td>The configured limits for the zone (section 4.3).</td></tr>
+      <tr><td>Evaluation</td><td>"Within acceptable range", "Above alert limit (60)", "OFFLINE – no response from controller", and so on.</td></tr>
+      <tr><td>Mean kinetic temperature</td><td>MKT over the last 30 days, with the number of hourly samples used.</td></tr>
+      <tr><td>Sensor calibration</td><td>Last and next calibration date, with "Overdue" in red when past due. Dates must be entered from the calibration certificates <span class="tbc">[TO CONFIRM]</span>.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 8 of 16</span></div>
+</section>
+
+<!-- 9 SCREEN: CONDITIONS WARNING / OFFLINE -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h2>6.1 (continued) Out-of-limit and no-data presentation</h2>
+    <div class="shot"><img src="philosophy-img/conditions-warning.png" alt=""></div><div class="cap">A zone in <b>Warning</b>: humidity 62.0 %RH is above the 60 %RH alert limit. The zone, card and evaluation turn amber, and an alarm is raised. Demonstration data.</div>
+    <div class="shot"><img src="philosophy-img/conditions-offline.png" alt=""></div><div class="cap">A zone with <b>no live data</b>: values show "—" with OFFLINE and the last good value and time. The status is Unknown, never Normal. Demonstration data.</div>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 9 of 16</span></div>
+</section>
+
+<!-- 10 SCREEN: TRENDS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h2><span class="n">6.2</span>Trends &amp; Reports: temperature and humidity history</h2>
+    <div class="shot"><img src="philosophy-img/trends-charts.png" alt=""></div><div class="cap">Trends &amp; Reports, last 24 h, all zones. Demonstration data.</div>
+    <table>
+      <tr><th style="width:40mm">Element</th><th>What it reports</th></tr>
+      <tr><td>Zone and range selection</td><td>All zones or one zone; 1 h, 24 h, 7 d or 30 d. The 24 h and longer ranges use the values recorded on the host PC.</td></tr>
+      <tr><td>Space temperature chart</td><td>Temperature of each zone over the period, with the alert and action limits drawn as lines.</td></tr>
+      <tr><td>Relative humidity chart</td><td>Humidity of each zone over the period, with limits.</td></tr>
+      <tr><td>Markers and bands</td><td>Alarm markers, and hatched bands where a sensor was offline (for example "Main Store: sensor offline from 07:35"). Lines break at gaps; values are never interpolated across missing data.</td></tr>
+      <tr><td>Print report</td><td>Prints the selected period as a report with the Department of Health logo, header, charts, summary and excursions (A4).</td></tr>
+      <tr><td>Export CSV</td><td>Downloads the data shown for analysis in Excel.</td></tr>
+    </table>
+    <h2><span class="n">6.3</span>Period summary</h2>
+    <div class="shot"><img src="philosophy-img/period-summary.png" alt=""></div><div class="cap">Period summary for the selected range. Demonstration data.</div>
+    <p>For each zone and parameter: <b>min, max, mean, unit, MKT</b> (temperature), <b>outside range</b> (% of samples beyond the alert limits) and <b>samples with data</b> (completeness, for example 288 / 288 for 24 h).</p>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 10 of 16</span></div>
+</section>
+
+<!-- 11 SCREEN: EXCURSIONS + HVAC HISTORY -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h2><span class="n">6.4</span>Excursion report</h2>
+    <div class="shot"><img src="philosophy-img/excursion-report.png" alt=""></div><div class="cap">Excursion report. Demonstration data.</div>
+    <table>
+      <tr><th style="width:40mm">Column</th><th>Meaning</th></tr>
+      <tr><td>Zone / Measure</td><td>Where, and whether temperature or humidity.</td></tr>
+      <tr><td>Start / End</td><td>First and last recorded value outside the acceptable range (SAST).</td></tr>
+      <tr><td>Duration</td><td>Length of the excursion.</td></tr>
+      <tr><td>Direction / Peak / Limit</td><td>Above or below, the most extreme recorded value, and the limit exceeded.</td></tr>
+      <tr><td>Severity</td><td>Alert band (between the alert and action limits) or beyond the action limit.</td></tr>
+    </table>
+    <p>If there were no excursions, the report states "No excursions in this period: all recorded values stayed within the acceptable range". This statement can be included in periodic reports as evidence.</p>
+    <h2><span class="n">6.5</span>HVAC operating-state history</h2>
+    <div class="shot"><img src="philosophy-img/hvac-history.png" alt=""></div><div class="cap">Running / stopped / fault / no data for every unit over the period. Demonstration data.</div>
+    <p>This shows whether the HVAC plant was running when an excursion occurred, which supports the investigation of causes.</p>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 11 of 16</span></div>
+</section>
+
+<!-- 12 SCREEN: ALARMS + STORED LOGS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h2><span class="n">6.6</span>Alarm Register</h2>
+    <div class="shot"><img src="philosophy-img/alarms.png" alt=""></div><div class="cap">Alarm Register, filtered by severity, status, zone and date. Demonstration data.</div>
+    <p>Columns: <b>severity</b>, <b>time raised</b>, <b>source</b> (zone or unit, and alarm class), <b>description</b>, <b>current reading</b>, <b>threshold</b>, and <b>status</b> (unacknowledged, acknowledged or cleared).</p>
+    <h2><span class="n">6.7</span>Stored logs: the official data export</h2>
+    <div class="shot"><img src="philosophy-img/stored-logs.png" alt=""></div><div class="cap">Trends → Stored logs.</div>
+    <p>The user chooses <b>From</b> and <b>To</b> dates and <b>All units</b> or one unit, then downloads a CSV file that opens in Excel. It contains every recorded reading from the host PC, from go-live onwards:</p>
+    <table>
+      <tr><th>Time (SAST)</th><th>Unit</th><th>Unit name</th><th>Reading</th><th>Value</th><th>Units</th><th>Status</th><th>Point</th></tr>
+      <tr><td>2026-11-18 08:05</td><td>RTU-01</td><td>Rooftop unit 1</td><td>Space temperature</td><td>21.4</td><td>°C</td><td>ok</td><td>RUT_1/SPACE_TEMP1</td></tr>
+    </table>
+    <div class="cap">Example row (format illustration).</div>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 12 of 16</span></div>
+</section>
+
+<!-- 13 REPORTING SCHEDULE -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">7</span>Proposed reporting schedule <span class="tbc">[TO CONFIRM]</span></h1>
+    <table>
+      <tr><th style="width:26mm">Report</th><th>Content</th><th style="width:34mm">How it is produced</th><th style="width:26mm">By / to</th></tr>
+      <tr><td>Daily check</td><td>Conditions screen: all zones Normal? Any active alarms? Sign the daily log sheet with the min/max of the last 24 h.</td><td>Conditions + Trends (24 h)</td><td><span class="tbc">[warehouse staff]</span></td></tr>
+      <tr><td>Weekly</td><td>Period summary and excursion report for the last 7 days, and the alarm list.</td><td>Trends (7 d) → Print report</td><td><span class="tbc">[supervisor → QA]</span></td></tr>
+      <tr><td>Monthly</td><td>Per zone: min, max, mean, MKT, % outside range, data completeness; all excursions with explanations; equipment alarms and maintenance actions; sensor calibration status.</td><td>Trends (30 d) → Print report, plus Stored logs CSV attached</td><td><span class="tbc">[QA / management]</span></td></tr>
+      <tr><td>Excursion investigation</td><td>For each critical excursion: times, peak, duration, HVAC status, cause, product impact assessment, corrective action.</td><td>Excursion report, trend print, HVAC history</td><td><span class="tbc">[QA]</span></td></tr>
+      <tr><td>Annual review</td><td>Trends over the year, seasonal behaviour, recurring alarms, calibration and mapping status, improvement actions.</td><td>Stored logs CSV (12 months)</td><td><span class="tbc">[QA / management]</span></td></tr>
+    </table>
+    <div class="box">Spartcon can add a one-click <b>monthly compliance report</b> (PDF) to the dashboard in this format once the limits, zones and official sensors are confirmed <span class="tbc">[TO CONFIRM if required]</span>.</div>
+    <h1 style="margin-top:3mm"><span class="n">8</span>Data integrity, retention and security</h1>
+    <table>
+      <tr><th style="width:32mm">Aspect</th><th>Current state</th><th>Recommendation</th></tr>
+      <tr><td>Recorded data</td><td>Plain CSV files on the host PC, append-only by the software, with SAST timestamps and status per value</td><td>Restrict Windows access to the data folder; checksum or read-only archive monthly</td></tr>
+      <tr><td>Retention</td><td>Kept on the host PC indefinitely (about 4–5 MB per day)</td><td>Retention period as required by QA/SAHPRA <span class="tbc">[TO CONFIRM, e.g. ≥ 5 years]</span></td></tr>
+      <tr><td>Backup</td><td>Manual</td><td>Monthly copy to a network share or external drive, held off site; restore test twice a year</td></tr>
+      <tr><td>User access</td><td>Roles (Viewer / Operator / Admin) chosen on the page; no individual login</td><td>Individual user logins checked on the host PC (planned improvement)</td></tr>
+      <tr><td>Audit trail</td><td>Commands recorded per browser</td><td>Central, tamper-evident audit log on the host PC: user, time, old/new value, reason</td></tr>
+      <tr><td>Clock</td><td>Host PC clock</td><td>Automatic time synchronisation; check monthly</td></tr>
+      <tr><td>Changes to limits / configuration</td><td>Admin only</td><td>Formal change control: QA approval, then the change is recorded</td></tr>
+      <tr><td>Power</td><td>Mains</td><td>UPS for the host PC and network equipment</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 13 of 16</span></div>
+</section>
+
+<!-- 14 MAPPING & CALIBRATION -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">9</span>Temperature and humidity mapping, and calibration</h1>
+    <h2><span class="n">9.1</span>Mapping versus monitoring</h2>
+    <table>
+      <tr><th></th><th>Mapping study</th><th>Continuous monitoring (this BMS)</th></tr>
+      <tr><td><b>Purpose</b></td><td>Find how temperature and humidity vary across the storage area, including hot, cold and humid spots, and where to place permanent sensors</td><td>Show, record and alarm conditions 24/7 at fixed points</td></tr>
+      <tr><td><b>How</b></td><td>Many calibrated data loggers in a 3-D grid (floor to high racking, near doors, roof and HVAC) for a defined period</td><td>Fixed sensors, read every 15 s and recorded every 5 min</td></tr>
+      <tr><td><b>When</b></td><td>Before use, in the hottest and coldest seasons, and after significant changes (HVAC, layout, racking)</td><td>Continuously</td></tr>
+      <tr><td><b>Who</b></td><td>Usually a qualified validation service provider, with a protocol and report approved by QA</td><td>Spartcon (system), with site staff and QA (review)</td></tr>
+    </table>
+    <h2><span class="n">9.2</span>How the BMS supports mapping</h2>
+    <ul>
+      <li>During the study, the BMS records HVAC operating states and its own sensor values every 5 minutes, for comparison with the loggers.</li>
+      <li>After the study, the official monitoring sensors (the room sensors, plus extra sensors if needed) are positioned at the worst-case locations it identifies. The zones and limits in the BMS are then updated.</li>
+      <li>Stored logs provide the data for seasonal reviews and for deciding when re-mapping is needed.</li>
+    </ul>
+    <p>Mapping status: <span class="tbc">[TO CONFIRM: has a mapping study been done for this warehouse? If so, please provide the report so that sensor positions can be aligned. If not, Spartcon recommends commissioning one (summer and winter).]</span></p>
+    <h2><span class="n">9.3</span>Sensor calibration</h2>
+    <ul>
+      <li>Sensors used as official storage records should be calibrated against traceable references at a defined interval <span class="tbc">[TO CONFIRM, typically annually]</span>, with certificates kept on file.</li>
+      <li>The Conditions screen shows the last and next calibration date per zone sensor and flags overdue calibration. The dates must be entered from the certificates.</li>
+      <li>The tolerance for acceptance (for example ±0.5 °C, ±3 %RH) is to be set by QA <span class="tbc">[TO CONFIRM]</span>.</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 14 of 16</span></div>
+</section>
+
+<!-- 15 DECISIONS -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">10</span>Items requiring client input</h1>
+    <table>
+      <tr><th style="width:8mm">#</th><th>Item</th><th style="width:16mm">Section</th><th style="width:44mm">Client response</th></tr>
+      <tr><td>1</td><td>Names of the storage areas, and which HVAC units serve each</td><td>2.1</td><td></td></tr>
+      <tr><td>2</td><td>Which sensors are the official storage-condition records; location of the 6 room sensors</td><td>2.1</td><td></td></tr>
+      <tr><td>3</td><td>Approved temperature and humidity limits per area (alert and action)</td><td>4.3</td><td></td></tr>
+      <tr><td>4</td><td>Any special storage areas (for example 2–8 °C)</td><td>4.3</td><td></td></tr>
+      <tr><td>5</td><td>Normal rooftop setpoint</td><td>3.2</td><td></td></tr>
+      <tr><td>6</td><td>Whether dehumidification / humidity control is required</td><td>3.2</td><td></td></tr>
+      <tr><td>7</td><td>Alarm response times and responsible people</td><td>5.3</td><td></td></tr>
+      <tr><td>8</td><td>Out-of-hours alarm notifications (WhatsApp / SMS / e-mail) and alarm delay</td><td>5.4</td><td></td></tr>
+      <tr><td>9</td><td>Reporting schedule, format and recipients</td><td>7</td><td></td></tr>
+      <tr><td>10</td><td>Data retention period</td><td>8</td><td></td></tr>
+      <tr><td>11</td><td>Mapping study status / report</td><td>9.2</td><td></td></tr>
+      <tr><td>12</td><td>Calibration interval, tolerances and certificates</td><td>9.3</td><td></td></tr>
+      <tr><td>13</td><td>Applicable regulatory guideline and edition (QA)</td><td>1.3</td><td></td></tr>
+      <tr><td>14</td><td>UPS for the host PC; time synchronisation</td><td>3.6, 8</td><td></td></tr>
+    </table>
+    <h2>From the controls integrator</h2>
+    <table>
+      <tr><th style="width:8mm">#</th><th>Item</th><th style="width:44mm">Response</th></tr>
+      <tr><td>A</td><td>Release leftover priority-1 values on rooftop <code>Unit{n}Mode</code> so the automatic changeover works</td><td></td></tr>
+      <tr><td>B</td><td>Confirm alarm point polarity (true = alarm) and damper status (true = open)</td><td></td></tr>
+      <tr><td>C</td><td>Unit restart behaviour after power failure; fire alarm interlocks</td><td></td></tr>
+      <tr><td>D</td><td>Complete hybrid 1–5 point folders; confirm RTU-05 and static-pressure point names</td><td></td></tr>
+    </table>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 15 of 16</span></div>
+</section>
+
+<!-- 16 APPROVAL -->
+<section class="page">
+  <div class="hdr"><span class="t">Middelburg BMS · Control philosophy and monitoring</span><div class="logos"><img src="../assets/doh-logo.png" alt=""><img src="spartcon-logo.png" alt=""></div></div>
+  <div class="body">
+    <h1><span class="n">11</span>Review and approval</h1>
+    <h2>Revision history</h2>
+    <table>
+      <tr><th style="width:18mm">Rev</th><th style="width:28mm">Date</th><th>Description</th><th style="width:40mm">By</th></tr>
+      <tr><td>A</td><td>18 Nov 2026</td><td>Draft for client review</td><td>Spartcon Technologies</td></tr>
+      <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+      <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+    </table>
+    <h2>Approval</h2>
+    <table class="sign">
+      <tr><th style="width:44mm">Role</th><th>Name</th><th style="width:40mm">Signature</th><th style="width:26mm">Date</th></tr>
+      <tr><td>Prepared: Spartcon Technologies</td><td></td><td></td><td></td></tr>
+      <tr><td>Reviewed: Department of Health (facility)</td><td></td><td></td><td></td></tr>
+      <tr><td>Approved: Quality Assurance</td><td></td><td></td><td></td></tr>
+    </table>
+    <div class="box" style="margin-top:4mm">Once approved, the confirmed limits, zones, sensors and alarm settings will be configured in the BMS, verified on site, and recorded in Revision B of this document.</div>
+  </div>
+  <div class="foot"><span class="draft">Draft Rev A, for review</span><span>Spartcon Technologies</span><span>Page 16 of 16</span></div>
+</section>
+</body>
+</html>
