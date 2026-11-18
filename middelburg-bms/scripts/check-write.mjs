@@ -1,4 +1,4 @@
-// Write test: npm run check-write [-- <unit> <role>]   e.g.  npm run check-write -- HYB-09 coolMode
+// Write test: npm run check-write [-- <unit> <role>]   e.g.  npm run check-write -- HYB-04 coolMode
 // Reads the point (default RUT_1/Unit1Setpoint) and writes the SAME value back (no change to the unit),
 // first exactly as the gateway does, then with browser-like headers. Prints the JACE's full reply.
 import http from 'node:http';

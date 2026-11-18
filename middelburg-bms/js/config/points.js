@@ -28,9 +28,10 @@ export const POINT_MAP_STATUS = Object.freeze({
 export const ORD_PREFIX = 'station:|slot:/';
 
 /**
- * Hybrid units are on two Modbus networks (Aina, Nov 2026: "ModbusTcpNetwork HYBRID_6 TO 11", example HYBRID_7).
- * TODO(confirm with Aina): whether HYBRID_6 is on ModbusTcpNetwork (assumed, per the document heading) or on
- * ModbusAsyncNetwork. Change this one number if not. `npm run check-points` shows which paths exist.
+ * The site has SIX hybrid (VRF) units, one per warehouse supply line (site meeting 2026-11-18; Aina's control
+ * philosophy rev 4: HYBRID-01…06, CAREL c.pCO mini on Modbus TCP). In the JACE station they are the folders
+ * HYBRID_6 … HYBRID_11 on ModbusTcpNetwork (HYBRID_1…5 never existed), so dashboard unit HYB-0k = station HYBRID_(k+5).
+ * The station number `n` below is what every path uses; the dashboard ID/name use 1…6.
  */
 export const HYBRID_TCP_FROM = 6;
 
@@ -50,7 +51,7 @@ export const CONTROLLER_NAME = Object.freeze({
 });
 
 /** Points supplied verbatim by the project team (the rest are derived by changing the number). */
-const SUPPLIED = { rooftop: [1], hybrid: [1, 7], sensor: [1] };
+const SUPPLIED = { rooftop: [1], hybrid: [7], sensor: [1] }; // hybrid: station number HYBRID_7 (= HYB-02)
 
 /**
  * Roles. `points[type]` gives the point name for a unit number n (function) or
@@ -101,7 +102,7 @@ export const ROLE_POINTS = Object.freeze({
   staticPressureSetpoint: { label: 'Static pressure setpoint', unit: 'Pa', unitConfirmed: false, kind: 'number', points: { hybrid: 'STATIC_PESSURE_SETPOINT' } },
   staticPressureStatus: { label: 'Static pressure status', kind: 'boolean', points: { hybrid: 'STATIC_PRESSURE_STATUS' } },
 
-  // --- fire dampers (Aina, 2026-11-08): only hybrids 6–11, in their own folder ----------------
+  // --- fire dampers (Aina, 2026-11-08): one per hybrid (station HYBRID_6…11), in their own folder ----------------
   fireDamper: { label: 'Fire damper', kind: 'boolean',
     // Shown as OPEN (true) / CLOSED (false), read-only, no alarm. TODO(confirm with Aina): true = open.
     points: { hybrid: (n) => (n >= 6 ? `HYBRID_${n}_FIREDAMPER` : null) },
@@ -120,12 +121,10 @@ export const ROLE_POINTS = Object.freeze({
   dirtyFilter: { label: 'Dirty filter', kind: 'boolean', alarm: true, severity: 'critical', points: { hybrid: 'DIRTY_FILTER' } },
 });
 
-/** Equipment -> controller (type + unit number). */
+/** Equipment -> controller (type + station unit number n). Hybrids: HYB-01…06 = station HYBRID_6…11. */
 export const EQUIPMENT_UNITS = Object.freeze({
-  'HYB-01': { type: 'hybrid', n: 1 }, 'HYB-02': { type: 'hybrid', n: 2 }, 'HYB-03': { type: 'hybrid', n: 3 },
-  'HYB-04': { type: 'hybrid', n: 4 }, 'HYB-05': { type: 'hybrid', n: 5 }, 'HYB-06': { type: 'hybrid', n: 6 },
-  'HYB-07': { type: 'hybrid', n: 7 }, 'HYB-08': { type: 'hybrid', n: 8 }, 'HYB-09': { type: 'hybrid', n: 9 },
-  'HYB-10': { type: 'hybrid', n: 10 }, 'HYB-11': { type: 'hybrid', n: 11 },
+  'HYB-01': { type: 'hybrid', n: 6 }, 'HYB-02': { type: 'hybrid', n: 7 }, 'HYB-03': { type: 'hybrid', n: 8 },
+  'HYB-04': { type: 'hybrid', n: 9 }, 'HYB-05': { type: 'hybrid', n: 10 }, 'HYB-06': { type: 'hybrid', n: 11 },
   'RTU-01': { type: 'rooftop', n: 1 }, 'RTU-02': { type: 'rooftop', n: 2 }, 'RTU-03': { type: 'rooftop', n: 3 },
   'RTU-04': { type: 'rooftop', n: 4 }, 'RTU-05': { type: 'rooftop', n: 5 },
   'SEN-E1': { type: 'sensor', side: 'East', n: 1 }, 'SEN-E2': { type: 'sensor', side: 'East', n: 2 }, 'SEN-E3': { type: 'sensor', side: 'East', n: 3 },
@@ -170,7 +169,7 @@ export const controllerName = (equipmentId) => {
 export function rolesForType(type) {
   return Object.keys(ROLE_POINTS).filter((r) => ROLE_POINTS[r].points[type]);
 }
-/** Roles that actually have a point on this unit (e.g. fire dampers exist on hybrids 6–11 only). */
+/** Roles that actually have a point on this unit (e.g. fire dampers exist on hybrids only). */
 export const rolesForUnit = (equipmentId) => {
   const u = EQUIPMENT_UNITS[equipmentId];
   return u ? rolesForType(u.type).filter((r) => slotPath(equipmentId, r)) : [];

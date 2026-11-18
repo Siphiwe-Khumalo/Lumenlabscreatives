@@ -35,19 +35,15 @@ export const EQUIPMENT_TYPES = Object.freeze({
   sensor:  { label: 'Room sensors',   short: 'Sensor',  prefix: 'SEN' }, // temperature, humidity, CO2 only
 });
 
-// 11 hybrid + 5 rooftop units + 6 room sensors. Zone allocation is illustrative (TODO confirm with Aina).
+// 6 hybrid (VRF) units, one per warehouse supply line (lines 1–3 Warehouse 1, lines 4–6 Warehouse 2), + 5 rooftop units
+// + 6 room sensors. Zone allocation is illustrative (zones still to be replaced by the real lines / support areas).
 export const EQUIPMENT = Object.freeze([
-  { id: 'HYB-01', type: 'hybrid',  name: 'Hybrid unit 1',  zoneId: 'main-store' },
-  { id: 'HYB-02', type: 'hybrid',  name: 'Hybrid unit 2',  zoneId: 'dispatch' },
-  { id: 'HYB-03', type: 'hybrid',  name: 'Hybrid unit 3',  zoneId: 'storage-b' },
-  { id: 'HYB-04', type: 'hybrid',  name: 'Hybrid unit 4',  zoneId: 'receiving' },
-  { id: 'HYB-05', type: 'hybrid',  name: 'Hybrid unit 5',  zoneId: 'main-store' },
-  { id: 'HYB-06', type: 'hybrid',  name: 'Hybrid unit 6',  zoneId: 'storage-b' },
-  { id: 'HYB-07', type: 'hybrid',  name: 'Hybrid unit 7',  zoneId: 'main-store' },
-  { id: 'HYB-08', type: 'hybrid',  name: 'Hybrid unit 8',  zoneId: 'main-store' },
-  { id: 'HYB-09', type: 'hybrid',  name: 'Hybrid unit 9',  zoneId: 'dispatch' },
-  { id: 'HYB-10', type: 'hybrid',  name: 'Hybrid unit 10', zoneId: 'storage-b' },
-  { id: 'HYB-11', type: 'hybrid',  name: 'Hybrid unit 11', zoneId: 'receiving' },
+  { id: 'HYB-01', type: 'hybrid',  name: 'Hybrid unit 1',  zoneId: 'main-store' }, // line 1
+  { id: 'HYB-02', type: 'hybrid',  name: 'Hybrid unit 2',  zoneId: 'main-store' }, // line 2
+  { id: 'HYB-03', type: 'hybrid',  name: 'Hybrid unit 3',  zoneId: 'main-store' }, // line 3
+  { id: 'HYB-04', type: 'hybrid',  name: 'Hybrid unit 4',  zoneId: 'storage-b' },  // line 4
+  { id: 'HYB-05', type: 'hybrid',  name: 'Hybrid unit 5',  zoneId: 'storage-b' },  // line 5
+  { id: 'HYB-06', type: 'hybrid',  name: 'Hybrid unit 6',  zoneId: 'storage-b' },  // line 6
   { id: 'RTU-01', type: 'rooftop', name: 'Rooftop unit 1', zoneId: 'main-store' },
   { id: 'RTU-02', type: 'rooftop', name: 'Rooftop unit 2', zoneId: 'main-store' },
   { id: 'RTU-03', type: 'rooftop', name: 'Rooftop unit 3', zoneId: 'dispatch' },

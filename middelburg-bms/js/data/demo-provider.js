@@ -44,8 +44,6 @@ const UNIT = {
   'HYB-04': { flow: 3100, duty: 1 }, 'HYB-05': { flow: 4100, duty: 1 }, 'HYB-06': { flow: 2500, duty: 0.55 },
   'RTU-01': { flow: 6200, duty: 1 }, 'RTU-02': { flow: 6100, duty: 1 }, 'RTU-03': { flow: 5400, duty: 1 },
   'RTU-04': { flow: 5200, duty: 1 }, 'RTU-05': { flow: 4800, duty: 0.5 },
-  'HYB-07': { flow: 3900, duty: 1 }, 'HYB-08': { flow: 3600, duty: 1 }, 'HYB-09': { flow: 3300, duty: 0.7 },
-  'HYB-10': { flow: 2900, duty: 1 }, 'HYB-11': { flow: 3000, duty: 1 },
 };
 
 function hash(a, b) {

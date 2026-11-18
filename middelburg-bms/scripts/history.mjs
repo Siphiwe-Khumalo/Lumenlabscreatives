@@ -19,6 +19,7 @@ import { mkdir, appendFile, readFile, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { EQUIPMENT_UNITS, ROLE_POINTS, rolesForType, rolesForUnit, slotPath } from '../js/config/points.js';
+import { migrateHybridHistory } from './migrate-hybrids.mjs';
 import { EQUIPMENT } from '../js/config/site.js';
 
 const TZ = 'Africa/Johannesburg';
@@ -185,7 +186,11 @@ export function createHistory({ readPoint, root, env }) {
 
   return {
     handle, dir, intervalMin, points: POINTS.length,
-    start() { schedule(); logOnce(); },
+    start() {
+      // One-time move of history logged under the old 11-hybrid numbering (see migrate-hybrids.mjs), then log.
+      migrateHybridHistory(dir).catch((err) => console.error('[history] hybrid renumbering failed (history kept as is):', err.message))
+        .finally(() => { schedule(); logOnce(); });
+    },
     stop() { clearTimeout(timer); },
     logOnce,
   };

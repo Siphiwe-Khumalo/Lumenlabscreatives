@@ -291,7 +291,7 @@ export default {
       </article>`;
     }
 
-    /** Fire dampers (hybrids 6–11): read only (GET), never written. */
+    /** Fire dampers (one per hybrid unit): read only (GET), never written. */
     function dampersHTML(s) {
       const list = s.equipment.filter((e) => e.readings.fireDamper);
       if (!list.length) return '';
