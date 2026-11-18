@@ -1,3 +1,6 @@
+# Draws the labels for Figure 1 (site-plan.png) over site-plan-base.png (simplified from drawing ME-MB-HVAC-01;
+# warehouse-plan-crop.png is the original crop). Run in philosophy-img/: python3 site-plan-overlay.py, then
+# screenshot overlay.html at 1232x1259 (deviceScaleFactor 2) with Playwright and resize to 1848 px wide.
 OX,OY=150,60          # base image offset in the canvas
 W,H=150+912+170,60+1024+175
 HYB='#0E7C7A'; RTU='#7C3AED'; SEN='#B45309'; DUCT='#1D4ED8'; INK='#111827'
@@ -40,6 +43,6 @@ tag(300,ly,'HYB',HYB,58); T(336,ly+6,'Hybrid (VRF) unit, duct riser to its line'
 tag(700,ly,'RTU',RTU,58); T(736,ly+6,'Rooftop unit, serves the area shown',16,'start','400',INK,False)
 o.append(f'<circle cx="1040" cy="{ly}" r="8" fill="#fff" stroke="{SEN}" stroke-width="3.5"/><circle cx="1040" cy="{ly}" r="3" fill="{SEN}"/>'); T(1056,ly+6,'Temp + RH sensor',16,'start','400',INK,False)
 html=f'''<!doctype html><html><body style="margin:0;background:#fff"><div style="position:relative;width:{W}px;height:{H}px;font-family:Arial,'Liberation Sans',sans-serif">
-<img src="base.png" style="position:absolute;left:{OX}px;top:{OY}px;width:912px;height:1024px">
+<img src="site-plan-base.png" style="position:absolute;left:{OX}px;top:{OY}px;width:912px;height:1024px">
 <svg style="position:absolute;left:0;top:0" width="{W}" height="{H}" font-family="Arial, Liberation Sans, sans-serif">{''.join(o)}</svg></div></body></html>'''
 open('overlay.html','w').write(html); print(W,H)
