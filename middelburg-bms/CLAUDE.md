@@ -536,3 +536,21 @@ range since go-live). If the old folders were deleted on handover day, history r
 5. Fire damper boolean meaning (the dashboard assumes **true = OPEN**).
 Also still recommended: rotate the OAuth secret that was shared in chat; a real server-side login (§10.5).
 
+
+### 12.6 Control philosophy Rev B (2026-11-18): what the client document promises vs what exists
+`handover/control-philosophy.{html,pdf,docx}` is the client-facing final draft (Department of Health). Built from Mr
+Mamabolo's site meeting (recording), Aina's "BMS Control Philosophy and Client Operating Guide" Rev 4 (JACE 9000,
+ECY-S1000 / CAREL c.pCO mini / ECB-350) and drawings ME-MB-HVAC-01/-04. Internal gaps it does NOT mention:
+1. **6 hybrid units, not 11**: per the site meeting the 6 hybrids (VRF, PU-01 ×6, one per warehouse supply line) are
+   the JACE's `HYBRID_6…11` (HYBRID_1…5 never existed). `site.js` / `points.js` still list 11; reduce to 6 and rename HYB-01…06.
+2. **28 T/RH points** (3 per line × 6 + 2 per RTU × 5) are described; only 6 room sensors + RTU sensors are mapped now.
+   Get the remaining points from Aina and map them per line / RTU area; rename zones to lines and support areas.
+3. **Limits** stated: warning outside 15–25 °C or above 60 %RH; critical outside 13–27 °C or above 65 %RH (matches the
+   current `thresholds.js` values, but the label still says ILLUSTRATIVE — update the label/text once approved).
+4. **Phase 2 items** (doc §14): SMS/WhatsApp/e-mail alarm routing, filter-condition and refrigerant (20% airflow/ΔT)
+   indicators, maintenance reminders, an annual (Jan–Dec) report in the dashboard (Trends max range is 30 d today),
+   individual logins + central audit trail. Phase 3: mobile apps, zone fire integration, refrigerant pressures.
+5. Hybrid start/stop and setpoint are described as JACE/engineering-level (the dashboard keeps hybrids read-only).
+6. The annual trend chart in the document is **simulated** (labelled so). Rebuild: `scratchpad` scripts were
+   charts.py / plan.py (SVG → PNG via Playwright); PDF via Playwright with header/footer + pdfunite cover; DOCX via a
+   python-docx builder from the same HTML.
