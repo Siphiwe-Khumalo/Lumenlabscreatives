@@ -1,0 +1,1461 @@
+<title>AI Foundations Handbook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Applied AI Academy — AI Foundations Handbook, Level 01. Interactive edition of Chapter 01: Understanding Artificial Intelligence.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a handbook reader. Contents rail on the left, one reading column (~68ch) on the right. */
+:root{
+  --paper:#F5F7FA; --surface:#FFFFFF; --surface-2:#ECF0F6; --ink:#14203A; --ink-2:#434F69; --muted:#68728B; --line:#D7DDE8;
+  --accent:#2C4EC4; --accent-soft:#E5EBFB; --on-accent:#FFFFFF;
+  --ochre:#A8661A; --ochre-soft:#FBF0E1;
+  --sage:#2C7356; --sage-soft:#E3F1EA;
+  --rose:#AC3549; --rose-soft:#FBE8EB;
+  --winter:#2F6F9C; --winter-soft:#E2EEF7;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Literata", Georgia, "Times New Roman", serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --f-ui:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E1320; --surface:#151B2B; --surface-2:#1C2437; --ink:#E6EAF3; --ink-2:#B4BDD1; --muted:#8992AA; --line:#2A3249;
+  --accent:#93A9F6; --accent-soft:#1E2A4E; --on-accent:#0E1320;
+  --ochre:#E2A552; --ochre-soft:#2C2214; --sage:#6FC79F; --sage-soft:#14291F; --rose:#F08C9C; --rose-soft:#321A20;
+  --winter:#86BCE2; --winter-soft:#14263A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1320; --surface:#151B2B; --surface-2:#1C2437; --ink:#E6EAF3; --ink-2:#B4BDD1; --muted:#8992AA; --line:#2A3249;
+  --accent:#93A9F6; --accent-soft:#1E2A4E; --on-accent:#0E1320;
+  --ochre:#E2A552; --ochre-soft:#2C2214; --sage:#6FC79F; --sage-soft:#14291F; --rose:#F08C9C; --rose-soft:#321A20;
+  --winter:#86BCE2; --winter-soft:#14263A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.65}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--surface)}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.2;text-wrap:balance;color:var(--ink)}
+h1{font-size:clamp(30px,5vw,42px);font-weight:700;margin:6px 0 14px;letter-spacing:-.01em}
+h2{font-size:25px;font-weight:700;margin:44px 0 10px}
+h3{font-size:19px;font-weight:700;margin:28px 0 6px}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin:4px 0}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:19px;color:var(--ink-2)}
+button{font:inherit;cursor:pointer}
+
+/* ---- shell ---- */
+.app{display:grid;grid-template-columns:288px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);padding:22px 18px 28px;font-family:var(--f-ui);font-size:14px;display:flex;flex-direction:column;gap:18px}
+.brand{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--ink)}
+.brand-mark{width:34px;height:34px;flex:none}
+.brand b{display:block;font-family:var(--f-display);font-size:16px;line-height:1.1}
+.brand span{font-size:12px;color:var(--muted)}
+.prog{display:grid;gap:6px}
+.prog-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.bar{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+.nav{display:grid;gap:2px}
+.nav-h{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 8px 4px}
+.nav a{display:flex;gap:10px;align-items:baseline;padding:7px 8px;border-radius:7px;color:var(--ink-2);text-decoration:none;line-height:1.3}
+.nav a:hover{background:var(--surface-2);color:var(--ink)}
+.nav a[aria-current="page"]{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.nav .n{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);min-width:24px}
+.nav .tick{margin-left:auto;color:var(--sage);font-size:13px}
+.rail-foot{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}
+.chip-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:13px;font-family:var(--f-ui)}
+.chip-btn:hover{border-color:var(--accent);color:var(--ink)}
+.app>div{min-width:0}
+.topbar{display:none}
+.content{padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));min-width:0}
+.col{max-width:720px;margin:0 auto}
+.wide{max-width:1000px;margin:0 auto}
+main:focus{outline:none}
+.scrim{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .topbar{display:flex;position:sticky;top:env(safe-area-inset-top,0px);z-index:40;background:var(--surface);border-bottom:1px solid var(--line);align-items:center;gap:12px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-family:var(--f-ui)}
+  .topbar .brand b{font-size:15px}
+  .rail{position:fixed;z-index:50;left:0;top:0;bottom:0;width:min(86vw,300px);height:auto;padding-top:calc(22px + env(safe-area-inset-top,0px));padding-left:max(18px,env(safe-area-inset-left,0px));transform:translateX(-102%);transition:transform .25s}
+  .app.open .rail{transform:none;box-shadow:0 0 40px rgba(0,0,0,.25)}
+  .app.open .scrim{display:block;position:fixed;inset:0;z-index:45;background:rgba(10,14,25,.45)}
+  .content{padding-block:24px 64px}
+}
+.menu-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 12px;font-size:14px}
+
+/* ---- buttons ---- */
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:11px 18px;font-family:var(--f-ui);font-size:15px;font-weight:600;text-decoration:none;border:1px solid transparent}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--accent)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+/* ---- home ---- */
+.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:40px;align-items:center;padding-bottom:36px;border-bottom:1px solid var(--line)}
+.hero h1{font-size:clamp(36px,6vw,56px);line-height:1.02}
+.hero-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;font-family:var(--f-ui);font-size:14px;display:grid;gap:14px}
+.hero-card .big{font-family:var(--f-display);font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.stat-row{display:flex;gap:22px;flex-wrap:wrap}
+.stat-row div{display:grid}
+.stat-row small{color:var(--muted)}
+@media (max-width:760px){.hero{grid-template-columns:1fr;gap:24px}}
+.levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}
+@media (max-width:860px){.levels{grid-template-columns:1fr}}
+.level{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:10px;align-content:start;font-family:var(--f-ui);font-size:14.5px}
+.level h3{margin:0;font-size:20px}
+.level ol{list-style:none;padding:0;margin:0;display:grid;gap:2px}
+.level li{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);margin:0}
+.level li .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);min-width:22px}
+.level li a{color:var(--ink);font-weight:600}
+.status{margin-left:auto;font-size:11.5px;font-family:var(--f-mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.st-live{background:var(--sage-soft);color:var(--sage)}
+.st-dev{background:var(--surface-2);color:var(--muted)}
+.features{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px;margin-top:16px}
+@media (max-width:700px){.features{grid-template-columns:1fr}}
+.features h3{margin:0 0 4px;font-size:17px}
+.features p{margin:0;color:var(--ink-2);font-size:16px}
+
+/* ---- lesson furniture ---- */
+.lesson-head{margin-bottom:26px}
+.meta{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--f-ui);font-size:13.5px;color:var(--muted)}
+.box{border:1px solid var(--line);border-radius:12px;padding:16px 18px 6px;margin:22px 0;background:var(--surface)}
+.box>.tag{display:inline-block;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;padding:3px 9px;border-radius:99px;margin-bottom:10px}
+.box.closer{background:var(--accent-soft);border-color:transparent}.box.closer>.tag{background:var(--surface);color:var(--accent)}
+.box.case{background:var(--ochre-soft);border-color:transparent}.box.case>.tag{background:var(--surface);color:var(--ochre)}
+.box.myth{background:var(--rose-soft);border-color:transparent}.box.myth>.tag{background:var(--surface);color:var(--rose)}
+.box.think{background:var(--sage-soft);border-color:transparent}.box.think>.tag{background:var(--surface);color:var(--sage)}
+.box.sa{background:var(--surface-2);border-color:transparent}.box.sa>.tag{background:var(--surface);color:var(--ink-2)}
+.box h4{margin:0 0 8px;font-size:17px}
+.ev{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:99px;vertical-align:2px;white-space:nowrap}
+.ev-e{background:var(--sage-soft);color:var(--sage)}
+.ev-d{background:var(--ochre-soft);color:var(--ochre)}
+.ev-m{background:var(--winter-soft);color:var(--winter)}
+.key{font-family:var(--f-display);font-size:21px;line-height:1.35;font-weight:500;margin:26px 0;padding:18px 0;border-top:2px solid var(--ink);border-bottom:1px solid var(--line)}
+.tbl{overflow-x:auto;margin:16px 0 22px;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-family:var(--f-ui);font-size:14.5px;line-height:1.45;background:var(--surface)}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{background:var(--surface-2);font-weight:600;color:var(--ink)}
+tr:last-child td{border-bottom:0}
+figure{margin:24px 0}
+.fig{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.fig svg{display:block;width:100%;min-width:540px;height:auto}
+figcaption{font-family:var(--f-ui);font-size:13.5px;color:var(--muted);margin-top:8px}
+svg text{font-family:var(--f-ui)}
+.d-box{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}
+.d-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.d-ochre{fill:var(--ochre-soft);stroke:var(--ochre);stroke-width:1.5}
+.d-sage{fill:var(--sage-soft);stroke:var(--sage);stroke-width:1.5}
+.d-t{fill:var(--ink);font-size:15px;font-weight:600}
+.d-s{fill:var(--ink-2);font-size:12.5px}
+.d-m{fill:var(--muted);font-size:11.5px;letter-spacing:.06em}
+.d-line{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-arrow{fill:var(--muted)}
+.d-bar{fill:var(--accent)}
+.d-bar2{fill:var(--line)}
+.g{border-bottom:1.5px dotted var(--accent);cursor:help}
+.pop{position:absolute;z-index:70;max-width:300px;background:var(--ink);color:var(--paper);font-family:var(--f-ui);font-size:13.5px;line-height:1.45;padding:10px 12px;border-radius:9px;box-shadow:0 8px 26px rgba(0,0,0,.25)}
+.pop b{display:block;margin-bottom:2px}
+
+/* ---- questions ---- */
+.check{margin:40px 0 10px;padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.check h2{margin:0 0 4px;font-size:21px}
+.q{border:0;margin:18px 0 0;padding:0;min-width:0}
+.q legend{font-family:var(--f-ui);font-weight:600;font-size:15.5px;line-height:1.45;margin-bottom:8px;padding:0}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:9px;padding:10px 12px;font-family:var(--f-ui);font-size:14.5px;line-height:1.4}
+.opt:hover{border-color:var(--accent)}
+.opt .l{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:2px}
+.opt.right{border-color:var(--sage);background:var(--sage-soft)}
+.opt.wrong{border-color:var(--rose);background:var(--rose-soft)}
+.opt input{margin-top:3px;accent-color:var(--accent)}
+.fb{font-family:var(--f-ui);font-size:14px;margin:8px 0 0;min-height:1px}
+.fb.ok{color:var(--sage)} .fb.no{color:var(--rose)}
+.fb span{color:var(--ink-2)}
+
+/* ---- labs ---- */
+.lab{margin:28px 0;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.lab-head{padding:16px 18px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.lab-head h3{margin:2px 0 4px}
+.lab-head p{margin:0;font-family:var(--f-ui);font-size:14px;color:var(--ink-2)}
+.lab-body{padding:16px 18px;font-family:var(--f-ui);font-size:14.5px}
+.sort-list{display:grid;gap:10px}
+.sort-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.sort-item .what{font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--ink-2);padding:6px 10px;font-size:13px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.sort-item .why{grid-column:1/-1;font-size:13.5px;color:var(--ink-2)}
+.sort-item.ok{border-color:var(--sage)} .sort-item.no{border-color:var(--rose)}
+@media (max-width:560px){.sort-item{grid-template-columns:1fr}}
+.lab-foot{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:14px 18px;border-top:1px solid var(--line);font-family:var(--f-ui);font-size:14px}
+.score{font-weight:700;font-variant-numeric:tabular-nums}
+.sent-list{display:grid;gap:8px}
+.sent{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:9px;padding:10px 12px;font-family:var(--f-body);font-size:16px;line-height:1.5}
+.sent[aria-pressed="true"]{border-color:var(--ochre);background:var(--ochre-soft)}
+.sent.ok{border-color:var(--sage)} .sent.no{border-color:var(--rose)}
+.sent small{display:block;font-family:var(--f-ui);font-size:13px;color:var(--ink-2);margin-top:6px}
+.day-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.day-grid{grid-template-columns:1fr}}
+.day-grid label{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}
+.day-grid input{accent-color:var(--accent);margin-top:3px}
+.day-grid small{display:block;color:var(--muted)}
+.mix{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.mix span{background:var(--surface-2);border-radius:99px;padding:3px 10px;font-size:13px}
+
+/* ---- timeline ---- */
+.tl-filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px;font-family:var(--f-ui)}
+.tl-filters button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:99px;padding:6px 13px;font-size:13.5px}
+.tl-filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tl{list-style:none;padding:0;margin:0;position:relative}
+.tl::before{content:"";position:absolute;left:118px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl li{display:grid;grid-template-columns:104px minmax(0,1fr);gap:30px;margin:0 0 18px;position:relative}
+.tl li::before{content:"";position:absolute;left:113px;top:8px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.tl li.winter::before{border-color:var(--winter);background:var(--winter-soft)}
+.tl li.symbolic::before{border-color:var(--ochre)}
+.tl .yr{font-family:var(--f-mono);font-size:13px;color:var(--ink-2);text-align:right;padding-top:3px;line-height:1.35}
+.tl .ev-body{font-family:var(--f-ui);font-size:14.5px;line-height:1.5}
+.tl .ev-body b{display:block;font-size:15.5px;margin-bottom:2px}
+.tl li.winter .ev-body{background:var(--winter-soft);border-radius:10px;padding:10px 12px}
+.tl .kinds{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.tl .kinds span{font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 7px}
+@media (max-width:560px){.tl::before{left:8px}.tl li{grid-template-columns:1fr;gap:2px;padding-left:28px}.tl li::before{left:3px}.tl .yr{text-align:left}}
+
+/* ---- lesson nav ---- */
+.pager{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+.pager a,.pager button{display:grid;gap:2px;text-decoration:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:14px 16px;font-family:var(--f-ui);text-align:left}
+.pager a:hover,.pager button:hover{border-color:var(--accent)}
+.pager small{color:var(--muted);font-size:12.5px}
+.pager .next{text-align:right;grid-column:2}
+.pager .next.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.pager .next.primary small{color:inherit;opacity:.8}
+.done-note{font-family:var(--f-ui);font-size:14px;color:var(--sage);margin-top:14px}
+
+/* ---- chapter overview ---- */
+.lesson-list{list-style:none;padding:0;margin:16px 0;display:grid;gap:10px}
+.lesson-list a{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);text-decoration:none;color:var(--ink);font-family:var(--f-ui)}
+.lesson-list a:hover{border-color:var(--accent)}
+.lesson-list .n{font-family:var(--f-mono);font-size:15px;color:var(--accent)}
+.lesson-list b{display:block;font-size:16px}
+.lesson-list small{color:var(--muted);font-size:13px}
+.lesson-list .st{font-size:13px;color:var(--muted)}
+.lesson-list .st.d{color:var(--sage);font-weight:600}
+.objs{counter-reset:o;list-style:none;padding:0}
+.objs li{counter-increment:o;display:grid;grid-template-columns:34px minmax(0,1fr);margin:8px 0}
+.objs li::before{content:counter(o,decimal-leading-zero);font-family:var(--f-mono);font-size:13px;color:var(--muted);padding-top:3px}
+
+/* ---- assessment ---- */
+.sec{margin:36px 0}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:6px}
+.sec-h h2{margin:0}
+.sec-h span{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.wq{margin:22px 0;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-family:var(--f-ui);font-size:15px}
+.wq p.qt{font-weight:600;margin-bottom:10px}
+.wq textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);padding:10px 12px;font:15px/1.5 var(--f-ui);resize:vertical}
+.wq details{margin-top:10px}
+.wq summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px}
+.wq .guide{margin-top:8px;font-size:14px;color:var(--ink-2)}
+.wq .guide ul{margin:6px 0}
+.self{display:flex;gap:10px;align-items:center;margin-top:10px;font-size:14px;flex-wrap:wrap}
+.self select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--surface);color:var(--ink)}
+.scenario{background:var(--surface-2);border-radius:12px;padding:16px 18px;font-family:var(--f-ui);font-size:15px}
+.result{margin:28px 0;padding:22px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font-family:var(--f-ui)}
+.result .big{font-family:var(--f-display);font-size:46px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.result.pass{border-color:var(--sage)} .result.fail{border-color:var(--ochre)}
+.breakdown{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0;font-size:14px}
+.breakdown div{display:grid}
+.breakdown small{color:var(--muted)}
+.record{margin-top:18px;padding:24px;border:2px solid var(--ink);border-radius:4px;background:var(--paper);text-align:center;display:grid;gap:6px}
+.record .eyebrow{margin-bottom:4px}
+.record h3{margin:0;font-size:26px}
+.record .who{font-family:var(--f-display);font-size:30px;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:6px;margin:8px auto;min-width:60%}
+.record small{color:var(--muted)}
+.namefield{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:14px}
+.namefield input{font:inherit;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--ink);min-width:0;flex:1 1 200px;max-width:320px}
+.confirm{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-family:var(--f-ui);font-size:14px;margin-top:10px}
+
+/* ---- glossary / refs ---- */
+.search{width:100%;font:16px var(--f-ui);border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:var(--surface);color:var(--ink);margin:10px 0 18px}
+.gl{display:grid;gap:0;margin:0}
+.gl div{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.gl dt{font-family:var(--f-display);font-weight:700;font-size:16px}
+.gl dd{margin:0;font-family:var(--f-ui);font-size:15px;color:var(--ink-2)}
+@media (max-width:600px){.gl div{grid-template-columns:1fr;gap:2px}}
+.refs{font-family:var(--f-ui);font-size:14.5px;line-height:1.55;padding-left:0;list-style:none}
+.refs li{padding:8px 0 8px 26px;text-indent:-26px;border-bottom:1px solid var(--line);margin:0}
+.foot{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--f-ui);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.foot i{font-family:var(--f-body)}
+</style>
+
+<div class="app" id="app">
+  <div class="scrim" id="scrim"></div>
+  <aside class="rail" id="rail" aria-label="Handbook contents">
+    <a class="brand" href="#home">
+      <svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" class="d-acc"/><path d="M9 24 L17 9 L25 24 M12.5 18.5 H21.5" class="d-line" style="stroke:var(--accent);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"/></svg>
+      <div><b>Applied AI Academy</b><span>AI Foundations · Level 01</span></div>
+    </a>
+    <div class="prog">
+      <div class="prog-row"><span>Chapter 01 progress</span><span id="progTxt">0%</span></div>
+      <div class="bar"><i id="progBar" style="width:0%"></i></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="rail-foot">
+      <button class="chip-btn" id="themeBtn" type="button">Theme: System</button>
+      <button class="chip-btn" id="resetBtn" type="button">Reset progress</button>
+    </div>
+    <div class="confirm" id="resetConfirm" hidden>
+      <span>Clear all progress and answers on this device?</span>
+      <button class="chip-btn" id="resetYes" type="button">Yes, clear</button>
+      <button class="chip-btn" id="resetNo" type="button">Cancel</button>
+    </div>
+  </aside>
+  <div>
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" type="button" aria-controls="rail" aria-expanded="false">Contents</button>
+      <a class="brand" href="#home"><div><b>AI Foundations Handbook</b></div></a>
+    </header>
+    <div class="content"><main id="main" tabindex="-1"></main></div>
+  </div>
+</div>
+<div class="pop" id="pop" role="tooltip" hidden></div>
+
+<!-- =====================================================================
+     LESSON CONTENT. Each lesson is a <template id="t-lesson-X-Y">.
+     Edit the HTML here. Widgets: <div data-widget="..."></div>.
+     Glossary terms: <span class="g" data-g="key">word</span>.
+     Evidence labels: <span class="ev ev-e">Established</span>, ev-d Debated, ev-m Emerging.
+     ===================================================================== -->
+
+<template id="t-lesson-1-1">
+<p class="lede">Before we can ask whether a machine is intelligent, we need a clearer idea of what intelligence is. It turns out to be harder to pin down than it looks.</p>
+
+<p>Picture an ordinary moment. You are driving when the car in front of you brakes suddenly. In under a second you notice the brake lights, judge the gap between the cars, remember how your own car handles, decide how hard to brake, and press the pedal.</p>
+<p>That moment draws on several abilities at once:</p>
+<ul>
+<li>taking in information from your surroundings (<strong>perception</strong>);</li>
+<li>making sense of what is happening;</li>
+<li>recalling relevant experience (<strong>memory</strong>);</li>
+<li>weighing up possible outcomes (<strong>reasoning</strong>);</li>
+<li>choosing a response (<strong>decision-making</strong>);</li>
+<li>carrying it out (<strong>action</strong>).</li>
+</ul>
+<p>Psychologists call these <strong>cognitive abilities</strong>: the mental processes we use to gain knowledge and put it to work.</p>
+
+<h2>No single definition</h2>
+<p>Intelligence has no universally agreed definition. Psychologists, neuroscientists, philosophers and computer scientists each approach it differently. When the researchers Shane Legg and Marcus Hutter collected and compared more than 70 published definitions, they proposed a short summary that works for people and machines alike: intelligence <em>"measures an agent's ability to achieve goals in a wide range of environments."</em> <span class="ev ev-d">Debated</span></p>
+<p>Notice the phrase <em>a wide range of environments</em>. A system that is brilliant at one narrow task and helpless everywhere else is, by this measure, not very intelligent. Keep that idea in mind. It will matter when we look at today's AI.</p>
+
+<h3>Components of intelligent behaviour</h3>
+<div class="tbl"><table>
+<thead><tr><th>Ability</th><th>Everyday example</th></tr></thead>
+<tbody>
+<tr><td>Reasoning</td><td>Working out why a machine has stopped operating</td></tr>
+<tr><td>Learning</td><td>Driving better as you gain experience</td></tr>
+<tr><td>Memory</td><td>Remembering instructions someone gave you</td></tr>
+<tr><td>Perception</td><td>Recognising a familiar face in a crowd</td></tr>
+<tr><td>Language</td><td>Understanding and explaining ideas</td></tr>
+<tr><td>Problem-solving</td><td>Finding another route when a road is closed</td></tr>
+<tr><td>Adaptability</td><td>Adjusting to an unfamiliar workplace</td></tr>
+</tbody></table></div>
+
+<h2>The intelligence loop</h2>
+<p>The braking example follows a pattern that AI researchers use to describe any intelligent system. An <span class="g" data-g="agent">agent</span> <strong>perceives</strong> its environment, <strong>decides</strong> what to do and <strong>acts</strong>. Its action changes the environment, and the loop starts again.</p>
+<figure>
+<div class="fig"><svg viewBox="0 0 660 230" role="img" aria-label="Diagram: perceive, decide and act in a loop. The action changes the environment, which is perceived again.">
+<defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker></defs>
+<rect x="20" y="30" width="170" height="92" rx="12" class="d-acc"/>
+<text x="40" y="62" class="d-t">Perceive</text><text x="40" y="86" class="d-s">See the brake lights</text><text x="40" y="104" class="d-s">and the gap closing</text>
+<rect x="245" y="30" width="170" height="92" rx="12" class="d-ochre"/>
+<text x="265" y="62" class="d-t">Decide</text><text x="265" y="86" class="d-s">Brake now, and how</text><text x="265" y="104" class="d-s">hard?</text>
+<rect x="470" y="30" width="170" height="92" rx="12" class="d-sage"/>
+<text x="490" y="62" class="d-t">Act</text><text x="490" y="86" class="d-s">Press the pedal</text><text x="490" y="104" class="d-s">firmly</text>
+<path d="M190 76 H241" class="d-line" marker-end="url(#ah1)"/>
+<path d="M415 76 H466" class="d-line" marker-end="url(#ah1)"/>
+<path d="M555 122 V178 H105 V126" class="d-line" marker-end="url(#ah1)"/>
+<text x="330" y="200" text-anchor="middle" class="d-m">THE ENVIRONMENT CHANGES · THE LOOP REPEATS</text>
+</svg></div>
+<figcaption>A driver, a spam filter and a self-driving car can all be described with this loop.</figcaption>
+</figure>
+
+<h2>Does a machine need to think like us?</h2>
+<p>Not necessarily. A computer can sort thousands of photographs far faster than a person could look through them. A navigation app can compare routes using live traffic data from thousands of road users. Both show capabilities we associate with intelligence, even though what happens inside them is very different from human thinking.</p>
+<p>That gap, between <em>doing</em> an intelligent-looking task and <em>thinking</em> the way a person does, runs through this whole chapter.</p>
+
+<div class="box closer"><span class="tag">Look closer</span>
+<h4>Moravec's paradox: easy for us, hard for machines</h4>
+<p>In the 1980s, the roboticist Hans Moravec pointed out something surprising. Tasks people find hard, such as advanced mathematics or chess, turned out to be relatively easy for computers. Tasks people find effortless, such as recognising a friend across a room, walking over rough ground or picking up an egg without breaking it, turned out to be very hard. <span class="ev ev-e">Established</span></p>
+<p>One explanation is that perception and movement were refined over hundreds of millions of years of evolution. We do them without noticing, so we underestimate how complex they are. Abstract reasoning is recent in evolutionary terms, and we do it slowly and deliberately, so it <em>feels</em> difficult.</p>
+<p><strong>Why it matters:</strong> you cannot judge how capable an AI system is by how impressive its task looks to a human. A system that writes a fluent essay can still fail at something a child finds simple.</p>
+</div>
+
+<div class="box think"><span class="tag">Think about it</span>
+<p>List three things you did this morning without thinking about them. Which would be hardest for a robot? Why?</p>
+</div>
+<div data-check></div>
+</template>
+
+<template id="t-lesson-1-2">
+<p class="lede">"AI" is used to describe everything from a phone camera to a chatbot. This lesson gives you precise language for what AI is and how its parts fit together.</p>
+
+<p><strong>Artificial intelligence (AI)</strong> is a field of computer science concerned with building systems that can perform tasks associated with intelligent behaviour. Examples include:</p>
+<ul>
+<li>recognising speech and identifying objects in images;</li>
+<li>understanding, translating and generating language;</li>
+<li>spotting patterns and making predictions;</li>
+<li>making recommendations and supporting decisions;</li>
+<li>solving certain kinds of problems, such as planning a route.</li>
+</ul>
+
+<h2>Unpacking the name</h2>
+<p><strong>Artificial</strong> means made by people rather than occurring naturally.</p>
+<p><strong>Intelligence</strong>, as a working definition for this handbook, is the ability to acquire and apply knowledge, recognise patterns, reason and solve problems.</p>
+<p>Put together, <strong>artificial intelligence</strong> is the design of computer systems that perform tasks associated with intelligent behaviour.</p>
+
+<div class="box closer"><span class="tag">Look closer</span>
+<h4>How experts define AI</h4>
+<p><strong>A founder's definition.</strong> John McCarthy, who introduced the term in 1955, later described AI as <em>"the science and engineering of making intelligent machines, especially intelligent computer programs."</em></p>
+<p><strong>A policy definition.</strong> In November 2023 the OECD, an international organisation whose definitions many governments use, updated its definition of an <em>AI system</em>:</p>
+<p><em>"An AI system is a machine-based system that, for explicit or implicit objectives, infers, from the input it receives, how to generate outputs such as predictions, content, recommendations, or decisions that can influence physical or virtual environments. Different AI systems vary in their levels of autonomy and adaptiveness after deployment."</em></p>
+<p>The key word is <strong>infers</strong>. An AI system works out its output from what it receives, instead of only following a fixed rule. McCarthy defines a <em>field of study</em>. The OECD defines a <em>type of system</em>, so that laws such as the EU AI Act can identify what they apply to.</p>
+</div>
+
+<h2>The AI family map</h2>
+<p>Several terms you will meet constantly are related like nested circles. Learn this picture now and much of what you read about AI becomes easier to follow.</p>
+<figure>
+<div class="fig"><svg viewBox="0 0 640 400" role="img" aria-label="Nested regions: artificial intelligence contains machine learning, which contains deep learning, which contains generative AI and large language models.">
+<rect x="2" y="2" width="636" height="396" rx="18" class="d-box"/>
+<text x="24" y="34" class="d-t">Artificial intelligence</text>
+<text x="24" y="56" class="d-s">Rules, search, planning, learning: any technique for intelligent tasks</text>
+<rect x="40" y="74" width="560" height="306" rx="16" class="d-ochre"/>
+<text x="62" y="106" class="d-t">Machine learning</text>
+<text x="62" y="128" class="d-s">Systems that learn patterns from data</text>
+<rect x="80" y="146" width="480" height="216" rx="14" class="d-sage"/>
+<text x="102" y="178" class="d-t">Deep learning</text>
+<text x="102" y="200" class="d-s">Machine learning with many-layered neural networks</text>
+<rect x="120" y="218" width="400" height="126" rx="12" class="d-acc"/>
+<text x="142" y="250" class="d-t">Generative AI</text>
+<text x="142" y="272" class="d-s">Models that create text, images, audio and code</text>
+<text x="142" y="300" class="d-s">including large language models (LLMs)</text>
+<text x="142" y="324" class="d-m">E.G. CHAT ASSISTANTS, IMAGE GENERATORS</text>
+</svg></div>
+<figcaption>Every large language model uses deep learning. All deep learning is machine learning, and all machine learning is AI. The reverse is not true.</figcaption>
+</figure>
+<p>A chess program that searches through moves using hand-written rules is AI, but not <span class="g" data-g="ml">machine learning</span>. A spam filter can use machine learning without <span class="g" data-g="dl">deep learning</span>. "Generative AI" describes what a system <em>does</em> (it creates content) rather than one technique. Today's leading generative systems are built with deep learning, which is why they sit in the centre. <span class="ev ev-e">Established</span></p>
+
+<h2>AI is a field, not a product</h2>
+<p>AI is not a single application. It is a field containing many methods, models and applications:</p>
+<ul>
+<li>a <strong>facial recognition</strong> system identifies or verifies faces;</li>
+<li>a <strong>translation</strong> system processes language;</li>
+<li>a <strong>recommendation engine</strong> suggests products, music or videos;</li>
+<li>a <strong>generative AI</strong> system produces new text, images or other content.</li>
+</ul>
+<p>All of these belong to AI, but they do not work in the same way.</p>
+
+<h2>Narrow AI and general AI</h2>
+<p><strong><span class="g" data-g="narrow">Narrow AI</span></strong> refers to systems built for particular tasks. Every AI system in use today is generally considered narrow, although modern language models handle a far broader range of tasks than earlier systems. <span class="ev ev-e">Established</span></p>
+<p><strong><span class="g" data-g="agi">Artificial general intelligence (AGI)</span></strong> refers to a hypothetical system that could learn and perform the full range of intellectual tasks a person can. There is no agreed definition of AGI and no agreed test for it. Researchers disagree sharply about whether, when and how it might be built. <span class="ev ev-d">Debated</span></p>
+
+<div class="box myth"><span class="tag">Myth vs fact</span>
+<p><strong>Myth:</strong> If a product says "AI-powered", it must be learning and adapting.</p>
+<p><strong>Fact:</strong> "AI" is used loosely in marketing. Some products labelled AI follow fixed scripts or simple rules. Ask what the system actually does: does it infer from data, or follow a set procedure?</p>
+</div>
+
+<div class="box think"><span class="tag">Think about it</span>
+<p>When you see a headline saying AGI is "two years away" or "impossible", ask three questions. How are they defining AGI? What evidence do they offer? Do they have a financial or reputational interest in the answer?</p>
+</div>
+<div data-check></div>
+</template>
+
+<template id="t-lesson-1-3">
+<p class="lede">This is the most important idea in the chapter. Most of modern AI rests on one shift: from writing rules by hand to learning them from examples.</p>
+
+<h2>Two ways to make a computer do something</h2>
+<p><strong>Traditional programming: you write the rules.</strong> A programmer studies the problem, writes explicit instructions, and the computer follows them exactly.</p>
+<p><strong>Machine learning: you supply examples, and the system finds the rules.</strong> The programmer gathers many examples where the right answer is already known. A learning algorithm adjusts a mathematical <span class="g" data-g="model">model</span> until it reproduces those answers as closely as it can. The model can then be used on new cases it has never seen.</p>
+
+<figure>
+<div class="fig"><svg viewBox="0 0 680 330" role="img" aria-label="Traditional programming: rules and data go into a program, which produces answers. Machine learning training: examples and correct answers go into a learning algorithm, which produces a model. Use: new data goes into the model, which produces predictions.">
+<defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker></defs>
+<text x="20" y="22" class="d-m">TRADITIONAL PROGRAMMING</text>
+<rect x="20" y="32" width="200" height="30" rx="8" class="d-ochre"/><text x="34" y="52" class="d-s">Rules (written by people)</text>
+<rect x="20" y="70" width="200" height="30" rx="8" class="d-box"/><text x="34" y="90" class="d-s">Data</text>
+<rect x="290" y="44" width="170" height="44" rx="10" class="d-box"/><text x="375" y="71" text-anchor="middle" class="d-t">Program</text>
+<rect x="520" y="44" width="140" height="44" rx="10" class="d-sage"/><text x="590" y="71" text-anchor="middle" class="d-t">Answers</text>
+<path d="M220 47 Q255 47 286 62" class="d-line" marker-end="url(#ah2)"/><path d="M220 85 Q255 85 286 72" class="d-line" marker-end="url(#ah2)"/><path d="M460 66 H516" class="d-line" marker-end="url(#ah2)"/>
+<text x="20" y="140" class="d-m">MACHINE LEARNING · TRAINING</text>
+<rect x="20" y="150" width="200" height="30" rx="8" class="d-box"/><text x="34" y="170" class="d-s">Examples (data)</text>
+<rect x="20" y="188" width="200" height="30" rx="8" class="d-ochre"/><text x="34" y="208" class="d-s">Correct answers (labels)</text>
+<rect x="290" y="162" width="170" height="44" rx="10" class="d-box"/><text x="375" y="189" text-anchor="middle" class="d-t">Learning algorithm</text>
+<rect x="520" y="162" width="140" height="44" rx="10" class="d-acc"/><text x="590" y="189" text-anchor="middle" class="d-t">Model</text>
+<path d="M220 165 Q255 165 286 180" class="d-line" marker-end="url(#ah2)"/><path d="M220 203 Q255 203 286 190" class="d-line" marker-end="url(#ah2)"/><path d="M460 184 H516" class="d-line" marker-end="url(#ah2)"/>
+<text x="20" y="258" class="d-m">MACHINE LEARNING · USE</text>
+<rect x="20" y="276" width="200" height="30" rx="8" class="d-box"/><text x="34" y="296" class="d-s">New data</text>
+<rect x="290" y="269" width="170" height="44" rx="10" class="d-acc"/><text x="375" y="296" text-anchor="middle" class="d-t">Model</text>
+<rect x="520" y="269" width="140" height="44" rx="10" class="d-sage"/><text x="590" y="296" text-anchor="middle" class="d-t">Predictions</text>
+<path d="M220 291 H286" class="d-line" marker-end="url(#ah2)"/><path d="M460 291 H516" class="d-line" marker-end="url(#ah2)"/>
+</svg></div>
+<figcaption>In traditional programming, people supply the rules. In machine learning, people supply examples and the system produces the rules, in the form of a model.</figcaption>
+</figure>
+
+<h2>Worked example: filtering spam</h2>
+<div class="tbl"><table>
+<thead><tr><th></th><th>Rule-based approach</th><th>Machine-learning approach</th></tr></thead>
+<tbody>
+<tr><td><strong>How it is built</strong></td><td>Staff write rules: "If the subject contains FREE MONEY, mark as spam."</td><td>The system studies many emails already labelled "spam" or "not spam" and learns which features tend to signal spam.</td></tr>
+<tr><td><strong>Strength</strong></td><td>Transparent. You can read exactly why an email was blocked.</td><td>Finds patterns nobody wrote down, and can be retrained as spam changes.</td></tr>
+<tr><td><strong>Weakness</strong></td><td>Spammers change wording ("FR3E M0NEY"), and every new trick needs a new rule.</td><td>Needs plenty of good labelled data, makes mistakes nobody predicted, and can be hard to explain.</td></tr>
+<tr><td><strong>Who decides what counts as spam?</strong></td><td>The person who wrote the rules.</td><td>The people who labelled the training examples. Their judgement becomes part of the system.</td></tr>
+</tbody></table></div>
+<p>Look at the last row. It explains where bias in AI comes from, which you will meet in Lesson 1.8. <strong>In machine learning, human judgement does not disappear. It moves into the data.</strong></p>
+
+<h2>A business example</h2>
+<p>A supermarket wants to recommend products. A traditional program might follow a rule someone wrote: "If a customer buys product A, show product B."</p>
+<p>A machine-learning approach analyses purchase histories from thousands of customers and finds relationships nobody wrote as rules, such as items that are often bought together. One established technique for this is called <em>association rule mining</em>. The system then uses those patterns to make suggestions.</p>
+<p>Traditional programs can make recommendations too. The difference is that machine learning <em>learns</em> patterns from data and uses them to predict.</p>
+
+<h2>When to use which</h2>
+<div class="tbl"><table>
+<thead><tr><th>Rules work best when…</th><th>Learning works best when…</th></tr></thead>
+<tbody>
+<tr><td>the logic is clear and stable (for example, adding 15% VAT to a price)</td><td>the pattern is too complex or fuzzy to write down (for example, recognising a face)</td></tr>
+<tr><td>every decision must be fully explainable</td><td>the situation keeps changing (for example, new spam tricks)</td></tr>
+<tr><td>there is little data</td><td>there are many good examples to learn from</td></tr>
+</tbody></table></div>
+
+<p class="key">Traditional programs follow rules people wrote. Machine-learning systems follow patterns they found in examples people chose.</p>
+
+<div data-widget="is-it-ai"></div>
+<div data-check></div>
+</template>
+
+<template id="t-lesson-1-4">
+<p class="lede">Artificial intelligence did not appear when ChatGPT became popular. It grew out of an old question, and today it is driven by two quite different motivations.</p>
+
+<p>People have always built tools to save effort, improve accuracy and handle harder problems. The Industrial Revolution mechanised manufacturing. Electronic computers, from the 1940s onwards, made it possible to process information at speeds no person could match.</p>
+<p>Researchers soon began to ask whether computers could do more than follow fixed instructions. Could they learn from information? Recognise patterns? Solve problems? Understand language?</p>
+
+<h2>Motivation 1: understanding intelligence</h2>
+<p>The founders of the field were driven mainly by a scientific question. The 1955 proposal for the Dartmouth summer workshop, which gave the field its name, set out the working assumption that <em>"every aspect of learning or any other feature of intelligence can in principle be so precisely described that a machine can be made to simulate it."</em> <span class="ev ev-e">Established</span></p>
+<p>In other words, one way to understand intelligence is to try to build it. That assumption is still debated, as you will see in Lesson 1.7.</p>
+
+<h2>Motivation 2: building useful tools</h2>
+<p>Today most AI development is driven by practical goals:</p>
+<ol>
+<li><strong>Automating complex tasks.</strong> Some work involves large amounts of repetitive information processing that AI can take on.</li>
+<li><strong>Supporting decisions.</strong> AI can analyse large datasets and surface patterns that help people decide.</li>
+<li><strong>Handling information at scale.</strong> Organisations produce more documents, messages and records than people can read. AI can classify, summarise and search them.</li>
+<li><strong>Finding patterns.</strong> AI can detect relationships in data that people would struggle to spot by hand.</li>
+<li><strong>Extending what is possible.</strong> In areas such as protein-structure prediction, AI tackles problems that were previously out of reach.</li>
+</ol>
+
+<h2>Augmentation or automation?</h2>
+<p>Organisations make a design choice when they introduce AI. They can use it to <strong><span class="g" data-g="augment">augment</span></strong> people, helping them work better, or to <strong><span class="g" data-g="automate">automate</span></strong> tasks, doing them without a person involved. Both happen in practice.</p>
+<div class="tbl"><table>
+<thead><tr><th></th><th>Augmentation</th><th>Automation</th></tr></thead>
+<tbody>
+<tr><td>Healthcare</td><td>A system highlights areas of concern on a scan, and a radiologist makes the diagnosis</td><td>A system issues a screening result directly, with defined referral rules (see Lesson 1.6)</td></tr>
+<tr><td>Customer service</td><td>AI drafts a reply and an agent checks and sends it</td><td>A chatbot answers customers directly</td></tr>
+<tr><td>Finance</td><td>AI flags unusual transactions for an analyst to review</td><td>Low-risk transactions are approved automatically</td></tr>
+</tbody></table></div>
+<p>Even when a task is automated, people remain responsible for the system: for how it was designed, tested and monitored, and for what happens when it gets something wrong. The most valuable uses of AI often combine computing power with human knowledge, judgement and accountability.</p>
+
+<div class="box think"><span class="tag">Think about it</span>
+<p>Think of your own work or studies. Name one task you would like AI to <em>augment</em> and one you would be comfortable having it <em>automate</em>. What makes them different?</p>
+</div>
+<div data-check></div>
+</template>
+
+<template id="t-lesson-1-5">
+<p class="lede">AI's history is not a straight line of breakthroughs. It is a story of two competing traditions, big promises, two "winters" and a recent surge.</p>
+
+<h2>Two traditions</h2>
+<div class="tbl"><table>
+<thead><tr><th></th><th>Rules and logic (symbolic AI)</th><th>Learning from data</th></tr></thead>
+<tbody>
+<tr><td><strong>Core idea</strong></td><td>Represent knowledge as symbols and rules, then reason with them</td><td>Let a system learn patterns from examples</td></tr>
+<tr><td><strong>Examples</strong></td><td>Expert systems, classic chess engines</td><td>Neural networks, image recognition, large language models</td></tr>
+<tr><td><strong>Strength</strong></td><td>Explainable and precise</td><td>Copes with messy real-world data such as images, speech and everyday language</td></tr>
+<tr><td><strong>Weakness</strong></td><td>Brittle when the world does not fit the rules, and rules are costly to write</td><td>Needs lots of data and computing power, and its reasoning is hard to inspect</td></tr>
+<tr><td><strong>Dominant</strong></td><td>Roughly 1950s–1980s</td><td>Roughly 2010s–today</td></tr>
+</tbody></table></div>
+<p>Many researchers now work on <strong>hybrid</strong> systems that combine the two. Which approach leads in future is <span class="ev ev-d">Debated</span>.</p>
+
+<h2>Timeline</h2>
+<p>Use the filters to follow one tradition at a time.</p>
+<div data-widget="timeline"></div>
+
+<h2>Moments worth understanding</h2>
+<h3>Turing's question (1950)</h3>
+<p>The British mathematician Alan Turing opened his paper <em>Computing Machinery and Intelligence</em> with the question "Can machines think?". He then replaced it with a test he could actually carry out, the <span class="g" data-g="turing">imitation game</span>: can a human judge, conversing by text, tell the machine from a person? Turing deliberately judged the machine by its <em>behaviour</em>, not by what happens inside it. Lesson 1.7 returns to this choice.</p>
+
+<h3>Expert systems and their limits (1970s–1980s)</h3>
+<p><span class="g" data-g="expert">Expert systems</span> captured specialist knowledge as hundreds or thousands of if–then rules. MYCIN, developed at Stanford in the 1970s, recommended antibiotics for certain infections. In the 1980s, companies adopted systems such as XCON, which configured computer orders. Their weakness became known as the <strong>knowledge-acquisition bottleneck</strong>: getting rules out of experts' heads, and keeping them up to date, was slow and expensive.</p>
+
+<div class="box case"><span class="tag">Two victories, two kinds of AI</span>
+<p><strong>1997, Deep Blue vs Garry Kasparov (chess).</strong> IBM's machine won the rematch 3½–2½, after Kasparov had won their first match in 1996. Deep Blue relied on custom hardware searching well over 100 million positions per second, guided by an evaluation function tuned with input from chess experts. It did <em>not</em> learn chess from data. It was a triumph of search and engineering. <span class="ev ev-e">Established</span></p>
+<p><strong>2016, AlphaGo vs Lee Sedol (Go).</strong> Go has far too many possible positions to search by brute force. DeepMind's AlphaGo combined deep neural networks, trained on human games and then on games against itself, with tree search. It beat Lee Sedol, one of the strongest players of the era, 4–1. <span class="ev ev-e">Established</span></p>
+<p><strong>The lesson:</strong> two famous game victories, achieved in fundamentally different ways. "AI" covers both.</p>
+</div>
+
+<h3>The deep-learning breakthrough (2012)</h3>
+<p>At the 2012 ImageNet image-recognition challenge, a neural network called AlexNet achieved a top-5 error of about <strong>15.3%</strong>, against about <strong>26.2%</strong> for the next-best entry. (Top-5 error is the share of images where the correct label was not among the model's five best guesses.) It was trained on graphics processing units (<span class="g" data-g="gpu">GPUs</span>), which then became standard hardware for AI.</p>
+
+<h3>The transformer and generative AI (2017–2022)</h3>
+<p>In 2017, Google researchers introduced the <strong>transformer</strong> architecture, the design underlying today's large language models. The "T" in GPT stands for transformer. On 30 November 2022, OpenAI released ChatGPT, and millions of people began talking to a large language model directly. Other organisations quickly released assistants, image generators and coding tools of their own.</p>
+
+<h2>Three lessons from history</h2>
+<ol>
+<li><strong>Progress comes in waves.</strong> Twice, high expectations were followed by <span class="g" data-g="winter">AI winters</span>: periods of reduced funding and interest when results fell short. The winters are <span class="ev ev-e">Established</span>. Whether today's boom continues, levels off or corrects is an open question, and predictions about it are opinion.</li>
+<li><strong>Ideas often wait for hardware and data.</strong> Neural networks were proposed in the 1940s and 1950s but became dominant only after 2012, once large datasets and GPU computing became available.</li>
+<li><strong>The meaning of "AI" keeps moving.</strong> Once a technique works reliably (route planning, spell-checking, spam filtering), people tend to stop calling it AI. This is often called the <strong>AI effect</strong>. Much of the AI around you no longer carries the label.</li>
+</ol>
+<div data-check></div>
+</template>
+
+<template id="t-lesson-1-6">
+<p class="lede">You probably used AI several times today without opening an "AI app". Much of it runs quietly in the background.</p>
+
+<div data-widget="ai-day"></div>
+
+<h2>Smartphones</h2>
+<p>Face unlock, predictive text, voice assistants, camera processing (sharpening night shots or blurring backgrounds), spam-call detection and photo search ("show me pictures of the beach") all use machine learning. When your keyboard suggests the next word, a model is predicting what you are likely to type from patterns in language.</p>
+
+<h2>Banking and financial services</h2>
+<p>Banks use machine learning to spot potentially fraudulent transactions, assess risk and support customer service. If a payment looks very different from your usual spending, the system may flag it and ask you to confirm. A flag is <strong>not proof of fraud</strong>. It means the system found something unusual enough to check.</p>
+
+<h2>Entertainment and social media</h2>
+<p>Recommendation systems decide what appears next in your feed or playlist. They weigh your viewing history, what you interacted with, what similar users enjoyed and the characteristics of the content itself. The suggestions are not random. They are predictions about what will keep you engaged, which is worth keeping in mind.</p>
+
+<h2>Healthcare</h2>
+<p>AI can help analyse medical images, process health records, support research and reduce administrative work. Healthcare is high-stakes, so AI outputs need appropriate professional oversight and must never be treated as unquestionable medical advice.</p>
+<div class="box case"><span class="tag">Case study</span>
+<h4>Screening for diabetic eye disease</h4>
+<p>In April 2018, the US Food and Drug Administration authorised <strong>IDx-DR</strong>, the first AI-based device permitted to give a screening result for diabetic retinopathy (diabetes-related damage to the eye) without a specialist interpreting the image. It was designed for primary-care clinics, where eye specialists may not be available. A positive or unclear result refers the patient to an eye-care professional. <span class="ev ev-e">Established</span></p>
+<p><strong>Discuss:</strong> how is this different from "AI replacing doctors"? What does the referral step protect against?</p>
+</div>
+
+<h2>Business and the workplace</h2>
+<p>Picture a small South African business that receives hundreds of customer emails a month. AI tools could help staff sort incoming messages, draft replies, summarise long threads, pull details out of documents, prepare reports and analyse sales data.</p>
+<p>Staff still need to review the output, especially where accuracy, customer information or business decisions are involved. Lesson 1.8 explains why, with a real case where a company paid for its chatbot's mistake.</p>
+
+<h2>Education</h2>
+<p>Students and teachers use AI to explain difficult concepts, generate practice questions, summarise material, practise languages and plan lessons. Used well, AI can be a patient study partner. Letting it complete assignments you have not understood defeats the purpose of learning. The aim is to learn more, not to skip the learning.</p>
+
+<div class="box sa"><span class="tag">South Africa</span>
+<h4>AI and our languages</h4>
+<p>South Africa has 12 official languages, including South African Sign Language, recognised in 2023. AI translation and voice tools generally work best in languages with huge amounts of digital text, such as English, and are often weaker in languages with less text online, including many African languages. <span class="ev ev-e">Established</span></p>
+<p>Research communities such as <strong>Masakhane</strong>, a grassroots network working on language technology for African languages, are helping to close this gap. When you use an AI tool in isiZulu, Sesotho or Tshivenda, check its output with extra care.</p>
+</div>
+<div data-check></div>
+</template>
+
+<template id="t-lesson-1-7">
+<p class="lede">Modern AI can explain science, write poetry and debug code. Its answers can sound thoughtful. Does that mean it thinks the way we do?</p>
+
+<h2>What happens inside a chatbot</h2>
+<p>Most chat assistants are built on a <span class="g" data-g="llm">large language model (LLM)</span>, a deep-learning model trained on very large amounts of text. In plain terms:</p>
+<ol>
+<li>Text is split into <span class="g" data-g="token">tokens</span>: chunks that may be whole words, parts of words or punctuation.</li>
+<li>The model contains billions of adjustable numbers called <span class="g" data-g="param">parameters</span>. During training, they are adjusted again and again so the model gets better at predicting the next token in a passage.</li>
+<li>When you send a message, the model calculates how likely each possible next token is. One is selected, added to the text, and the process repeats, building the reply one token at a time.</li>
+<li>Most assistants are then refined using <strong>human feedback</strong>. People rate or compare responses, and the model is adjusted to be more helpful and to follow instructions better.</li>
+</ol>
+<p><span class="ev ev-e">Established</span></p>
+<figure>
+<div class="fig"><svg viewBox="0 0 640 270" role="img" aria-label="Illustration: given the text 'Table Mountain overlooks the city of', a model assigns probabilities to possible next tokens. 'Cape' has the highest probability and is selected; the next step predicts 'Town'.">
+<text x="20" y="28" class="d-m">TEXT SO FAR</text>
+<rect x="20" y="38" width="600" height="38" rx="8" class="d-box"/>
+<text x="36" y="63" class="d-t">Table Mountain overlooks the city of …</text>
+<text x="20" y="108" class="d-m">MODEL'S ESTIMATE FOR THE NEXT TOKEN (ILLUSTRATIVE)</text>
+<text x="20" y="138" class="d-s">Cape</text><rect x="140" y="125" width="352" height="18" rx="4" class="d-bar"/><text x="502" y="139" class="d-s">88%</text>
+<text x="20" y="166" class="d-s">the</text><rect x="140" y="153" width="16" height="18" rx="4" class="d-bar2"/><text x="166" y="167" class="d-s">4%</text>
+<text x="20" y="194" class="d-s">Stellenbosch</text><rect x="140" y="181" width="8" height="18" rx="4" class="d-bar2"/><text x="158" y="195" class="d-s">2%</text>
+<text x="20" y="222" class="d-s">all others</text><rect x="140" y="209" width="24" height="18" rx="4" class="d-bar2"/><text x="174" y="223" class="d-s">6%</text>
+<text x="20" y="256" class="d-s">"Cape" is selected and added. The next step predicts "Town", and so on, one token at a time.</text>
+</svg></div>
+<figcaption>The numbers are invented for illustration. They do not come from a real model.</figcaption>
+</figure>
+
+<div class="box closer"><span class="tag">Look closer</span>
+<h4>The model is not the whole product</h4>
+<p>A chat assistant is usually a model <em>plus</em> other software: safety filters, web search, file reading, calculators and "memory" features. When an assistant gives a correct, up-to-date answer, it may be because it searched the web, not because the model "knew" it. Ask: <em>is this the model, or a tool the product connected it to?</em></p>
+</div>
+
+<div class="box myth"><span class="tag">Myth vs fact</span>
+<p><strong>Myth:</strong> The chatbot learns from every conversation, so if I correct it, it will remember for everyone.</p>
+<p><strong>Fact:</strong> In most deployed systems, the model's parameters are fixed after training. Correcting it in a chat does not change the model. Some products store notes about you <em>outside</em> the model ("memory") and feed them back in later. Depending on the provider and your settings, conversations may also be collected to train <em>future</em> versions, which matters for privacy. <span class="ev ev-m">Varies by product</span></p>
+</div>
+
+<h2>The ELIZA effect</h2>
+<p>In 1966, Joseph Weizenbaum at MIT built ELIZA, a simple program that imitated a therapist by turning users' statements into questions. It had no grasp of meaning. Weizenbaum was disturbed to find that some people became emotionally attached to it and treated it as if it understood them. The tendency to read understanding into fluent machine output is now called the <span class="g" data-g="eliza">ELIZA effect</span>. Today's systems are vastly more capable than ELIZA, which makes the effect stronger, not weaker.</p>
+
+<h2>Intelligence is not consciousness</h2>
+<p><strong>Intelligence</strong> concerns capabilities: learning, reasoning, solving problems and applying knowledge. <strong>Consciousness</strong> concerns subjective experience, the sense that there is something it <em>feels like</em> to be you. A system can perform impressively on tasks without that establishing that it experiences anything. Whether machines could ever be conscious is an open philosophical and scientific question, so avoid unsupported claims either way.</p>
+
+<h2>What is known, and what is debated</h2>
+<div class="tbl"><table>
+<thead><tr><th>Statement</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>LLMs are trained mainly to predict the next token</td><td><span class="ev ev-e">Established</span></td></tr>
+<tr><td>LLMs can produce fluent, useful and often correct text across many subjects</td><td><span class="ev ev-e">Established</span></td></tr>
+<tr><td>LLMs can produce confident, fluent text that is false</td><td><span class="ev ev-e">Established</span></td></tr>
+<tr><td>LLMs have subjective experience</td><td>No established evidence. <span class="ev ev-d">Debated</span></td></tr>
+<tr><td>"LLMs are only autocomplete and understand nothing"</td><td><span class="ev ev-d">Debated</span>. Research into what models represent internally (<em>interpretability</em>) is active and unresolved</td></tr>
+<tr><td>LLMs understand the world the way humans do</td><td>Not supported by current evidence</td></tr>
+</tbody></table></div>
+
+<div class="box closer"><span class="tag">Look closer</span>
+<h4>The Chinese Room</h4>
+<p>In 1980 the philosopher John Searle proposed a thought experiment. A person who speaks no Chinese sits in a room with a rulebook for manipulating Chinese symbols. Questions in Chinese are passed in. By following the rules, the person passes back fluent answers. To people outside, the room seems to understand Chinese, yet the person inside understands nothing.</p>
+<p>Searle argued that running a program is never, by itself, enough for understanding. Many philosophers reject this. Some reply that the <em>whole system</em>, person plus rulebook, might understand. Turing proposed judging machines by behaviour, and Searle argued that behaviour is not enough. The debate remains open. <span class="ev ev-d">Debated</span></p>
+</div>
+
+<h2>A simplified comparison</h2>
+<div class="tbl"><table>
+<thead><tr><th>Human beings</th><th>Current AI systems</th></tr></thead>
+<tbody>
+<tr><td>Biological brains</td><td>Computer hardware</td></tr>
+<tr><td>Learn continuously from varied life experience</td><td>Learn during training, and are usually fixed once released</td></tr>
+<tr><td>Have subjective experience</td><td>No established evidence of subjective experience</td></tr>
+<tr><td>Understand the world through bodies, senses and social life</td><td>Process inputs using computational models</td></tr>
+<tr><td>Exercise judgement and carry responsibility</td><td>Produce outputs that people must evaluate</td></tr>
+</tbody></table></div>
+<p class="key">An answer that looks intelligent does not mean the system understands the world the way a person does.</p>
+<div data-check></div>
+</template>
+
+<template id="t-lesson-1-8">
+<p class="lede">AI offers real gains and real risks. A responsible user understands both, and has a habit for checking what AI produces.</p>
+
+<h2>Opportunities</h2>
+<ul>
+<li><strong>Productivity.</strong> Routine drafting, sorting and summarising can be done faster.</li>
+<li><strong>Access to knowledge.</strong> Conversational tools make complex information easier to explore.</li>
+<li><strong>Automation.</strong> Some repetitive processes can run with less manual effort.</li>
+<li><strong>Innovation.</strong> AI supports research, engineering, software, education and creative work.</li>
+<li><strong>Personalisation.</strong> Services can adapt to individual needs.</li>
+</ul>
+
+<h2>Limitations and risks</h2>
+<h3>Hallucination</h3>
+<p>Generative AI can produce information that sounds plausible but is false or unsupported, such as a court case that does not exist, an invented statistic or a fake quotation. This is commonly called <span class="g" data-g="halluc">hallucination</span>. It is not lying, because the system has no intention to deceive. It is a side-effect of producing likely-sounding text. <span class="ev ev-e">Established</span></p>
+<div class="box case"><span class="tag">Case study · South Africa</span>
+<h4>Fictitious citations in court</h4>
+<p>In <em>Parker v Forsyth</em> (Johannesburg Regional Court, June 2023), a legal team relied on case authorities that turned out not to exist. They had been found using ChatGPT, and the court made a punitive costs order.</p>
+<p>In <em>Mavundla v MEC: Co-operative Government and Traditional Affairs, KwaZulu-Natal</em> (High Court, Pietermaritzburg, January 2025), most of the authorities cited in a filing could not be found, and the court referred the matter to the Legal Practice Council. The judgment did not definitively conclude that AI produced them, though commentators noted the pattern matched AI fabrication.</p>
+<p><strong>Lesson:</strong> references that look real can be invented. Professionals are accountable for everything they submit.</p>
+</div>
+
+<h3>Bias</h3>
+<p>Models can reproduce, and sometimes amplify, patterns in their training data or design. Two documented examples:</p>
+<ul>
+<li>The <strong>Gender Shades</strong> study (2018) tested three commercial systems that classified gender from face photos. Error rates were as low as 0.8% for lighter-skinned men but as high as 34.7% for darker-skinned women. The widely used test datasets were mostly made up of lighter-skinned faces. <span class="ev ev-e">Established</span></li>
+<li>In 2018, Reuters reported that Amazon had abandoned an experimental recruiting tool after finding it downgraded CVs associated with women. It had learned from about ten years of hiring patterns in a male-dominated industry.</li>
+</ul>
+<p>Connect this to Lesson 1.3: in both cases, the bias came from the <em>examples the system learned from</em>.</p>
+
+<h3>Privacy and confidentiality</h3>
+<p>Pasting confidential information into an AI service can expose it. In 2023 it was widely reported that Samsung employees had entered confidential material, including source code, into a public chatbot. The company then restricted such tools on its devices.</p>
+<div class="box sa"><span class="tag">South Africa</span>
+<h4>POPIA and AI tools</h4>
+<p>The <strong>Protection of Personal Information Act (POPIA)</strong> governs how organisations collect, use, store and share personal information. Its main provisions have been enforceable since 1 July 2021. Pasting customer emails into an AI tool can count as processing personal information. If the service is hosted abroad, it may also be a transfer outside South Africa, which POPIA section 72 regulates.</p>
+<p>In practice: follow your organisation's policy, use approved business tools, remove personal details where you can, and get proper advice if unsure. <em>This is general information, not legal advice.</em></p>
+<p><strong>National policy.</strong> The Department of Communications and Digital Technologies released a National AI Policy Framework for consultation in 2024. A Draft National AI Policy was published for public comment in April 2026 and withdrawn later that month. Check the department's website for the current position. <span class="ev ev-m">As at November 2026</span></p>
+</div>
+
+<h3>Over-reliance and automation bias</h3>
+<p>People tend to over-trust automated systems. They accept outputs without enough checking, or fail to notice when the system is wrong. Researchers call this <span class="g" data-g="autobias">automation bias</span>, and it was documented in aviation and healthcare long before chatbots. The more polished an output looks, the more this matters. Relying on AI without building your own knowledge also weakens your ability to judge its answers.</p>
+
+<h3>Accountability</h3>
+<p>Using AI does not transfer responsibility to the AI.</p>
+<div class="box case"><span class="tag">Case study</span>
+<h4>An airline and its chatbot</h4>
+<p>In 2022 a customer asked Air Canada's website chatbot about bereavement fares. It wrongly said the discount could be claimed after travel, although the airline's own policy page said otherwise. In February 2024, British Columbia's Civil Resolution Tribunal rejected the airline's argument that the chatbot was responsible for its own statements, and found Air Canada liable (<em>Moffatt v. Air Canada</em>, 2024 BCCRT 149).</p>
+<p><strong>Lesson:</strong> a business answers for what its AI tells customers.</p>
+</div>
+
+<h3>Other risks to know about</h3>
+<ul>
+<li><strong>Misinformation and deepfakes.</strong> Realistic synthetic images, audio and video can be used to deceive. <span class="ev ev-e">Established</span></li>
+<li><strong>Intellectual property.</strong> Questions about training on copyrighted work, and who owns AI output, are being argued in courts and legislatures in several countries. <span class="ev ev-m">Emerging</span></li>
+<li><strong>Environmental cost.</strong> Training and running large models uses significant electricity, and some data centres use water for cooling. Specific figures change quickly, so check recent, named sources. <span class="ev ev-m">Emerging</span></li>
+<li><strong>Work and jobs.</strong> AI is changing tasks within many jobs. Its overall effect on employment is <span class="ev ev-d">Debated</span>, and forecasts vary widely.</li>
+</ul>
+
+<h2>Why human judgement matters</h2>
+<p>Imagine an AI assistant produces a polished business report with financial figures, convincing explanations and sensible-sounding recommendations. Some of the figures are wrong. If nobody checks, the business makes a poor decision based on a confident-looking document.</p>
+<p>The most effective AI users are not the ones who accept every answer. They know how to question, check, verify and improve what the AI produces.</p>
+
+<div class="box think"><span class="tag">A habit to build</span>
+<h4>The CHECK routine</h4>
+<ul>
+<li><strong>C · Claims.</strong> What factual claims does the output make? Mark names, numbers, dates, quotations and references.</li>
+<li><strong>H · Head to a source.</strong> Verify each important claim in an original, reliable source, not another AI answer.</li>
+<li><strong>E · Errors and omissions.</strong> What might be missing, outdated or one-sided?</li>
+<li><strong>C · Context.</strong> Is it right for your situation, audience, country and law?</li>
+<li><strong>K · Keep responsibility.</strong> You are accountable for what you use, send or submit.</li>
+</ul>
+</div>
+
+<div data-widget="catch-errors"></div>
+<div data-check></div>
+</template>
+
+<script>
+/* =====================================================================
+   DATA
+   ===================================================================== */
+const LESSONS = [
+  {id:'1-1', num:'1.1', title:'What Is Intelligence?', mins:8},
+  {id:'1-2', num:'1.2', title:'Defining Artificial Intelligence', mins:10},
+  {id:'1-3', num:'1.3', title:'Rules vs Learning', mins:12},
+  {id:'1-4', num:'1.4', title:'Why Was AI Developed?', mins:7},
+  {id:'1-5', num:'1.5', title:'A Brief History of AI', mins:14},
+  {id:'1-6', num:'1.6', title:'AI in Everyday Life', mins:10},
+  {id:'1-7', num:'1.7', title:'Can AI Think Like a Human?', mins:13},
+  {id:'1-8', num:'1.8', title:'Opportunities, Limits and Responsible Use', mins:15},
+];
+
+const OBJECTIVES = [
+  'Define intelligence and artificial intelligence, and explain why neither has a single agreed definition.',
+  'Describe the scientific and practical motivations behind AI.',
+  'Compare rule-based programming with machine learning, using an example.',
+  'Outline the major stages in the history of AI, including periods of setback.',
+  'Identify and classify AI applications in everyday life and work.',
+  'Distinguish between task performance, understanding and consciousness.',
+  'Evaluate an AI use case for its benefits, risks and need for human oversight.',
+  'Apply a verification routine to AI-generated content.',
+];
+
+const GLOSSARY = {
+  agent:{t:'Agent', d:'Anything that perceives its environment and acts on it to pursue goals: a person, a robot or a piece of software.'},
+  ai:{t:'Artificial intelligence (AI)', d:'The field concerned with building systems that perform tasks associated with intelligence. Also used for such systems themselves.'},
+  aisys:{t:'AI system', d:'A machine-based system that infers from its input how to produce outputs such as predictions, content, recommendations or decisions (OECD, 2023).'},
+  algo:{t:'Algorithm', d:'A step-by-step procedure for solving a problem or completing a task.'},
+  ml:{t:'Machine learning (ML)', d:'A branch of AI in which systems learn patterns from data instead of following only hand-written rules.'},
+  model:{t:'Model', d:'The learned mathematical structure a machine-learning system uses to turn inputs into outputs.'},
+  data:{t:'Training data', d:'The examples a model learns from.'},
+  param:{t:'Parameter', d:'An adjustable number inside a model, set during training. Large models have billions.'},
+  nn:{t:'Neural network', d:'A model loosely inspired by networks of brain cells, made of layers of simple connected units.'},
+  dl:{t:'Deep learning', d:'Machine learning that uses neural networks with many layers.'},
+  gen:{t:'Generative AI', d:'AI systems that produce new content such as text, images, audio or code.'},
+  llm:{t:'Large language model (LLM)', d:'A deep-learning model trained on large amounts of text to predict and generate language.'},
+  token:{t:'Token', d:'A chunk of text (a word, part of a word or punctuation) that a language model processes.'},
+  gpu:{t:'GPU', d:'Graphics processing unit. A chip designed for graphics that is also very good at the maths used to train neural networks.'},
+  expert:{t:'Expert system', d:'A rule-based program that encodes specialist knowledge to support decisions.'},
+  halluc:{t:'Hallucination', d:'AI-generated content that sounds plausible but is false or unsupported.'},
+  bias:{t:'Bias (in AI)', d:'Systematic errors or unfair outcomes, often reflecting patterns in training data or design choices.'},
+  autobias:{t:'Automation bias', d:'The human tendency to over-trust automated outputs and to under-check them.'},
+  narrow:{t:'Narrow AI', d:'AI designed for specific tasks. This describes all systems in use today.'},
+  agi:{t:'Artificial general intelligence (AGI)', d:'A hypothetical AI with broad, human-level ability across tasks. It has no agreed definition and has not been achieved.'},
+  turing:{t:'Turing Test (imitation game)', d:'Turing’s 1950 proposal to judge machine intelligence by whether a judge can tell its text conversation from a person’s.'},
+  winter:{t:'AI winter', d:'A period of reduced funding and interest in AI after expectations were not met. There were two: from the mid-1970s, and from the late 1980s.'},
+  eliza:{t:'ELIZA effect', d:'The tendency to attribute understanding to a machine because its output is fluent.'},
+  moravec:{t:'Moravec’s paradox', d:'The observation that tasks hard for humans (chess) can be easy for machines, while tasks easy for humans (perception, movement) are hard.'},
+  augment:{t:'Augmentation', d:'Using AI to help people do a task better, with a person still doing the task.'},
+  automate:{t:'Automation', d:'Using a system to perform a task without a person carrying it out.'},
+  transformer:{t:'Transformer', d:'A neural-network design introduced in 2017 that underlies today’s large language models.'},
+};
+
+const CHECKS = {
+  '1-1':[
+    {q:'Which statement best describes Moravec’s paradox?', o:['Computers will soon match human intelligence','Tasks hard for humans can be easy for machines, and tasks easy for humans can be hard for machines','Machines can never learn to recognise faces','Intelligence has exactly one correct definition'], a:1, x:'Chess fell to computers decades before robots could reliably fold laundry or walk over rough ground.'},
+    {q:'A spam filter reads the content of an incoming email. In the perceive–decide–act loop, which step is that?', o:['Perceive','Decide','Act'], a:0, x:'Taking in information from the environment is perception. Classifying the email is the decision, and moving it to the spam folder is the action.'},
+  ],
+  '1-2':[
+    {q:'Which statement about the AI family map is correct?', o:['All machine learning is deep learning','All deep learning is machine learning, but not all machine learning is deep learning','Generative AI is separate from machine learning','A rule-based chess engine is a type of deep learning'], a:1, x:'The regions are nested: AI contains ML, which contains deep learning, which contains today’s generative AI.'},
+    {q:'What is the current status of artificial general intelligence (AGI)?', o:['It was achieved in 2022','It is hypothetical, with no agreed definition or test','It is the same as narrow AI','It is a legal term defined in the EU AI Act'], a:1, x:'Claims about when AGI will arrive are predictions or opinions, not established facts.'},
+    {q:'In the OECD definition, which word best separates an AI system from a simple fixed-rule device?', o:['Machine-based','Infers','Outputs','Environment'], a:1, x:'An AI system infers how to produce its output from the input it receives. A basic thermostat just applies one fixed rule.'},
+  ],
+  '1-3':[
+    {q:'A bank calculates interest using a fixed, published formula. Which approach fits best?', o:['Machine learning, because banks have lots of data','Traditional rule-based programming','Generative AI','Deep learning'], a:1, x:'The logic is clear, stable and must be fully explainable, which is exactly where hand-written rules work best.'},
+    {q:'Where does bias in a machine-learning spam filter most likely come from?', o:['The computer’s hardware','The examples and labels it was trained on','The font used in emails','It cannot be biased'], a:1, x:'In machine learning, human judgement moves into the data: whoever labelled the examples shaped what the system learned.'},
+  ],
+  '1-4':[
+    {q:'What was the main motivation in the 1955 Dartmouth proposal?', o:['Reducing customer-service costs','A scientific conjecture that features of intelligence could be described precisely enough for a machine to simulate them','Building chatbots for the public','Winning chess tournaments'], a:1, x:'The founders were mainly asking a scientific question. Business motivations came later.'},
+    {q:'An AI drafts replies to customer emails, and a staff member checks and sends each one. This is an example of:', o:['Augmentation','Full automation','An AI winter','Artificial general intelligence'], a:0, x:'The person still does the task, with AI helping. That is augmentation.'},
+  ],
+  '1-5':[
+    {q:'Why did neural networks only become dominant after 2012, when the idea dates from the 1940s–50s?', o:['They were illegal before 2012','Large datasets and GPU computing power were needed to make them work well','Nobody had thought of training them','ChatGPT invented them'], a:1, x:'Ideas often wait for hardware and data to catch up.'},
+    {q:'What was the main cause of the AI winters?', o:['A global ban on AI research','Results fell short of the promises made, so funding and interest dropped','Computers became too cheap','Neural networks became too accurate'], a:1, x:'Hype followed by disappointment is the most transferable lesson from AI’s history.'},
+    {q:'Deep Blue (1997) and AlphaGo (2016) both won famous games. What was different?', o:['Nothing; both learned from data','Deep Blue relied mainly on search and expert-tuned evaluation; AlphaGo combined neural networks trained on data and self-play with search','AlphaGo used no computers','Deep Blue was a large language model'], a:1, x:'Two victories, two very different kinds of AI.'},
+  ],
+  '1-6':[
+    {q:'Your bank sends a message asking you to confirm an unusual payment. What does this most likely mean?', o:['Fraud has definitely occurred','A system found the payment unusual enough to check','Your account has been closed','A human watched the payment happen'], a:1, x:'A flag is a prompt to verify, not proof of fraud.'},
+    {q:'Why might an AI translation tool be less reliable in Tshivenda than in English?', o:['Tshivenda is not an official language','There is much less digital text in Tshivenda for models to learn from','AI cannot process any African language','Translation tools only use rules'], a:1, x:'Tshivenda is an official language. Models tend to perform best where training data is plentiful.'},
+  ],
+  '1-7':[
+    {q:'What is a token?', o:['A password for an AI service','A chunk of text, such as a word or part of a word, that a language model processes','A unit of electricity','A type of neural network'], a:1, x:'For example, “unbelievable” might be split into “un”, “believ” and “able”.'},
+    {q:'You correct a chatbot’s mistake during a conversation. In most deployed systems, what happens to the model?', o:['It is permanently retrained for all users','Nothing: its parameters are fixed after training','It deletes the wrong answer from the internet','It becomes conscious of the error'], a:1, x:'Some products store memory notes outside the model, and providers may use conversations for future training depending on settings.'},
+    {q:'People in the 1960s felt that ELIZA understood them, although it only rephrased their sentences. What is this called?', o:['Moravec’s paradox','The AI effect','The ELIZA effect','An AI winter'], a:2, x:'Fluent output invites us to assume understanding.'},
+  ],
+  '1-8':[
+    {q:'A manager approves an AI-generated report without checking it because it “looks professional”. This illustrates:', o:['Automation bias','Moravec’s paradox','Deep learning','Augmentation'], a:0, x:'Polished output encourages over-trust. CHECK it.'},
+    {q:'In Moffatt v. Air Canada, who was held responsible for the chatbot’s wrong information?', o:['The chatbot itself','The customer, for trusting it','Air Canada','The company that made the AI model'], a:2, x:'A business answers for what its AI tells customers.'},
+  ],
+};
+
+const SORT_ITEMS = [
+  {w:'A pocket calculator', a:'no', y:'It applies fixed arithmetic rules. Nothing is inferred or learned.'},
+  {w:'A thermostat that switches the heater on below 18 °C', a:'no', y:'One fixed rule. A "smart" thermostat that learns your routine would be different.'},
+  {w:'An email service that learns to filter spam from emails users report', a:'ai', y:'Machine learning: it learns patterns from labelled examples.'},
+  {w:'A spreadsheet SUM formula', a:'no', y:'A fixed calculation written by a person.'},
+  {w:'Face unlock on a phone', a:'ai', y:'A neural network trained to recognise and verify faces.'},
+  {w:'A traffic light on a fixed 60-second cycle', a:'no', y:'A timer. Adaptive signals that respond to traffic would be a different story.'},
+  {w:'A navigation app that reroutes you around traffic', a:'ai', y:'It predicts travel times from live and historical data and searches for routes, both classic AI tasks.'},
+  {w:'A phone keyboard that suggests your next word', a:'ai', y:'A language model predicts likely next words.'},
+  {w:'A vending machine', a:'no', y:'It follows a fixed sequence: payment, selection, dispense.'},
+  {w:'"Because you watched…" recommendations on a streaming service', a:'ai', y:'A recommendation system learns from viewing patterns.'},
+  {w:'A chess app', a:'dep', y:'Classic engines search with hand-tuned rules (AI, but not machine learning). Modern engines often add neural networks. Both count as AI. The question is which kind.'},
+  {w:'A customer-service "chatbot" on a website', a:'dep', y:'If it only offers fixed menu buttons, it is a scripted decision tree and not AI. If it understands free text and generates replies, it is AI.'},
+];
+
+const SENTENCES = [
+  {s:'Artificial intelligence has a longer history than many people realise.', err:false, y:'Accurate: the field dates back to the 1950s, with roots in the 1940s.'},
+  {s:'The term "artificial intelligence" was coined by Alan Turing in his 1950 paper on machine intelligence.', err:true, y:'Error: the term comes from the 1955 Dartmouth proposal by McCarthy, Minsky, Rochester and Shannon. Turing’s paper asked "Can machines think?".'},
+  {s:'In 1997, IBM’s Deep Blue defeated world chess champion Garry Kasparov by learning from millions of games it had played against itself.', err:true, y:'Error: Deep Blue relied on high-speed search and expert-tuned evaluation. Learning from self-play is associated with later systems such as AlphaGo.'},
+  {s:'In 2012, a neural network called AlexNet won the ImageNet image-recognition challenge by a wide margin, trained using graphics processors.', err:false, y:'Accurate.'},
+  {s:'A 2021 university study found that 92% of South African small businesses use AI tools every day.', err:true, y:'Red flag: an unnamed study with a precise, striking number. This statistic was invented for this exercise. Real claims must trace to a named, dated, checkable source.'},
+  {s:'AlphaGo, developed by DeepMind, defeated Lee Sedol in 2016.', err:false, y:'Accurate: it won the match 4–1 in March 2016.'},
+  {s:'OpenAI released ChatGPT to the public in November 2022.', err:false, y:'Accurate: 30 November 2022.'},
+];
+
+const DAY_ITEMS = [
+  {w:'Unlocked a phone with your face or fingerprint', k:'Recognition'},
+  {w:'Typed with predictive text or autocorrect', k:'Prediction'},
+  {w:'Scrolled a social media feed', k:'Recommendation'},
+  {w:'Used a map or ride-hailing app', k:'Prediction'},
+  {w:'Had an email filtered as spam', k:'Classification'},
+  {w:'Took a photo in night or portrait mode', k:'Recognition'},
+  {w:'Listened to a suggested playlist or video', k:'Recommendation'},
+  {w:'Paid by card or banking app (fraud checks run behind the scenes)', k:'Classification'},
+  {w:'Asked a voice assistant something', k:'Recognition'},
+  {w:'Asked a chatbot to write or explain something', k:'Generation'},
+];
+
+const TIMELINE = [
+  {y:'1943', t:'A mathematical model of the neuron', d:'Warren McCulloch and Walter Pitts describe simplified neurons as logical units. It is the root idea behind neural networks.', k:['learning']},
+  {y:'1950', t:'Turing asks "Can machines think?"', d:'Alan Turing proposes the imitation game, later called the Turing Test, which judges a machine by its conversation.', k:['milestone']},
+  {y:'1955–56', t:'The field gets its name', d:'McCarthy, Minsky, Rochester and Shannon propose the Dartmouth Summer Research Project. The proposal introduces the term "artificial intelligence", and the 1956 workshop launches the field.', k:['milestone']},
+  {y:'1958', t:'The perceptron', d:'Frank Rosenblatt’s perceptron, an early machine that learns from examples, attracts major attention.', k:['learning']},
+  {y:'1966', t:'ELIZA', d:'Joseph Weizenbaum’s pattern-matching program imitates a therapist. Users read understanding into it.', k:['symbolic']},
+  {y:'1970s', t:'MYCIN', d:'A Stanford expert system recommends antibiotics for certain infections using hand-written rules. It is never used in routine clinical care.', k:['symbolic']},
+  {y:'1973 – early 1980s', t:'First AI winter', d:'Progress falls short of promises. In the UK, the 1973 Lighthill Report criticises AI research and funding is cut. US funding also tightens.', k:['winter']},
+  {y:'1980s', t:'Expert systems go commercial', d:'Companies adopt rule-based systems such as XCON at Digital Equipment Corporation. Keeping the rules current proves slow and costly.', k:['symbolic']},
+  {y:'1986', t:'Backpropagation popularised', d:'Rumelhart, Hinton and Williams show how to train multi-layer neural networks. The method had earlier origins, but this paper brought it wide attention.', k:['learning']},
+  {y:'Late 1980s – early 1990s', t:'Second AI winter', d:'The market for specialised AI hardware collapses and expert systems prove expensive to maintain. Interest and funding fall again.', k:['winter']},
+  {y:'1997', t:'Deep Blue beats Kasparov', d:'IBM’s chess computer wins 3½–2½ using specialised hardware and high-speed search, not machine learning.', k:['symbolic']},
+  {y:'2012', t:'AlexNet', d:'A deep neural network trained on GPUs wins ImageNet with a top-5 error of about 15.3%, against about 26.2% for the runner-up. The deep-learning boom begins.', k:['learning']},
+  {y:'2016', t:'AlphaGo beats Lee Sedol', d:'DeepMind’s system combines neural networks, trained on data and self-play, with tree search, and wins 4–1.', k:['learning','symbolic']},
+  {y:'2017', t:'The transformer', d:'Google researchers publish "Attention Is All You Need". The transformer underlies today’s large language models.', k:['learning']},
+  {y:'2020', t:'AlphaFold 2', d:'DeepMind makes a major advance in predicting protein structures, a decades-old problem in biology.', k:['learning']},
+  {y:'2022', t:'ChatGPT', d:'OpenAI releases ChatGPT on 30 November. Generative AI reaches the general public.', k:['learning','milestone']},
+  {y:'2024', t:'Nobel recognition', d:'John Hopfield and Geoffrey Hinton win the Nobel Prize in Physics for foundational work on neural networks. Demis Hassabis and John Jumper share the Chemistry prize for AlphaFold.', k:['milestone']},
+];
+const KIND_LABEL = {learning:'Learning from data', symbolic:'Rules & search', winter:'AI winter', milestone:'Milestone'};
+
+const ASSESS_MCQ = [
+  {q:'What is artificial intelligence?', o:['A computer that has human emotions','A field of computer science concerned with building systems that perform tasks associated with intelligent behaviour','A software application used only for writing','A technology that replaces all human decision-making'], a:1},
+  {q:'Which is the best example of an AI-based system?', o:['A spreadsheet formula that adds a column of numbers','A thermostat that switches the heater on below 18 °C','An email service that learns to filter spam from labelled examples','A traffic light that changes every 60 seconds'], a:2},
+  {q:'What was the significance of Alan Turing’s 1950 paper?', o:['It proved that machines can think','It proposed judging machine intelligence by behaviour in conversation','It described the first neural network','It introduced the term "artificial intelligence"'], a:1},
+  {q:'What is an expert system?', o:['A rule-based program that encodes specialist knowledge to support decisions','A neural network trained on experts’ data','A chatbot that answers questions about experts','A system that learns rules automatically from examples'], a:0},
+  {q:'A developer shows a system 50,000 emails already marked "spam" or "not spam". The system then identifies spam it has never seen. This is an example of:', o:['Traditional rule-based programming','Machine learning','An expert system','Consciousness'], a:1},
+  {q:'Deep Blue’s 1997 victory over Kasparov relied mainly on:', o:['Deep learning from millions of self-played games','High-speed search with specialised hardware and expert-tuned evaluation','A large language model','Human operators choosing the moves'], a:1},
+  {q:'What was an "AI winter"?', o:['A period of reduced funding and interest after expectations were not met','A season when computers overheat less','The launch period of ChatGPT','A cooling system for data centres'], a:0},
+  {q:'In most deployed chat assistants, what happens to the model when you correct it in a conversation?', o:['It is permanently retrained for all users','Its parameters stay fixed; the correction does not change the model','It becomes conscious of the mistake','It deletes its training data'], a:1},
+  {q:'What does "hallucination" mean in generative AI?', o:['The AI is deliberately lying','Output that sounds plausible but is false or unsupported','The AI sees images that are not there','A hardware fault'], a:1},
+  {q:'Which statement best describes modern AI?', o:['AI always produces accurate information','All AI systems work in the same way','AI can perform sophisticated tasks but has important limitations','AI has completely replaced human intelligence'], a:2},
+];
+
+const ASSESS_WRITTEN = [
+  {id:'b1', sec:'B', max:2, q:'Explain artificial intelligence in your own words.', g:['2 marks: describes systems performing tasks associated with intelligence AND notes AI is a field, not one product.','1 mark: one of these.','0: copies the text or describes only chatbots.']},
+  {id:'b2', sec:'B', max:2, q:'Give one advantage and one disadvantage of using machine learning instead of hand-written rules to detect spam.', g:['Advantage, e.g. finds patterns nobody wrote down; adapts when retrained as spam changes.','Disadvantage, e.g. needs lots of labelled data; mistakes are harder to explain; can learn bias from labels.','1 mark each.']},
+  {id:'b3', sec:'B', max:2, q:'Explain the difference between intelligence and consciousness.', g:['Intelligence = capabilities (learning, reasoning, problem-solving). Consciousness = subjective experience.','Full marks also notes that strong task performance is not evidence of consciousness.','1 mark if only one is defined correctly.']},
+  {id:'b4', sec:'B', max:2, q:'Why is human verification important when using AI-generated information? Refer to a real example from this chapter.', g:['Names a specific risk (hallucination, bias, accountability) AND a real example (e.g. Parker v Forsyth, Mavundla, Air Canada).','1 mark for a generic answer such as "AI can be wrong".']},
+  {id:'b5', sec:'B', max:2, q:'Describe one scientific and one practical motivation for developing AI.', g:['Scientific: understanding intelligence by trying to build it (Dartmouth conjecture).','Practical: e.g. automating tasks, decision support, handling information at scale.','1 mark each.']},
+  {id:'c1', sec:'C', max:2, q:'Identify two tasks AI could assist with.', g:['Any two of: categorising emails, drafting replies, summarising threads, extracting customer or order details, spotting urgent messages.','1 mark each.']},
+  {id:'c2', sec:'C', max:3, q:'Explain how AI could improve the employees’ productivity.', g:['A specific mechanism (time saved on routine replies, faster triage).','The effect (staff can focus on complex or sensitive enquiries).','A realistic caveat (time is still needed for review).','1 mark each.']},
+  {id:'c3', sec:'C', max:2, q:'Identify one potential risk of using AI in this situation.', g:['A named risk (wrong information, privacy/POPIA, inappropriate tone, bias) with a concrete example from the scenario.','1 mark if the risk is named but not explained.']},
+  {id:'c4', sec:'C', max:3, q:'Explain what employees should do before sending AI-generated responses to customers.', g:['Valid points: check facts against company records; check tone and appropriateness; remove or protect personal information; follow company AI policy; a named person takes responsibility before sending.','1 mark per two valid points, up to 3.','Strong answers mention the Air Canada case.']},
+];
+
+const REFS = [
+  ['History and foundations', [
+    'Campbell, M., Hoane, A. J. & Hsu, F. (2002). Deep Blue. <em>Artificial Intelligence</em>, 134(1–2), 57–83.',
+    'Krizhevsky, A., Sutskever, I. & Hinton, G. E. (2012). ImageNet classification with deep convolutional neural networks. <em>Advances in Neural Information Processing Systems 25</em>.',
+    'Lighthill, J. (1973). Artificial Intelligence: A General Survey. In <em>Artificial Intelligence: A Paper Symposium</em>. Science Research Council (UK).',
+    'McCarthy, J., Minsky, M. L., Rochester, N. & Shannon, C. E. (2006). A Proposal for the Dartmouth Summer Research Project on Artificial Intelligence, August 31, 1955. <em>AI Magazine</em>, 27(4), 12–14. <a href="https://ojs.aaai.org/index.php/aimagazine/article/view/1904" target="_blank" rel="noopener">AAAI</a>',
+    'McCulloch, W. S. & Pitts, W. (1943). A logical calculus of the ideas immanent in nervous activity. <em>Bulletin of Mathematical Biophysics</em>, 5, 115–133.',
+    'Rosenblatt, F. (1958). The perceptron: a probabilistic model for information storage and organization in the brain. <em>Psychological Review</em>, 65(6), 386–408.',
+    'Rumelhart, D. E., Hinton, G. E. & Williams, R. J. (1986). Learning representations by back-propagating errors. <em>Nature</em>, 323, 533–536.',
+    'Silver, D. et al. (2016). Mastering the game of Go with deep neural networks and tree search. <em>Nature</em>, 529, 484–489.',
+    'Turing, A. M. (1950). Computing Machinery and Intelligence. <em>Mind</em>, 59(236), 433–460.',
+    'Vaswani, A. et al. (2017). Attention is all you need. <em>Advances in Neural Information Processing Systems 30</em>.',
+    'Weizenbaum, J. (1966). ELIZA — a computer program for the study of natural language communication between man and machine. <em>Communications of the ACM</em>, 9(1), 36–45.',
+  ]],
+  ['Definitions and concepts', [
+    'Legg, S. & Hutter, M. (2007). A collection of definitions of intelligence. In <em>Advances in Artificial General Intelligence</em>. IOS Press.',
+    'McCarthy, J. (2007). <em>What is Artificial Intelligence?</em> Stanford University.',
+    'Moravec, H. (1988). <em>Mind Children: The Future of Robot and Human Intelligence</em>. Harvard University Press.',
+    'OECD (2024). <em>Explanatory memorandum on the updated OECD definition of an AI system</em>. OECD Artificial Intelligence Papers. <a href="https://www.oecd.org/en/publications/explanatory-memorandum-on-the-updated-oecd-definition-of-an-ai-system_623da898-en.html" target="_blank" rel="noopener">OECD</a>',
+    'Ouyang, L. et al. (2022). Training language models to follow instructions with human feedback. <em>Advances in Neural Information Processing Systems 35</em>.',
+    'Russell, S. & Norvig, P. (2020). <em>Artificial Intelligence: A Modern Approach</em> (4th ed.). Pearson.',
+    'Searle, J. R. (1980). Minds, brains, and programs. <em>Behavioral and Brain Sciences</em>, 3(3), 417–424.',
+    'Weizenbaum, J. (1976). <em>Computer Power and Human Reason</em>. W. H. Freeman.',
+  ]],
+  ['Risks, bias and human factors', [
+    'Buolamwini, J. & Gebru, T. (2018). Gender Shades: Intersectional accuracy disparities in commercial gender classification. <em>Proceedings of Machine Learning Research</em>, 81, 77–91. <a href="https://proceedings.mlr.press/v81/buolamwini18a.html" target="_blank" rel="noopener">PMLR</a>',
+    'Dastin, J. (2018, 10 October). Amazon scraps secret AI recruiting tool that showed bias against women. <em>Reuters</em>.',
+    'Nekoto, W. et al. (2020). Participatory research for low-resourced machine translation: A case study in African languages. <em>Findings of EMNLP 2020</em>.',
+    'Parasuraman, R. & Manzey, D. H. (2010). Complacency and bias in human use of automation: An attentional integration. <em>Human Factors</em>, 52(3), 381–410.',
+    'Miao, F. & Holmes, W. (2023). <em>Guidance for generative AI in education and research</em>. Paris: UNESCO.',
+    'Stanford Institute for Human-Centered AI (2026). <em>The 2026 AI Index Report</em>. <a href="https://hai.stanford.edu/ai-index/2026-ai-index-report" target="_blank" rel="noopener">Stanford HAI</a>',
+  ]],
+  ['Cases, law and policy', [
+    '<em>Moffatt v. Air Canada</em>, 2024 BCCRT 149 (British Columbia Civil Resolution Tribunal, 14 February 2024).',
+    '<em>Parker v Forsyth NO and Others</em> (1585/20) [2023] ZAGPRD 1 (Johannesburg Regional Court, 29 June 2023).',
+    '<em>Mavundla v MEC: Department of Co-operative Government and Traditional Affairs KwaZulu-Natal and Others</em> (7940/2024P) [2025] ZAKZPHC 2 (8 January 2025).',
+    'US Food and Drug Administration (2018, 11 April). FDA permits marketing of artificial intelligence-based device to detect certain diabetes-related eye problems.',
+    'Protection of Personal Information Act 4 of 2013 (South Africa).',
+    'Department of Communications and Digital Technologies (2024). <em>South Africa National Artificial Intelligence Policy Framework</em>.',
+  ]],
+  ['Further reading', [
+    'Mitchell, M. (2019). <em>Artificial Intelligence: A Guide for Thinking Humans</em>. Farrar, Straus and Giroux. A clear, balanced introduction by an AI researcher.',
+    'Nilsson, N. J. (2010). <em>The Quest for Artificial Intelligence</em>. Cambridge University Press. An authoritative history of the field.',
+    '<em>Elements of AI</em>. University of Helsinki and MinnaLearn. A free, non-technical online course.',
+  ]],
+];
+
+const TAKEAWAYS = [
+  'Intelligence has no single agreed definition. It involves abilities such as learning, reasoning, memory, perception and problem-solving, applied across many situations.',
+  'AI is a field of computer science, not one product. Machine learning, deep learning and generative AI are nested parts of it.',
+  'Traditional programs follow rules people wrote. Machine-learning systems learn patterns from examples people chose, so human judgement moves into the data.',
+  'AI began as a scientific question about intelligence. Today it is driven mostly by practical goals, used to augment people or automate tasks.',
+  'AI’s history includes two traditions, two AI winters and a recent surge driven by data, GPUs and the transformer.',
+  'AI is already built into phones, banking, media, healthcare, business and education, often without the label.',
+  'Language models generate text token by token. Fluent output is not proof of understanding or consciousness, and the ELIZA effect makes it feel like both.',
+  'AI brings real gains and real risks: hallucination, bias, privacy, automation bias and accountability. Use the CHECK routine. You remain responsible.',
+];
+
+/* =====================================================================
+   STATE (per-device only)
+   ===================================================================== */
+const KEY = 'aaa-handbook-v1';
+function fresh(){ return {done:{}, checks:{}, sort:{}, sent:{}, sentChecked:false, day:{}, assess:{mcq:{}, text:{}, self:{}, name:'', result:null}, theme:'system', last:null}; }
+let S = fresh();
+try { const raw = localStorage.getItem(KEY); if (raw) { const o = JSON.parse(raw); S = Object.assign(fresh(), o); S.assess = Object.assign(fresh().assess, o.assess || {}); } } catch(e) {}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const main = $('#main');
+const L = i => String.fromCharCode(65 + i);
+function lessonIndex(id){ return LESSONS.findIndex(l => l.id === id); }
+function pct(){ const n = LESSONS.filter(l => S.done[l.id]).length + (S.assess.result && S.assess.result.pass ? 1 : 0); return Math.round(n / (LESSONS.length + 1) * 100); }
+function foot(){ return `<footer class="foot"><span>Applied AI Academy · AI Foundations — Level 01 · First Edition · 2026</span><i>Understand the technology. Question the output. Apply your knowledge.</i></footer>`; }
+
+/* =====================================================================
+   SHELL
+   ===================================================================== */
+function renderNav(current){
+  const link = (h, n, t, done) => `<a href="#${h}"${current===h?' aria-current="page"':''}><span class="n">${n}</span><span>${t}</span>${done?'<span class="tick" aria-label="completed">✓</span>':''}</a>`;
+  $('#nav').innerHTML =
+    link('home','◇','Home', false) +
+    `<div class="nav-h">Chapter 01 · Understanding AI</div>` +
+    link('chapter-1','01','Chapter overview', false) +
+    LESSONS.map(l => link('lesson-'+l.id, l.num, l.title, S.done[l.id])).join('') +
+    link('summary-1','✱','Key takeaways', false) +
+    link('assessment-1','✎','Assessment', S.assess.result && S.assess.result.pass) +
+    `<div class="nav-h">Reference</div>` +
+    link('glossary','Aa','Glossary', false) +
+    link('references','[ ]','References', false);
+  const p = pct();
+  $('#progTxt').textContent = p + '%';
+  $('#progBar').style.width = p + '%';
+}
+function setTheme(t){
+  S.theme = t; save();
+  if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+  $('#themeBtn').textContent = 'Theme: ' + t[0].toUpperCase() + t.slice(1);
+}
+$('#themeBtn').addEventListener('click', () => setTheme({system:'light', light:'dark', dark:'system'}[S.theme] || 'system'));
+$('#resetBtn').addEventListener('click', () => { $('#resetConfirm').hidden = false; });
+$('#resetNo').addEventListener('click', () => { $('#resetConfirm').hidden = true; });
+$('#resetYes').addEventListener('click', () => { const t = S.theme; S = fresh(); S.theme = t; save(); $('#resetConfirm').hidden = true; route(); });
+const appEl = $('#app');
+function setMenu(open){ appEl.classList.toggle('open', open); $('#menuBtn').setAttribute('aria-expanded', open); }
+$('#menuBtn').addEventListener('click', () => setMenu(!appEl.classList.contains('open')));
+$('#scrim').addEventListener('click', () => setMenu(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { setMenu(false); hidePop(); } });
+
+/* glossary popover */
+const pop = $('#pop');
+let popFor = null;
+function showPop(el){
+  const g = GLOSSARY[el.dataset.g]; if (!g) return;
+  pop.innerHTML = `<b>${esc(g.t)}</b>${esc(g.d)}`;
+  pop.hidden = false; popFor = el;
+  const r = el.getBoundingClientRect();
+  const w = Math.min(300, document.documentElement.clientWidth - 32);
+  pop.style.maxWidth = w + 'px';
+  let left = r.left + window.scrollX;
+  left = Math.max(16 + window.scrollX, Math.min(left, window.scrollX + document.documentElement.clientWidth - w - 16));
+  pop.style.left = left + 'px';
+  pop.style.top = (r.bottom + window.scrollY + 8) + 'px';
+}
+function hidePop(){ pop.hidden = true; popFor = null; }
+document.addEventListener('click', e => {
+  const g = e.target.closest('.g');
+  if (g) { if (popFor === g) hidePop(); else showPop(g); return; }
+  if (!e.target.closest('#pop')) hidePop();
+});
+document.addEventListener('keydown', e => { const g = e.target.closest && e.target.closest('.g'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showPop(g); } });
+
+/* =====================================================================
+   VIEWS
+   ===================================================================== */
+function renderHome(){
+  const done = LESSONS.filter(l => S.done[l.id]).length;
+  const next = LESSONS.find(l => !S.done[l.id]);
+  const cont = S.last && lessonIndex(S.last) >= 0 && !S.done[S.last] ? S.last : (next ? next.id : null);
+  const cta = done === 0 ? `<a class="btn btn-primary" href="#lesson-1-1">Start Chapter 01</a>`
+    : cont ? `<a class="btn btn-primary" href="#lesson-${cont}">Continue: Lesson ${cont.replace('-','.')}</a>`
+    : `<a class="btn btn-primary" href="#assessment-1">Take the assessment</a>`;
+  const r = S.assess.result;
+  main.innerHTML = `<div class="wide">
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Applied AI Academy · Level 01 · Beginner Programme</div>
+      <h1>The AI Foundations Handbook</h1>
+      <p class="lede">Before you can use artificial intelligence well, you need to understand what it is, where it came from and where it goes wrong. This interactive edition teaches the ideas, then asks you to apply them.</p>
+      <div class="row">${cta}<a class="btn btn-ghost" href="#chapter-1">Chapter overview</a></div>
+    </div>
+    <div class="hero-card" aria-label="Your progress">
+      <div class="eyebrow">Your progress · Chapter 01</div>
+      <div class="big">${pct()}%</div>
+      <div class="bar"><i style="width:${pct()}%"></i></div>
+      <div class="stat-row">
+        <div><b>${done} / ${LESSONS.length}</b><small>lessons complete</small></div>
+        <div><b>${r ? r.total + ' / 30' : '—'}</b><small>assessment score</small></div>
+        <div><b>${LESSONS.reduce((a,l)=>a+l.mins,0)} min</b><small>reading time</small></div>
+      </div>
+      <small style="color:var(--muted)">Progress is saved in this browser only.</small>
+    </div>
+  </section>
+
+  <h2>The programme</h2>
+  <p style="color:var(--ink-2)">Three levels, from first principles to professional practice. Chapter 01 is open now. Later chapters are in development.</p>
+  <div class="levels">
+    <div class="level"><div class="eyebrow">Level 01 · Beginner</div><h3>AI Foundations</h3>
+      <ol>
+        <li><span class="n">01</span><a href="#chapter-1">Understanding Artificial Intelligence</a><span class="status st-live">Open</span></li>
+        <li><span class="n">02</span><span>How Machines Learn</span><span class="status st-dev">In development</span></li>
+        <li><span class="n">03</span><span>Inside Generative AI</span><span class="status st-dev">In development</span></li>
+        <li><span class="n">04</span><span>Working with AI Assistants</span><span class="status st-dev">In development</span></li>
+        <li><span class="n">05</span><span>Checking AI Output</span><span class="status st-dev">In development</span></li>
+        <li><span class="n">06</span><span>Responsible AI, Privacy and the Law</span><span class="status st-dev">In development</span></li>
+        <li><span class="n">07</span><span>Capstone: AI at Work</span><span class="status st-dev">In development</span></li>
+      </ol></div>
+    <div class="level"><div class="eyebrow">Level 02 · Intermediate</div><h3>AI Practitioner</h3>
+      <ol>
+        <li><span class="n">01</span><span>Data: Collection, Quality and Labelling</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">02</span><span>Evaluating Models and Measuring Error</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">03</span><span>Retrieval, Tools and AI Workflows</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">04</span><span>Automating Business Processes</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">05</span><span>Governance and Risk in Practice</span><span class="status st-dev">Planned</span></li>
+      </ol></div>
+    <div class="level"><div class="eyebrow">Level 03 · Advanced</div><h3>AI Professional</h3>
+      <ol>
+        <li><span class="n">01</span><span>Neural Networks and the Transformer</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">02</span><span>Building and Deploying AI Systems</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">03</span><span>AI Agents and Autonomy</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">04</span><span>Security, Safety and Evaluation</span><span class="status st-dev">Planned</span></li>
+        <li><span class="n">05</span><span>AI Strategy for Organisations</span><span class="status st-dev">Planned</span></li>
+      </ol></div>
+  </div>
+
+  <h2>How this handbook works</h2>
+  <div class="features">
+    <div><h3>Evidence labels</h3><p>Claims are marked <span class="ev ev-e">Established</span>, <span class="ev ev-d">Debated</span> or <span class="ev ev-m">Emerging</span>, so you always know how settled an idea is.</p></div>
+    <div><h3>Check your understanding</h3><p>Every lesson ends with short questions and explanations. Wrong answers show you why.</p></div>
+    <div><h3>Interactive labs</h3><p>Sort real systems into "AI" and "not AI", audit your own day, and catch the errors in an AI-style paragraph.</p></div>
+    <div><h3>Tap a dotted word</h3><p>Terms with a <span class="g" data-g="token">dotted underline</span> open a plain-language definition. The full glossary is always one click away.</p></div>
+    <div><h3>Real cases, including South Africa</h3><p>Documented examples from courts, regulators and research, with POPIA and local language context.</p></div>
+    <div><h3>Assessment and record</h3><p>A 30-mark assessment with a marking guide. Pass with 70% to unlock a completion record.</p></div>
+  </div>
+  ${foot()}</div>`;
+}
+
+function renderChapter(){
+  main.innerHTML = `<div class="col">
+  <div class="eyebrow">Chapter 01</div>
+  <h1>Understanding Artificial Intelligence</h1>
+  <p class="lede">Before you can learn to use artificial intelligence, you need to understand what it actually is, why it exists, how it developed and how it is changing the world around you.</p>
+  <p>Some people think AI is simply a chatbot. Others assume it is a machine that thinks exactly as humans do. Neither picture is accurate. This chapter looks past the apps to the ideas, technologies and history that make them possible, and to the habits you need to use them responsibly.</p>
+  <h2>Lessons</h2>
+  <ol class="lesson-list">${LESSONS.map(l => `<li><a href="#lesson-${l.id}"><span class="n">${l.num}</span><span><b>${esc(l.title)}</b><small>${l.mins} min read</small></span><span class="st${S.done[l.id]?' d':''}">${S.done[l.id]?'Complete':'Not started'}</span></a></li>`).join('')}
+  <li><a href="#assessment-1"><span class="n">✎</span><span><b>Chapter assessment</b><small>30 marks · pass mark 70%</small></span><span class="st${S.assess.result&&S.assess.result.pass?' d':''}">${S.assess.result ? (S.assess.result.pass ? 'Passed' : S.assess.result.total + '/30') : 'Not attempted'}</span></a></li></ol>
+  <h2>Learning objectives</h2>
+  <p>By the end of this chapter you should be able to:</p>
+  <ol class="objs">${OBJECTIVES.map(o => `<li>${esc(o)}</li>`).join('')}</ol>
+  <div class="row" style="margin-top:24px"><a class="btn btn-primary" href="#lesson-1-1">Begin Lesson 1.1</a></div>
+  ${foot()}</div>`;
+}
+
+function renderLesson(id){
+  const i = lessonIndex(id), l = LESSONS[i];
+  S.last = id; save();
+  const prev = LESSONS[i-1], next = LESSONS[i+1];
+  main.innerHTML = `<article class="col">
+    <header class="lesson-head">
+      <div class="eyebrow">Chapter 01 · Lesson ${l.num}</div>
+      <h1>${esc(l.title)}</h1>
+      <div class="meta"><span>${l.mins} min read</span><span>Lesson ${i+1} of ${LESSONS.length}</span>${S.done[id]?'<span style="color:var(--sage)">✓ Completed</span>':''}</div>
+    </header>
+    <div id="body"></div>
+    <nav class="pager" aria-label="Lesson navigation">
+      ${prev ? `<a href="#lesson-${prev.id}"><small>Previous</small><span>${prev.num} ${esc(prev.title)}</span></a>` : `<a href="#chapter-1"><small>Back to</small><span>Chapter overview</span></a>`}
+      <button class="next primary" id="completeBtn" type="button"><small>${S.done[id]?'Completed · continue':'Mark complete and continue'}</small><span>${next ? next.num + ' ' + esc(next.title) : 'Key takeaways'}</span></button>
+    </nav>
+    ${foot()}
+  </article>`;
+  const body = $('#body');
+  body.appendChild($('#t-lesson-' + id).content.cloneNode(true));
+  enhance(body, id);
+  $('#completeBtn').addEventListener('click', () => { S.done[id] = true; save(); location.hash = next ? 'lesson-' + next.id : 'summary-1'; });
+}
+
+function renderSummary(){
+  const done = LESSONS.filter(l => S.done[l.id]).length;
+  main.innerHTML = `<div class="col">
+    <div class="eyebrow">Chapter 01 · Review</div>
+    <h1>Key takeaways</h1>
+    <p class="lede">Eight ideas to carry into the rest of the programme.</p>
+    <ol class="objs">${TAKEAWAYS.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
+    <p class="key">Understanding what AI can and cannot do is the first step towards using it well.</p>
+    ${done < LESSONS.length ? `<p style="font-family:var(--f-ui);font-size:14.5px;color:var(--ink-2)">You have completed ${done} of ${LESSONS.length} lessons. You can take the assessment now, or finish the remaining lessons first.</p>` : ''}
+    <div class="row"><a class="btn btn-primary" href="#assessment-1">Take the assessment</a><a class="btn btn-ghost" href="#glossary">Review the glossary</a></div>
+    ${foot()}</div>`;
+}
+
+function renderAssessment(){
+  const A = S.assess;
+  const mcqHtml = ASSESS_MCQ.map((m, qi) => {
+    const sel = A.mcq[qi];
+    const marked = !!A.result;
+    return `<fieldset class="q"><legend>${qi+1}. ${esc(m.q)}</legend><div class="opts">${m.o.map((o, oi) => {
+      let cls = '';
+      if (marked && oi === m.a) cls = ' right'; else if (marked && sel === oi) cls = ' wrong';
+      return `<label class="opt${cls}"><input type="radio" name="m${qi}" value="${oi}" ${sel===oi?'checked':''}><span class="l">${L(oi)}</span><span>${esc(o)}</span></label>`;
+    }).join('')}</div></fieldset>`;
+  }).join('');
+  const wq = w => `<div class="wq"><p class="qt">${esc(w.q)} <span style="color:var(--muted);font-weight:400">(${w.max} marks)</span></p>
+    <label for="t-${w.id}" class="eyebrow" style="display:block;margin-bottom:6px">Your answer</label>
+    <textarea id="t-${w.id}" data-w="${w.id}">${esc(A.text[w.id] || '')}</textarea>
+    <details><summary>Show the marking guide</summary><div class="guide"><ul>${w.g.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>
+    <div class="self"><label for="s-${w.id}">Your mark after comparing with the guide:</label>
+    <select id="s-${w.id}" data-s="${w.id}"><option value="">Not marked</option>${Array.from({length:w.max+1},(_,k)=>`<option value="${k}" ${String(A.self[w.id])===String(k)?'selected':''}>${k} / ${w.max}</option>`).join('')}</select></div></div>`;
+  main.innerHTML = `<div class="col">
+    <div class="eyebrow">Chapter 01 · Assessment</div>
+    <h1>Knowledge assessment</h1>
+    <p class="lede">30 marks. The pass mark is 70% (21 marks).</p>
+    <p style="font-family:var(--f-ui);font-size:15px;color:var(--ink-2)">Section A is marked automatically. For Sections B and C, write your answer, open the marking guide, and award yourself a mark honestly. Your answers are saved in this browser as you type.</p>
+    <section class="sec"><div class="sec-h"><h2>Section A · Multiple choice</h2><span>10 marks</span></div>${mcqHtml}</section>
+    <section class="sec"><div class="sec-h"><h2>Section B · Short answers</h2><span>10 marks</span></div>${ASSESS_WRITTEN.filter(w=>w.sec==='B').map(wq).join('')}</section>
+    <section class="sec"><div class="sec-h"><h2>Section C · Practical application</h2><span>10 marks</span></div>
+      <div class="scenario"><strong>Scenario.</strong> You manage a small business that receives many customer enquiries by email. You want to introduce AI to help employees manage them.</div>
+      ${ASSESS_WRITTEN.filter(w=>w.sec==='C').map(wq).join('')}</section>
+    <div class="row"><button class="btn btn-primary" id="markBtn" type="button">Calculate my result</button>${A.result ? '<button class="btn btn-ghost" id="retryBtn" type="button">Clear answers and retry</button>' : ''}</div>
+    <div id="resultBox"></div>
+    ${foot()}</div>`;
+  $$('input[type=radio]', main).forEach(r => r.addEventListener('change', () => { A.mcq[r.name.slice(1)] = +r.value; save(); }));
+  let tmr; $$('textarea[data-w]', main).forEach(t => t.addEventListener('input', () => { A.text[t.dataset.w] = t.value; clearTimeout(tmr); tmr = setTimeout(save, 300); }));
+  $$('select[data-s]', main).forEach(s => s.addEventListener('change', () => { if (s.value === '') delete A.self[s.dataset.s]; else A.self[s.dataset.s] = +s.value; save(); }));
+  $('#markBtn').addEventListener('click', () => {
+    const mcq = ASSESS_MCQ.reduce((n, m, i) => n + (A.mcq[i] === m.a ? 1 : 0), 0);
+    const unmarked = ASSESS_WRITTEN.filter(w => A.self[w.id] === undefined).length;
+    const b = ASSESS_WRITTEN.filter(w=>w.sec==='B').reduce((n,w)=>n+(A.self[w.id]||0),0);
+    const c = ASSESS_WRITTEN.filter(w=>w.sec==='C').reduce((n,w)=>n+(A.self[w.id]||0),0);
+    const total = mcq + b + c;
+    A.result = {mcq, b, c, total, pass: total >= 21, unmarked, date: new Date().toISOString().slice(0,10)};
+    save(); renderAssessment(); renderNav('assessment-1');
+    setTimeout(() => { const rb = $('#resultBox'); if (rb) rb.scrollIntoView({behavior:'smooth', block:'start'}); }, 30);
+  });
+  const retry = $('#retryBtn');
+  if (retry) retry.addEventListener('click', () => { S.assess = Object.assign(fresh().assess, {name: A.name}); save(); renderAssessment(); renderNav('assessment-1'); window.scrollTo(0,0); });
+  if (A.result) showResult();
+}
+
+function showResult(){
+  const A = S.assess, r = A.result;
+  const box = $('#resultBox');
+  box.innerHTML = `<div class="result ${r.pass?'pass':'fail'}">
+    <div class="eyebrow">Your result</div>
+    <div class="big">${r.total} / 30</div>
+    <div class="breakdown"><div><b>${r.mcq} / 10</b><small>Section A</small></div><div><b>${r.b} / 10</b><small>Section B (self-marked)</small></div><div><b>${r.c} / 10</b><small>Section C (self-marked)</small></div><div><b>${Math.round(r.total/30*100)}%</b><small>Pass mark 70%</small></div></div>
+    ${r.unmarked ? `<p style="color:var(--ochre);font-size:14px">${r.unmarked} written ${r.unmarked===1?'answer was':'answers were'} not self-marked and counted as zero. Award your marks above, then calculate again.</p>` : ''}
+    ${r.pass ? `<p><strong>Well done, you passed.</strong> Correct answers are highlighted in Section A above.</p>
+      <div class="namefield"><label for="learnerName">Name for your completion record</label><input id="learnerName" type="text" autocomplete="name" value="${esc(A.name)}" placeholder="Your full name"></div>
+      <div class="record" id="record">
+        <div class="eyebrow">Applied AI Academy · Completion record</div>
+        <div class="who" id="recName">${esc(A.name || 'Your name')}</div>
+        <div>completed</div>
+        <h3>AI Foundations · Chapter 01: Understanding Artificial Intelligence</h3>
+        <div>Score ${r.total}/30 (${Math.round(r.total/30*100)}%) · ${r.date}</div>
+        <small>Includes self-assessed sections. Saved on this device. This is not an accredited certificate.</small>
+      </div>`
+    : `<p><strong>Not yet.</strong> Review the lessons linked to the questions you missed, then try again. Correct answers for Section A are highlighted above.</p><div class="row"><a class="btn btn-ghost" href="#chapter-1">Back to the lessons</a></div>`}
+  </div>`;
+  const nm = $('#learnerName');
+  if (nm) nm.addEventListener('input', () => { A.name = nm.value; $('#recName').textContent = nm.value || 'Your name'; save(); });
+}
+
+function renderGlossary(){
+  const items = Object.values(GLOSSARY).sort((a,b) => a.t.localeCompare(b.t));
+  main.innerHTML = `<div class="col">
+    <div class="eyebrow">Reference</div><h1>Glossary</h1>
+    <p class="lede">Plain-language definitions of the terms used in this handbook.</p>
+    <label for="gsearch" class="eyebrow">Search terms</label>
+    <input id="gsearch" class="search" type="search" placeholder="e.g. token, bias, winter" autocomplete="off">
+    <dl class="gl" id="gl"></dl>
+    ${foot()}</div>`;
+  const draw = q => { q = q.trim().toLowerCase();
+    const f = items.filter(g => !q || g.t.toLowerCase().includes(q) || g.d.toLowerCase().includes(q));
+    $('#gl').innerHTML = f.length ? f.map(g => `<div><dt>${esc(g.t)}</dt><dd>${esc(g.d)}</dd></div>`).join('') : `<p style="font-family:var(--f-ui);color:var(--muted)">No terms match "${esc(q)}". Try a shorter word.</p>`; };
+  draw('');
+  $('#gsearch').addEventListener('input', e => draw(e.target.value));
+}
+
+function renderReferences(){
+  main.innerHTML = `<div class="col">
+    <div class="eyebrow">Reference</div><h1>References and further reading</h1>
+    <p class="lede">The sources behind the facts, cases and quotations in Chapter 01.</p>
+    ${REFS.map(([h, list]) => `<h2>${esc(h)}</h2><ul class="refs">${list.map(x => `<li>${x}</li>`).join('')}</ul>`).join('')}
+    ${foot()}</div>`;
+}
+
+/* =====================================================================
+   WIDGETS
+   ===================================================================== */
+function enhance(root, lessonId){
+  $$('.g', root).forEach(g => { g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label', g.textContent + ', show definition'); });
+  const c = $('[data-check]', root); if (c) renderCheck(c, lessonId);
+  $$('[data-widget]', root).forEach(w => ({timeline, 'is-it-ai':sortLab, 'catch-errors':errLab, 'ai-day':dayLab})[w.dataset.widget](w));
+}
+
+function renderCheck(el, lessonId){
+  const qs = CHECKS[lessonId] || [];
+  el.className = 'check';
+  el.innerHTML = `<div class="eyebrow">Lesson ${lessonId.replace('-','.')}</div><h2>Check your understanding</h2>` + qs.map((q, qi) => {
+    const key = lessonId + ':' + qi;
+    return `<fieldset class="q" data-key="${key}"><legend>${esc(q.q)}</legend><div class="opts">${q.o.map((o, oi) => `<button type="button" class="opt" data-oi="${oi}"><span class="l">${L(oi)}</span><span>${esc(o)}</span></button>`).join('')}</div><p class="fb" aria-live="polite"></p></fieldset>`;
+  }).join('');
+  $$('.q', el).forEach((fs, qi) => {
+    const q = qs[qi];
+    const paint = oi => {
+      $$('.opt', fs).forEach(b => b.classList.remove('right','wrong'));
+      const fb = $('.fb', fs);
+      if (oi === undefined) { fb.textContent=''; fb.className='fb'; return; }
+      $$('.opt', fs)[oi].classList.add(oi === q.a ? 'right' : 'wrong');
+      if (oi !== q.a) $$('.opt', fs)[q.a].classList.add('right');
+      fb.className = 'fb ' + (oi === q.a ? 'ok' : 'no');
+      fb.innerHTML = `<strong>${oi === q.a ? 'Correct.' : 'Not quite. The answer is ' + L(q.a) + '.'}</strong> <span>${esc(q.x)}</span>`;
+    };
+    paint(S.checks[fs.dataset.key]);
+    $$('.opt', fs).forEach(b => b.addEventListener('click', () => { const oi = +b.dataset.oi; S.checks[fs.dataset.key] = oi; save(); paint(oi); }));
+  });
+}
+
+function timeline(el){
+  let f = 'all';
+  const draw = () => {
+    el.innerHTML = `<div class="tl-filters" role="group" aria-label="Filter the timeline">${[['all','All'],['symbolic','Rules & search'],['learning','Learning from data'],['winter','AI winters']].map(([k,t]) => `<button type="button" data-f="${k}" aria-pressed="${f===k}">${t}</button>`).join('')}</div>
+    <ol class="tl">${TIMELINE.filter(e => f==='all' || e.k.includes(f)).map(e => `<li class="${e.k.includes('winter')?'winter':''} ${e.k[0]==='symbolic'?'symbolic':''}"><div class="yr">${esc(e.y)}</div><div class="ev-body"><b>${esc(e.t)}</b>${esc(e.d)}<div class="kinds">${e.k.map(k => `<span>${KIND_LABEL[k]}</span>`).join('')}</div></div></li>`).join('')}</ol>`;
+    $$('[data-f]', el).forEach(b => b.addEventListener('click', () => { f = b.dataset.f; draw(); }));
+  };
+  draw();
+}
+
+function sortLab(el){
+  const opts = [['ai','AI'],['no','Not AI'],['dep','It depends']];
+  const draw = () => {
+    const answered = SORT_ITEMS.filter((_, i) => S.sort[i]).length;
+    const right = SORT_ITEMS.filter((it, i) => S.sort[i] === it.a).length;
+    el.className = 'lab';
+    el.innerHTML = `<div class="lab-head"><div class="eyebrow">Lab · 10 minutes</div><h3>Is it AI?</h3><p>Sort each system. Use the OECD test from Lesson 1.2: does it <em>infer</em> its output, or follow a fixed rule? Feedback appears as you choose.</p></div>
+    <div class="lab-body"><div class="sort-list">${SORT_ITEMS.map((it, i) => {
+      const v = S.sort[i]; const st = v ? (v === it.a ? 'ok' : 'no') : '';
+      return `<div class="sort-item ${st}"><span class="what">${esc(it.w)}</span><span class="seg" role="group" aria-label="${esc(it.w)}">${opts.map(([k,t]) => `<button type="button" data-i="${i}" data-v="${k}" aria-pressed="${v===k}">${t}</button>`).join('')}</span>${v ? `<span class="why"><strong style="color:var(--${v===it.a?'sage':'rose'})">${v===it.a?'Yes.':'Think again. Answer: ' + opts.find(o=>o[0]===it.a)[1] + '.'}</strong> ${esc(it.y)}</span>` : ''}</div>`;
+    }).join('')}</div></div>
+    <div class="lab-foot"><span class="score">${right} / ${SORT_ITEMS.length} correct</span><span style="color:var(--muted)">${answered} answered</span>${answered ? '<button type="button" class="chip-btn" data-reset>Start again</button>' : ''}</div>`;
+    $$('[data-v]', el).forEach(b => b.addEventListener('click', () => { S.sort[b.dataset.i] = b.dataset.v; save(); draw(); }));
+    const r = $('[data-reset]', el); if (r) r.addEventListener('click', () => { S.sort = {}; save(); draw(); });
+  };
+  draw();
+}
+
+function errLab(el){
+  const draw = () => {
+    const chk = S.sentChecked;
+    const found = SENTENCES.filter((s, i) => !!S.sent[i] === s.err).length;
+    el.className = 'lab';
+    el.innerHTML = `<div class="lab-head"><div class="eyebrow">Lab · CHECK in practice</div><h3>Catch the errors</h3><p>This paragraph was written for this exercise in the style of an AI answer. It contains deliberate errors. Select every sentence you think is wrong or unsupported, then check.</p></div>
+    <div class="lab-body"><div class="sent-list">${SENTENCES.map((s, i) => {
+      const sel = !!S.sent[i]; let cls = '';
+      if (chk) cls = sel === s.err ? 'ok' : 'no';
+      return `<button type="button" class="sent ${cls}" data-i="${i}" aria-pressed="${sel}" ${chk?'disabled':''}>${esc(s.s)}${chk ? `<small>${sel===s.err?'✓':'✗'} ${esc(s.y)}</small>` : ''}</button>`;
+    }).join('')}</div></div>
+    <div class="lab-foot">${chk ? `<span class="score">${found} / ${SENTENCES.length} sentences judged correctly</span><button type="button" class="chip-btn" data-again>Try again</button>` : `<button type="button" class="btn btn-primary" data-check-err>Check my answers</button><span style="color:var(--muted)">${Object.values(S.sent).filter(Boolean).length} selected</span>`}</div>`;
+    $$('.sent', el).forEach(b => b.addEventListener('click', () => { const i = b.dataset.i; S.sent[i] = !S.sent[i]; save(); draw(); }));
+    const c = $('[data-check-err]', el); if (c) c.addEventListener('click', () => { S.sentChecked = true; save(); draw(); });
+    const a = $('[data-again]', el); if (a) a.addEventListener('click', () => { S.sent = {}; S.sentChecked = false; save(); draw(); });
+  };
+  draw();
+}
+
+function dayLab(el){
+  const draw = () => {
+    const picked = DAY_ITEMS.filter((_, i) => S.day[i]);
+    const kinds = {}; picked.forEach(p => kinds[p.k] = (kinds[p.k] || 0) + 1);
+    el.className = 'lab';
+    el.innerHTML = `<div class="lab-head"><div class="eyebrow">Lab · 3 minutes</div><h3>Your AI day</h3><p>Tick everything you did in the last 24 hours. Each one involves machine learning behind the scenes.</p></div>
+    <div class="lab-body"><div class="day-grid">${DAY_ITEMS.map((d, i) => `<label for="day-${i}"><input type="checkbox" id="day-${i}" data-i="${i}" ${S.day[i]?'checked':''}><span>${esc(d.w)}<small>${d.k}</small></span></label>`).join('')}</div></div>
+    <div class="lab-foot"><div><span class="score">${picked.length} AI-powered interaction${picked.length===1?'':'s'}</span> in your day${picked.length ? '<div class="mix">' + Object.entries(kinds).map(([k,n]) => `<span>${k} × ${n}</span>`).join('') + '</div>' : ''}</div></div>`;
+    $$('input', el).forEach(c => c.addEventListener('change', () => { S.day[c.dataset.i] = c.checked; save(); draw(); }));
+  };
+  draw();
+}
+
+/* =====================================================================
+   ROUTER (plain #name hashes)
+   ===================================================================== */
+function route(){
+  const h = location.hash.slice(1) || 'home';
+  let m, key = h;
+  hidePop(); setMenu(false);
+  if (h === 'chapter-1') renderChapter();
+  else if ((m = h.match(/^lesson-(1-[1-8])$/))) renderLesson(m[1]);
+  else if (h === 'summary-1') renderSummary();
+  else if (h === 'assessment-1') renderAssessment();
+  else if (h === 'glossary') renderGlossary();
+  else if (h === 'references') renderReferences();
+  else { key = 'home'; renderHome(); }
+  renderNav(key);
+  const t = $('h1', main);
+  document.title = (key === 'home' ? '' : (t ? t.textContent + ' · ' : '')) + 'AI Foundations Handbook';
+  window.scrollTo({top:0, left:0, behavior:'instant'});
+  main.focus({preventScroll:true});
+}
+window.addEventListener('hashchange', route);
+setTheme(S.theme || 'system');
+route();
+</script>
