@@ -78,7 +78,6 @@ function signal(zoneId, metric, t) {
   }
   return v;
 }
-const EQUIPMENT_UNITS_N = (eq) => Number(eq.id.split('-')[1]);
 const round = (v, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
 const isZoneSource = (id) => Object.values(ZONE_SOURCES).includes(id);
 
@@ -165,7 +164,7 @@ function valueAt(eq, role, t) {
     case 'staticPressure': return on ? Math.round(250 + n * 12) : 0;
     case 'staticPressureSetpoint': return 250;
     case 'staticPressureStatus': return on;
-    case 'fireDamper': return EQUIPMENT_UNITS_N(eq) >= 6 ? true : null;
+    case 'fireDamper': return eq.type === 'hybrid' ? on : null; // open while the unit runs, closed when stopped
     case 'dirtyFilter': return scenario !== 'all-live' && eq.id === 'HYB-05';
     default: return ROLE_POINTS[role]?.alarm ? false : null;
   }
